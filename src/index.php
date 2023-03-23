@@ -45,6 +45,9 @@ session_start();
     <?php } else { ?>
     <div>
       <h1>Bloc-notes</h1>
+      <span class="lang">
+        <img src="assets/icons/fr.svg" alt="flag" width="20" height="15">
+      </span>
     </div>
     <div class="icon">
       <button id="iconButton" type="button" aria-label="Ajouter une note sur l'appareil">Ajouter une note sur l'appareil</button>
@@ -57,7 +60,7 @@ session_start();
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
     <div class="copyright">
-      <a href="https://github.com/PouletEnSlip/Bloc-notes/" target="_blank" rel="noreferrer">v23.3.5</a>
+      <a href="https://github.com/PouletEnSlip/Bloc-notes/" aria-label="GitHub" target="_blank" rel="noreferrer">v23.3.6</a>
       &copy;
       <a href="https://leoseguin.fr/" target="_blank" rel="noreferrer">Léo SEGUIN</a>
     </div>
@@ -101,7 +104,23 @@ session_start();
           <header>
             <i class="fa-solid fa-xmark" tabindex="0"></i>
           </header>
-          <p><span class="sedeconnecter linkp"><a href="assets/php/logout.php" aria-label="Se déconnecter">Se déconnecter</a></span></p>
+          <div class="row">
+          <span class="lang linkp">
+            <img src="assets/icons/fr.svg" alt="flag" width="20" height="15">
+          </span>
+          </div>
+          <div class="row">
+            <p>
+              <span class="sedeconnecter linkp" tabindex="0">Se déconnecter</span>
+            </p>
+          </div>
+          <div class="row">
+            <p>
+              <span class="linkp">
+                <a href="https://leoseguin.fr/mentionslegales/" target="_blank" rel="noreferrer" aria-label="Mentions légales / confidentialité">Mentions légales / confidentialité</a>
+              </span>
+            </p>
+          </div>
           <form id="changeMDP" method="post" enctype="application/x-www-form-urlencoded">
             <div class="row">
               <input id="mdpModifNew" placeholder="Nouveau mot de passe" type="password" maxlength="50" aria-label="mdp">
@@ -112,14 +131,16 @@ session_start();
             <button id="submitChangeMDP" type="submit" aria-label="Modifier le mot de passe">Modifier le mot de passe</button>
           </form>
           <div class="row">
-            <p><span class="supprimerCompte linkp" tabindex="0">Supprimer mon compte</span></p>
+            <p>
+              <span class="supprimerCompte linkp" tabindex="0">Supprimer mon compte</span>
+            </p>
           </div>
         </div>
       </div>
     </div>
     <?php } else { ?>
     <div class="info">
-      <span class="seconnecter linkp" tabindex="0">Connectez-vous</span> pour synchroniser vos notes entre tous vos appareils et les
+      <span class="seconnecter" tabindex="0">Connectez-vous</span> pour synchroniser vos notes entre tous vos appareils et les
       <div class="tooltip">chiffrer🔒
         <span class="tooltiptext">Chiffrement AES-256-GCM</span>
       </div>
@@ -160,18 +181,15 @@ session_start();
           <header>
             <i class="fa-solid fa-xmark" tabindex="0"></i>
           </header>
+          <p>
+            <span class="creercompte linkp" tabindex="0">Pas encore de compte ?</span>
+          </p>
           <form id="connectForm" method="post" enctype="application/x-www-form-urlencoded">
             <div class="row">
-              <input id="nomConnect" placeholder="Nom" type="text" minlength="4" maxlength="25" aria-label="nom">
+              <input id="nomConnect" placeholder="Nom" type="text" maxlength="25" aria-label="nom">
             </div>
             <div class="row">
-              <input id="mdpConnect" placeholder="Mot de passe" type="password" minlength="6" maxlength="50" aria-label="mdp">
-            </div>
-            <div class="row">
-              <span class="creercompte linkp" tabindex="0">Pas encore de compte ?</span>
-            </div>
-            <div class="row">
-              <a class="linkp" href="https://leoseguin.fr/mentionslegales/" target="_blank" rel="noreferrer" aria-label="Mentions légales">Mentions légales</a>
+              <input id="mdpConnect" placeholder="Mot de passe" type="password" maxlength="50" aria-label="mdp">
             </div>
             <button id="submitSeConnecter" type="submit" aria-label="Se connecter">Se connecter</button>
           </form>
@@ -184,6 +202,11 @@ session_start();
           <header>
             <i class="fa-solid fa-xmark" tabindex="0"></i>
           </header>
+          <p>
+            <span class="linkp">
+              <a href="https://leoseguin.fr/mentionslegales/" target="_blank" rel="noreferrer" aria-label="Mentions légales / confidentialité">Mentions légales / confidentialité</a>
+            </span>
+          </p>
           <form id="creerForm" method="post" enctype="application/x-www-form-urlencoded">
             <div class="row">
               <input id="nomCreer" placeholder="Entrer votre nom" type="text" minlength="4" maxlength="25" aria-label="nom">
@@ -194,9 +217,6 @@ session_start();
             <div class="row">
               <input id="mdpCreerValid" placeholder="Retaper votre mot de passe" type="password" minlength="6" maxlength="50" aria-label="mdp">
             </div>
-            <div class="row">
-              <a class="linkp" href="https://leoseguin.fr/mentionslegales/" target="_blank" rel="noreferrer" aria-label="Mentions légales">Mentions légales</a>
-            </div>
             <button id="submitCreer" type="submit" aria-label="Créer mon compte">Créer mon compte</button>
           </form>
         </div>
@@ -204,7 +224,16 @@ session_start();
     </div>
     <?php } ?>
   </main>
-  <script>'serviceWorker' in navigator && navigator.serviceWorker.register('sw.js');</script>
+  <div class="svgPart">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+      <defs>
+        <marker id="pointer" markerWidth="10" markerHeight="8" refX="7" refY="5" orient="-45">
+          <polyline points="1 1, 8 5, 1 7"></polyline>
+        </marker>
+      </defs>
+      <path d="M16,178 c87-46,162-185,227-136C307,90,195,158,111,108C71,85,92,30,126,7" marker-end="url(#pointer)"></path>
+    </svg>
+  </div>
   <?php if (isset($_SESSION["nom"])) { ?>
   <script src="./assets/js/scriptConnect.js" defer></script>
   <?php } else { ?>
