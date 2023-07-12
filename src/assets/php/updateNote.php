@@ -1,32 +1,43 @@
 <?php
 session_name('__Secure-notes');
 session_start();
-if ($_POST['csrf_token_note'] !== $_SESSION['csrf_token_note'] || isset($_SESSION["nom"], $_SESSION['userId'], $_POST['title'], $_POST['filterDesc']) === false) {
+
+if ($_POST['csrf_token_note'] !== $_SESSION['csrf_token_note']) {
     header('HTTP/2.0 403 Forbidden');
     exit();
 }
-require_once $_SERVER['DOCUMENT_ROOT'] . '/projets/notes/assets/php/config.php';
-require_once $_SERVER['DOCUMENT_ROOT'] . '/projets/notes/assets/php/functions.php';
+if (!isset($_SESSION["nom"], $_SESSION['userId'], $_POST['title'], $_POST['desc'], $_POST['date'], $_POST['couleur'], $_POST['hidden'])) {
+    header('HTTP/2.0 403 Forbidden');
+    exit();
+}
+
+require_once $_SERVER['DOCUMENT_ROOT'] . '/projets/notes/assets/php/config/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/projets/notes/assets/php/class/Encryption.php';
+
+$encryption = new Encryption\Encryption();
+
 $key = $_SESSION['key'];
-$descriptionConnect = $_POST['filterDesc'];
-$descriptionConnect = encrypt_data($descriptionConnect, $key);
-$noteId = $_POST['noteId'];
-$titleConnect = $_POST['title'];
-$titleConnect = encrypt_data($titleConnect, $key);
-$couleurConnect = $_POST['couleur'];
+$desc = $_POST['desc'];
+$desc = $encryption->encryptData($desc, $key);
+$title = $_POST['title'];
+$title = $encryption->encryptData($title, $key);
+$couleur = $_POST['couleur'];
 $dateNote = $_POST['date'];
 $hidden = $_POST['hidden'];
 $nom = $_SESSION["nom"];
+$noteId = $_POST['noteId'];
 $couleursAutorisees = ["Noir", "Blanc", "Rouge", "Orange", "Jaune", "Vert", "Cyan", "BleuCiel", "Bleu", "Violet", "Rose"];
-if (in_array($couleurConnect, $couleursAutorisees) === false) {
-    $couleurConnect = "Noir";
+
+if (in_array($couleur, $couleursAutorisees) === false) {
+    $couleur = "Noir";
 }
-$query = $PDO->prepare("UPDATE notes SET titre=:Title,content=:FilterDesc,dateNote=:DateNote,couleur=:Couleur,hiddenNote=:HiddenNote WHERE id=:NoteId AND user=:CurrentUser");
+
+$query = $PDO->prepare("UPDATE notes SET titre=:Title,content=:Descr,dateNote=:DateNote,couleur=:Couleur,hiddenNote=:HiddenNote WHERE id=:NoteId AND user=:CurrentUser");
 $query->execute(
     [
-        ':Title'        => $titleConnect,
-        ':FilterDesc'   => $descriptionConnect,
-        ':Couleur'      => $couleurConnect,
+        ':Title'        => $title,
+        ':Descr'        => $desc,
+        ':Couleur'      => $couleur,
         ':NoteId'       => $noteId,
         ':DateNote'     => $dateNote,
         ':CurrentUser'  => $nom,
