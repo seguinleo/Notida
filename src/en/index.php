@@ -5,7 +5,7 @@ $cookieParams = [
     'lifetime' => 604800,
     'secure'   => true,
     'httponly' => true,
-    'samesite' => 'Lax'
+    'samesite' => 'Strict'
 ];
 session_set_cookie_params($cookieParams);
 session_start();
@@ -26,6 +26,7 @@ if (isset($_SESSION["nom"]) === false) {
 ?>
 <!DOCTYPE html>
 <html class="dark" lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Bloc-notes &#8211; Léo SEGUIN</title>
@@ -47,14 +48,16 @@ if (isset($_SESSION["nom"]) === false) {
     <meta property="og:locale" content="en">
     <link rel="alternate" hreflang="en" href="https://leoseguin.fr/projets/notes/en/">
     <link rel="alternate" hreflang="fr" href="https://leoseguin.fr/projets/notes/">
+    <link rel="alternate" hreflang="de" href="https://leoseguin.fr/projets/notes/de/">
     <link rel="alternate" hreflang="x-default" href="https://leoseguin.fr/projets/notes/en/">
     <link rel="canonical" href="https://leoseguin.fr/projets/notes/">
     <link rel="apple-touch-icon" href="/projets/notes/assets/icons/apple-touch-icon.png">
     <link rel="shortcut icon" href="/projets/notes/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="/projets/notes/assets/css/style.css">
     <link rel="stylesheet" href="/assets/fontawesome/css/all.min.css">
-    <link rel="manifest" href="/projets/notes/en/manifest.json">
+    <link rel="manifest" href="/projets/notes/en/app.webmanifest">
 </head>
+
 <body>
     <nav>
         <?php if (isset($nom) === true) { ?>
@@ -66,21 +69,15 @@ if (isset($_SESSION["nom"]) === false) {
                     </span>
                 </h1>
             </div>
-            <div class="iconConnect">
-                <button id="iconButtonConnectFloat" type="button" aria-label="Add a cloud note"><i class="fa-solid fa-plus"></i></button>
-            </div>
         <?php } else { ?>
             <div>
                 <h1>Bloc-notes</h1>
                 <span class="version">
-                    <a href="https://github.com/PouletEnSlip/Bloc-notes/" aria-label="See on GitHub" target="_blank" rel="noreferrer">v23.7.4</a>
+                    <a href="https://github.com/PouletEnSlip/Bloc-notes/" aria-label="See on GitHub" target="_blank" rel="noreferrer">v23.8.1</a>
                 </span>
             </div>
             <div>
                 <button type="button" class="seconnecter" aria-label="Sign in">Sign in</button>
-            </div>
-            <div class="icon">
-                <button id="iconButtonFloat" type="button" aria-label="Add a local note"><i class="fa-solid fa-plus"></i></button>
             </div>
         <?php } ?>
         <div class="search-input">
@@ -110,15 +107,25 @@ if (isset($_SESSION["nom"]) === false) {
             </button>
         </div>
         <?php if (isset($nom) === false) { ?>
-        <div class="divLanguage">
-            <select class="language" name="language" aria-label="Langue">
-                <option value="fr">🇫🇷</option>
-                <option value="en" selected>🇬🇧</option>
-            </select>
-        </div>
+            <div class="divLanguage">
+                <select class="language" name="language" aria-label="Langue">
+                    <option value="fr">🇫🇷</option>
+                    <option value="en" selected>🇬🇧</option>
+                    <option value="de">🇩🇪</option>
+                </select>
+            </div>
         <?php } ?>
     </nav>
     <main>
+        <?php if (isset($nom) === true) { ?>
+            <div class="iconConnectFloat">
+                <button id="iconButtonConnectFloat" type="button" aria-label="Add a cloud note"><i class="fa-solid fa-plus"></i></button>
+            </div>
+        <?php } else { ?>
+            <div class="iconFloat">
+                <button id="iconButtonFloat" type="button" aria-label="Add a local note"><i class="fa-solid fa-plus"></i></button>
+            </div>
+        <?php } ?>
         <div class="darken"></div>
         <div id="errorNotification"></div>
         <div class="sideBar">
@@ -180,7 +187,7 @@ if (isset($_SESSION["nom"]) === false) {
                             Hidden note
                             <div class="row">
                                 <label for="checkHidden" class="switch" aria-label="Hidden note">
-                                    <input type="checkbox" name="checkHidden" id="checkHidden" aria-label="Hidden note" tabindex="-1">
+                                    <input type="checkbox" name="checkHidden" id="checkHidden" aria-hidden="true" tabindex="-1">
                                     <span class="slider" tabindex="0"></span>
                                 </label>
                             </div>
@@ -229,6 +236,7 @@ if (isset($_SESSION["nom"]) === false) {
                             <select class="language" name="language" aria-label="Langue">
                                 <option value="fr">🇫🇷 Français</option>
                                 <option value="en" selected>🇬🇧 English</option>
+                                <option value="de">🇩🇪 Deutsch</option>
                             </select>
                         </div>
                         <details>
@@ -249,7 +257,7 @@ if (isset($_SESSION["nom"]) === false) {
                         </details>
                         <div class="row">
                             <p class="version">
-                                <a href="https://github.com/PouletEnSlip/Bloc-notes/" aria-label="See on GitHub" target="_blank" rel="noreferrer">v23.7.4</a>
+                                <a href="https://github.com/PouletEnSlip/Bloc-notes/" aria-label="See on GitHub" target="_blank" rel="noreferrer">v23.8.1</a>
                             </p>
                         </div>
                     </div>
@@ -352,4 +360,5 @@ if (isset($_SESSION["nom"]) === false) {
         <script src="/projets/notes/assets/js/script.js" defer></script>
     <?php } ?>
 </body>
+
 </html>
