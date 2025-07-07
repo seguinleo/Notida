@@ -48,6 +48,8 @@ const limiter = rateLimit({
   max: 10,
 })
 
+app.use(limiter)
+
 /**
  * @function checkToken
  * @description Middleware to check if the user is authenticated with a valid JWT token.
