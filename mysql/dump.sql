@@ -4,7 +4,7 @@
 -- !!!!!!!!!!!!!!!
 
 --
--- Database: `seguinleo-notes`
+-- Database: `notida`
 --
 
 -- --------------------------------------------------------
@@ -39,7 +39,9 @@ CREATE TABLE `users` (
   `name` varchar(63) NOT NULL,
   `psswd` varchar(255) NOT NULL,
   `oneKey` varchar(255) NOT NULL,
-  `lastLogin` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `lastLogin` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `2fa` tinyint NOT NULL DEFAULT '0',
+  `2faSecret` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --

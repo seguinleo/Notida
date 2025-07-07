@@ -1,3 +1,19 @@
+#----v25.7.1----# !! DATABASE AND ENCRYPTION CHANGED !!
+-Refactor client code in Node.js
+    -Better login system
+        -Use express-session and Redis
+    -Better code structure
+    -Better dev environnement
+-Improve security
+    - Limit login attempts
+    - Add JWT tokens
+    - Encrypt .env
+-Improve Docker configuration
+-Move Apache to nginx
+-UI/UX and accessibility fixes
+-Change project name and cloud domain
+-Bug fixes
+
 #----v25.4.1----#
 -Refactor client code in Vue.js 3
     -Better dependencies management

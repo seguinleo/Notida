@@ -1,25 +1,84 @@
-# !!!!!!!!!!!!!!!
-# EDIT ALL USERS AND PASSWORDS FOR PRODUCTION
-# !!!!!!!!!!!!!!!
-
 services:
   db:
+    container_name: db
     image: mysql:latest
-    container_name: db-seguinleo-notes
-    volumes:
-      - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: seguinleo-notes
+      MYSQL_DATABASE: notida
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:
       - "3306:3306"
+    volumes:
+      - ./mysql/dump.sql:/docker-entrypoint-initdb.d/dump.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
 
-  web:
-    container_name: web-seguinleo-notes
+  api:
+    container_name: api
     build:
-      context: .
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: notida
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  client:
+    container_name: notida
+    build:
+      context: ./
       dockerfile: Dockerfile
     ports:
       - "8787:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+volumes:
+  redis-data:
+
+networks:
+  app-network:
+    driver: bridge

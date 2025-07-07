@@ -4,8 +4,8 @@ self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(cacheName)
     await cache.addAll([
-      './',
-      './index.html',
+      '/',
+      '/index.html',
     ])
   })())
 })

@@ -18,7 +18,7 @@
       <div class="row">
         <img v-if="new Date().getMonth() === 11" src="./assets/img/christmas.png" alt="christmas" class="christmas"
           width="36" height="29" loading="lazy">
-        <h1 class="main-title">Bloc-notes</h1>
+        <h1 class="main-title">Notida</h1>
       </div>
       <div class="row nav-buttons">
         <button v-if="name && !isLocked" id="manage-account" type="button" aria-label="Manage account"
@@ -285,14 +285,14 @@
             <a href="https://leoseguin.fr/mentionslegales/"></a>
           </div>
           <div class="row">
-            <a href="https://github.com/seguinleo/Bloc-notes/wiki/Markdown" id="link-markdown"
+            <a href="https://github.com/seguinleo/Notida/wiki/Markdown" id="link-markdown"
               rel="noopener noreferrer"></a>
           </div>
           <div class="row">
-            <a href="https://github.com/seguinleo/Bloc-notes/wiki/Shortcuts" rel="noopener noreferrer">Shortcuts</a>
+            <a href="https://github.com/seguinleo/Notida/wiki/Shortcuts" rel="noopener noreferrer">Shortcuts</a>
           </div>
           <div class="row">
-            <a href="https://github.com/seguinleo/Bloc-notes/discussions" id="link-help" rel="noopener noreferrer"></a>
+            <a href="https://github.com/seguinleo/Notida/discussions" id="link-help" rel="noopener noreferrer"></a>
           </div>
           <div class="row">
             <select id="language" aria-label="Language" @change="toggleLang($event.target.value)">
@@ -334,7 +334,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Bloc-notes/" rel="noopener noreferrer">v25.4.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.7.1</a>
             </p>
           </div>
         </div>
@@ -498,7 +498,7 @@
                 <button type="button" id="copy-password-btn" aria-label="Copy password" @click="copyPassword()">
                   <i class="fa-solid fa-clipboard"></i>
                 </button>
-                <button type="button" id="submit-gen-psswd" aria-label="Generate password">
+                <button type="button" id="submit-gen-psswd" aria-label="Generate password" @click="getPassword(20)">
                   <i class="fa-solid fa-arrow-rotate-right"></i>
                 </button>
               </div>
@@ -513,23 +513,16 @@
       </dialog>
       <div data-note-id="welcome" class="note bg-default d-none">
         <div class="details">
-          <h2 class="title">👋Bienvenue !</h2>
+          <h2 class="title">Bienvenue 👋</h2>
           <div class="details-content details-content-fr d-none">
             <div>
-              Bloc-notes est un outil <span class="bold">rapide, privé et sécurisé</span><br>pour prendre des notes en
-              <a href="https://github.com/seguinleo/Bloc-notes/wiki/Markdown" rel="noopener noreferrer">Markdown ou
+              Notida est un outil <span class="bold">rapide, privé et sécurisé</span><br>pour prendre des notes en
+              <a href="https://github.com/seguinleo/Notida/wiki/Markdown" rel="noopener noreferrer">Markdown ou
                 HTML</a>.
             </div>
             <div>
-              Créez une note avec <i class="fa-solid fa-plus"></i> en bas à droite et ajoutez
-              <ul>
-                <li>des listes de tâches,</li>
-                <li>des rappels,</li>
-                <li>des liens,</li>
-                <li>des images,</li>
-                <li>etc.</li>
-              </ul>
-              Vous pouvez également créer des dossiers et des catégories.
+              Créez une note avec <i class="fa-solid fa-plus"></i> et ajoutez
+              des tâches, des rappels, des liens, des images, etc.
             </div>
             <div>
               Connectez-vous avec <i class="fa-solid fa-circle-user"></i> pour synchroniser vos notes sur tous vos
@@ -545,20 +538,13 @@
           </div>
           <div class="details-content details-content-en">
             <div>
-              Bloc-notes is a <span class="bold">fast, private and secure</span><br>tool for taking notes in
-              <a href="https://github.com/seguinleo/Bloc-notes/wiki/Markdown " rel="noopener noreferrer">Markdown or
+              Notida is a <span class="bold">fast, private and secure</span><br>tool for taking notes in
+              <a href="https://github.com/seguinleo/Notida/wiki/Markdown " rel="noopener noreferrer">Markdown or
                 HTML</a>.
             </div>
             <div>
-              Create a note with <i class="fa-solid fa-plus"></i> at the bottom right and add
-              <ul>
-                <li>to-do lists,</li>
-                <li>reminders,</li>
-                <li>links,</li>
-                <li>images,</li>
-                <li>etc.</li>
-              </ul>
-              You can also create folders and categories.
+              Create a note with <i class="fa-solid fa-plus"></i> and add
+              tasks, reminders, links, images, etc.
             </div>
             <div>
               Log in with <i class="fa-solid fa-circle-user"></i> to sync your notes across all your devices.
@@ -817,10 +803,9 @@ export default {
 
           if (this.isUpdate) data.set('noteId', noteId)
 
-          const url = this.isUpdate ? 'api/updateNote.php' : 'api/addNote.php'
+          const url = this.isUpdate ? 'api/update-note/' : 'api/add-note/'
           const res = await fetch(url, {
             method: 'POST',
-            mode: 'same-origin',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
@@ -883,9 +868,8 @@ export default {
         const psswdNew = e
         try {
           const data = new URLSearchParams({ psswdOld, psswdNew })
-          const res = await fetch('api/updatePsswd.php', {
+          const res = await fetch('api/update-password/', {
             method: 'POST',
-            mode: 'same-origin',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
@@ -909,9 +893,8 @@ export default {
         if (!psswd || psswd.length < 10 || psswd.length > 64) return
         try {
           const data = new URLSearchParams({ psswd })
-          const res = await fetch('api/deleteAccount.php', {
+          const res = await fetch('api/delete-user/', {
             method: 'POST',
-            mode: 'same-origin',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
@@ -934,9 +917,8 @@ export default {
         if (!noteId || !link || !/^[a-zA-Z0-9]+$/.test(link)) return
         try {
           const data = new URLSearchParams({ noteId, noteLink: link })
-          const res = await fetch('api/privateNote.php', {
+          const res = await fetch('api/private-note/', {
             method: 'POST',
-            mode: 'same-origin',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
@@ -957,9 +939,8 @@ export default {
         if (!noteId) return
         try {
           const data = new URLSearchParams({ noteId })
-          const res = await fetch('api/publicNote.php', {
+          const res = await fetch('api/public-note/', {
             method: 'POST',
-            mode: 'same-origin',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
@@ -1113,9 +1094,8 @@ export default {
         const psswdCreate = t
         try {
           const data = new URLSearchParams({ nameCreate, psswdCreate })
-          const res = await fetch('api/createUser.php', {
+          const res = await fetch('api/create-user/', {
             method: 'POST',
-            mode: 'same-origin',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
@@ -1148,9 +1128,8 @@ export default {
         const psswdConnect = t
         try {
           const data = new URLSearchParams({ nameConnect, psswdConnect })
-          const res = await fetch('api/connectUser.php', {
+          const res = await fetch('api/login/', {
             method: 'POST',
-            mode: 'same-origin',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
@@ -1267,9 +1246,8 @@ export default {
     },
     async getLockApp() {
       try {
-        const res = await fetch('api/getLockApp.php', {
+        const res = await fetch('api/get-lock-app/', {
           method: 'POST',
-          mode: 'same-origin',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           }
@@ -1294,7 +1272,7 @@ export default {
         const publicKeyOptions = {
           challenge,
           rp: {
-            name: 'Bloc-notes',
+            name: 'Notida',
           },
           allowCredentials: [],
           userVerification: "preferred",
@@ -1320,12 +1298,12 @@ export default {
           publicKey: {
             challenge,
             rp: {
-              name: 'Bloc-notes',
+              name: 'Notida',
             },
             user: {
               id: userId,
-              name: 'Bloc-notes',
-              displayName: 'Bloc-notes',
+              name: 'Notida',
+              displayName: 'Notida',
             },
             pubKeyCredParams: [
               {
@@ -1374,14 +1352,11 @@ export default {
         }
       }
       try {
-        const data = new URLSearchParams({ lock_app: document.querySelector('#toggle-lock-app').checked })
-        const res = await fetch('api/lockApp.php', {
+        const res = await fetch('api/lock-app/', {
           method: 'POST',
-          mode: 'same-origin',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: data,
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
@@ -1747,9 +1722,8 @@ export default {
       marked.use(markedKatex(this.katexConfig))
 
       try {
-        const res = await fetch('api/getNotes.php', {
+        const res = await fetch('api/get-notes/', {
           method: 'POST',
-          mode: 'same-origin',
         })
 
         if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
@@ -2002,9 +1976,8 @@ export default {
     },
     async fetchAccount() {
       try {
-        const res = await fetch('api/getUser.php', {
+        const res = await fetch('api/get-user/', {
           method: 'POST',
-          mode: 'same-origin',
         })
         const response = await res.json()
         this.name = response.name
@@ -2016,9 +1989,8 @@ export default {
       if (!noteId) return
       try {
         const data = new URLSearchParams({ noteId })
-        const res = await fetch('api/deleteNote.php', {
+        const res = await fetch('api/delete-note/', {
           method: 'POST',
-          mode: 'same-origin',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
@@ -2035,9 +2007,8 @@ export default {
     },
     async fetchLogout() {
       try {
-        const res = await fetch('api/logout.php', {
+        const res = await fetch('api/logout/', {
           method: 'POST',
-          mode: 'same-origin',
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
@@ -2085,9 +2056,8 @@ export default {
       if (!noteId) return
       try {
         const data = new URLSearchParams({ noteId })
-        const res = await fetch('api/pinNote.php', {
+        const res = await fetch('api/pin-note/', {
           method: 'POST',
-          mode: 'same-origin',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
@@ -2407,7 +2377,7 @@ export default {
       }
 
       const data = new URLSearchParams({ noteLink: this.noteLink })
-      const res = await fetch('api/getSharedNote.php', {
+      const res = await fetch('api/get-shared-note/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -2500,7 +2470,7 @@ export default {
 
         if (this.name) {
           document.querySelector('#log-out').textContent = 'Déconnexion'
-          document.querySelector('#last-login').textContent = 'Dernière connexion:'
+          document.querySelector('#last-login').textContent = 'Dernière connexion: '
           document.querySelector('#old-psswd').setAttribute('placeholder', 'Ancien mot de passe')
           document.querySelector('#new-psswd').setAttribute('placeholder', 'Nouveau mot de passe')
           document.querySelector('#new-psswd-valid').setAttribute('placeholder', 'Confirmer le mot de passe')
@@ -2555,7 +2525,7 @@ export default {
 
         if (this.name) {
           document.querySelector('#log-out').textContent = 'Abmelden'
-          document.querySelector('#last-login').textContent = 'Letzter Login:'
+          document.querySelector('#last-login').textContent = 'Letzter Login: '
           document.querySelector('#old-psswd').setAttribute('placeholder', 'Altes Passwort')
           document.querySelector('#new-psswd').setAttribute('placeholder', 'Neues Passwort')
           document.querySelector('#new-psswd-valid').setAttribute('placeholder', 'Passwort bestätigen')
@@ -2610,7 +2580,7 @@ export default {
 
         if (this.name) {
           document.querySelector('#log-out').textContent = 'Cerrar sesión'
-          document.querySelector('#last-login').textContent = 'Último inicio de sesión:'
+          document.querySelector('#last-login').textContent = 'Último inicio de sesión: '
           document.querySelector('#old-psswd').setAttribute('placeholder', 'Contraseña antigua')
           document.querySelector('#new-psswd').setAttribute('placeholder', 'Nueva contraseña')
           document.querySelector('#new-psswd-valid').setAttribute('placeholder', 'Confirmar contraseña')
@@ -2665,7 +2635,7 @@ export default {
 
         if (this.name) {
           document.querySelector('#log-out').textContent = 'Log out'
-          document.querySelector('#last-login').textContent = 'Last login:'
+          document.querySelector('#last-login').textContent = 'Last login: '
           document.querySelector('#old-psswd').setAttribute('placeholder', 'Old password')
           document.querySelector('#new-psswd').setAttribute('placeholder', 'New password')
           document.querySelector('#new-psswd-valid').setAttribute('placeholder', 'Confirm password')
