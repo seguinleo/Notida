@@ -1,7 +1,4 @@
-# !!!!!!!!!!!!!!!
-# EDIT DOCKER CONFIGURATION TO YOUR NEEDS FOR PRODUCTION
-# !!!!!!!!!!!!!!!
-
+# Build stage
 FROM node:22 AS build-stage
 
 WORKDIR /app
@@ -14,17 +11,13 @@ COPY . .
 
 RUN npm run build
 
-FROM php:8.3-apache
+# Production stage
+FROM nginx:stable-alpine AS production-stage
 
-RUN apt update && apt upgrade -y && apt --purge autoremove -y && apt clean && \
-    groupadd -r myuser && useradd -r -g myuser myuser && \
-    cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini && \
-    sed -i -e "s/display_errors = On/display_errors = Off/g" /usr/local/etc/php/php.ini && \
-    docker-php-ext-install pdo pdo_mysql
+COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-USER myuser
-
-COPY --from=build-stage /app/dist /var/www/html
-COPY --chown=myuser:myuser api /var/www/html/api
+COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

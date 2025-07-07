@@ -14,21 +14,21 @@
 
 html
   position: relative
-  color: rgba(255, 255, 255, .8)
+  color: #dddddd
   scroll-behavior: smooth
   -webkit-tap-highlight-color: transparent
-  scrollbar-color: rgba(150, 150, 150, .3) transparent
+  scrollbar-color: rgba(150, 150, 150, .2) transparent
   font-family: OpenSans, Helvetica Neue, Helvetica, Arial, sans-serif
 
   body
     position: relative
 
   &.light
-    color: rgba(0, 0, 0, .8)
+    color: #111111
 
     *
       &:focus-visible
-        outline: 2px dashed rgba(0, 0, 0, .2)
+        outline: 2px dashed rgba(0, 0, 0, .15)
 
     .bg-red
       background: #ff8787
@@ -61,19 +61,15 @@ html
       background: #fdd0e7
 
     dialog
-      background: rgba(255, 255, 255, .05)
+      background: rgba(0, 0, 0, .05)
 
     input,
     #colors span,
     fieldset
       border: 2px solid rgba(0, 0, 0, .05)
 
-    select,
-    option
-      background: #fff
-
     #colors span.selected
-      border: 2px solid rgba(0, 0, 0, .35)
+      border: 2px solid rgba(0, 0, 0, .4)
 
     blockquote
       border-left: 3px solid rgba(0, 0, 0, .05)
@@ -94,8 +90,6 @@ html
     input[type=checkbox],
     #sidebar,
     #sidebar-indicator,
-    #sidebar nav #list-notes .custom-check,
-    #sidebar nav #list-notes details,
     #copy-note-link,
     #psswd-gen,
     .bg-default,
@@ -103,21 +97,23 @@ html
       background: rgba(0, 0, 0, .05)
 
     .fullscreen
-      background: rgba(255, 255, 255, .05) !important
+      background: rgba(255, 255, 255, .1) !important
 
     .custom-check input:checked + span
-      background: rgba(0, 0, 0, .15)
+      background: rgba(0, 0, 0, .2)
 
     .popup .content
       background: #fff
 
+    #sidebar #list-notes p
+      background: rgba(0, 0, 0, .05)
+
     button,
-    #sidebar #list-notes p,
     .bottom-content i,
     .editor-control i,
     .close i
       &:hover
-        background: rgba(0, 0, 0, .15)
+        background: rgba(0, 0, 0, .15) !important
 
 *
   color: inherit
@@ -128,10 +124,10 @@ html
     outline: 2px dashed rgba(255, 255, 255, .2)
 
 ::selection
-  background: rgba(150, 150, 150, .3)
+  background: rgba(255, 255, 255, .2)
 
 \::-webkit-scrollbar-thumb
-  background: rgba(150, 150, 150, .3)
+  background: rgba(255, 255, 255, .2)
 
 \::-webkit-scrollbar
   width: 4px
@@ -155,12 +151,12 @@ table
   margin: 10px 0
 
   thead
-    background: rgba(150, 150, 150, .1)
+    background: rgba(255, 255, 255, .1)
 
   th,
   td
     padding: 4px 8px
-    border: 1px solid rgb(150, 150, 150)
+    border: 1px solid rgb(255, 255, 255, .1)
 
 a:hover
   text-decoration: none
@@ -170,11 +166,11 @@ kbd
   margin-right: 4px
   font-weight: 700
   padding: 2px 4px
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .1), 0 2px 6px 0 rgba(0, 0, 0, .1)
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
 
 hr
   border: none
-  border-top: 2px solid rgba(150, 150, 150, .1)
+  border-top: 2px solid rgba(255, 255, 255, .1)
   margin: 10px
 
 fieldset
@@ -189,14 +185,16 @@ fieldset
 blockquote
   border-left: 3px solid rgba(255, 255, 255, .1)
   padding-left: 10px
-
+          
 details
-  margin: 10px auto
-  padding: 5px
+  margin: 1rem auto
 
   summary
     font-weight: 700
     cursor: pointer
+
+    i
+      margin-right: 4px
 
 progress
   width: 100%
@@ -263,7 +261,7 @@ header
     backdrop-filter: blur(25px)
 
     &:focus-within
-      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .1), 0 2px 6px 0 rgba(0, 0, 0, .1)
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
 
     i
       margin: 0 4px
@@ -288,7 +286,6 @@ main.shared
   padding: 0
 
 select,
-option,
 textarea,
 button,
 input
@@ -298,11 +295,9 @@ input
 input
   border: 2px solid rgba(255, 255, 255, .1)
 
-select,
-option
+select
   font-size: .9rem
   padding: 0
-  background: #000
   border: none
 
 textarea
@@ -383,7 +378,7 @@ input
   flex-direction: column
   top: 0
   bottom: 0
-  background: rgba(255, 255, 255, .05)
+  background: rgba(255, 255, 255, .1)
   backdrop-filter: blur(25px)
   overscroll-behavior: contain
 
@@ -409,6 +404,11 @@ input
     .nav-buttons
       display: flex
       justify-content: space-between
+      margin-bottom: 1rem
+
+      button
+        background: none
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
 
     #list-notes
       overflow-y: auto
@@ -416,26 +416,17 @@ input
       h2
         margin-bottom: 10px
 
-      details
-        background: rgba(255, 255, 255, .1)
-        border-radius: 10px
-
-        summary
-          i
-            margin-right: 4px
-
       p
         display: flex
         align-items: center
         cursor: pointer
         padding: 4px 0
-        margin: 2px
         border-radius: 0 1rem 1rem 0
         font-size: .9rem
         font-weight: 700
         overflow: hidden
         transition: .1s
-        min-height: 2rem
+        min-height: 36px
 
         &:hover .title-list,
         &:focus .title-list
@@ -448,13 +439,21 @@ input
         .custom-check
           padding: 4px 8px
           border-radius: 24px
-          background: rgba(255, 255, 255, .1)
+          box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
+          min-height: 26px
+          display: flex
+          justify-content: center
+          align-items: center
+          margin: 0 2px
+          font-size: .8rem
 
         .title-list
           white-space: nowrap
+          margin: 0 4px
 
         .date-list
           display: none
+          margin: 0 4px
 
 #noscript
   position: fixed
@@ -590,14 +589,14 @@ button,
 .editor-control i,
 .close i
   &:hover
-    background: rgba(255, 255, 255, .2)
+    background: rgba(255, 255, 255, .2) !important
 
 .fullscreen
   position: fixed
   z-index: 3
   border-radius: 0
   inset: 0
-  background: rgba(0, 0, 0, .1) !important
+  background: rgba(0, 0, 0, .05) !important
   backdrop-filter: blur(25px)
 
   .title
@@ -632,8 +631,7 @@ button,
       border: 2px solid rgba(255, 255, 255, .4)
 
 .bg-default
-  background: rgba(255, 255, 255, .05)
-  backdrop-filter: blur(25px)
+  background: rgba(255, 255, 255, .1)
 
 dialog
   z-index: 4
@@ -704,7 +702,7 @@ dialog
     background: rgba(255, 255, 255, .1)
 
   input:checked + span
-    background: rgba(255, 255, 255, .2)
+    background: rgba(255, 255, 255, .3)
 
   input[type=radio],
   input[type=checkbox]
@@ -715,7 +713,7 @@ dialog
   align-items: center
   justify-content: center
   font-size: .8rem
-  margin-left: 5px
+  margin-left: 4px
   padding: 4px 8px
   border-radius: 24px
   background: rgba(255, 255, 255, .1)
@@ -806,7 +804,6 @@ dialog
   text-align: center
   padding: 4px 4px 1.5rem
   border-radius: 10px 10px 0 0
-  backdrop-filter: blur(25px)
   background: #b02d19
 
 #success-notification,
@@ -864,7 +861,7 @@ dialog
   border-radius: 48px
 
   &:focus
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .1), 0 2px 6px 0 rgba(0, 0, 0, .1)
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
 
 #btn-add-folder,
 #btn-add-category,
