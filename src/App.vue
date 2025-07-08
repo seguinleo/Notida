@@ -16,9 +16,7 @@
   <div id="sidebar" class="d-none">
     <nav>
       <div class="row">
-        <img v-if="new Date().getMonth() === 11" src="./assets/img/christmas.png" alt="christmas" class="christmas"
-          width="36" height="29" loading="lazy">
-        <h1 class="main-title">Notida</h1>
+        <img v-if="new Date().getMonth() === 11" src="./assets/img/christmas.png" alt="christmas" class="christmas" width="36" height="29" loading="lazy">
       </div>
       <div class="row nav-buttons">
         <button v-if="name && !isLocked" id="manage-account" type="button" aria-label="Manage account"
@@ -513,47 +511,45 @@
       </dialog>
       <div data-note-id="welcome" class="note bg-default d-none">
         <div class="details">
-          <h2 class="title">Bienvenue 👋</h2>
-          <div class="details-content details-content-fr d-none">
+          <h1 class="title">Notida</h1>
+          <div v-if="lang === 'fr'" class="details-content">
             <div>
-              Notida est un outil <span class="bold">rapide, privé et sécurisé</span><br>pour prendre des notes en
-              <a href="https://github.com/seguinleo/Notida/wiki/Markdown" rel="noopener noreferrer">Markdown ou
-                HTML</a>.
-            </div>
-            <div>
-              Créez une note avec <i class="fa-solid fa-plus"></i> et ajoutez
-              des tâches, des rappels, des liens, des images, etc.
-            </div>
-            <div>
-              Connectez-vous avec <i class="fa-solid fa-circle-user"></i> pour synchroniser vos notes sur tous vos
-              appareils.
-            </div>
-            <div>
-              Toutes vos notes sont <kbd>chiffrées</kbd> dans votre navigateur <span class="bold">et</span> dans le
-              cloud.
-            </div>
-            <div>
-              Une fois connecté.e, vous pouvez partager des notes grâce à un lien public.
+              <p class="align-center">
+                Un bloc-notes web rapide, privé et sécurisé.
+              </p>
+              <p class="align-center">
+                <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8&style=for-the-badge">
+              </p>
+              <h2 id="features">Fonctionnalités</h2>
+              <p>Les utilisateurs peuvent créer des listes de tâches, des rappels, des tableaux, des liens, des expressions mathématiques ou des blocs de code en utilisant Markdown et HTML. Ils peuvent ajouter des images, de l'audio ou des vidéos en ligne via une URL. Les notes peuvent être recherchées, triées par catégorie ou organisées en dossiers.</p>
+              <p>Les utilisateurs peuvent synchroniser leurs notes sur plusieurs appareils dans une base de données sécurisée après s'être connectés sans avoir besoin d'une adresse e-mail, seulement d'un nom d'utilisateur et d'un mot de passe fort. Les notes publiques peuvent être partagées via des URLs aléatoires.</p>
+              <p>Ce site est une application web progressive (PWA) qui peut être installée comme une application. Le design est réactif et optimisé pour tous les appareils mobiles ou macOS/Windows.</p>
+              <p>Le site est accessible aux utilisateurs en situation de handicap.</p>
+              <h2 id="security">Sécurité</h2>
+              <p>Le site suit les <a href="https://cheatsheetseries.owasp.org/">recommandations de sécurité OWASP</a>.</p>
+              <p>Toutes les notes sont filtrées, validées et chiffrées avec AES-256-GCM. Chaque utilisateur dispose d'une clé cryptographiquement sécurisée générée après son inscription.</p>
+              <p>Les utilisateurs peuvent verrouiller l'application en utilisant la biométrie (empreintes digitales, visage, etc.). Ces données biométriques ne sont jamais envoyées au serveur.</p>
+              <h3>Bienvenue 😊</h3>
             </div>
           </div>
-          <div class="details-content details-content-en">
+          <div v-else class="details-content">
             <div>
-              Notida is a <span class="bold">fast, private and secure</span><br>tool for taking notes in
-              <a href="https://github.com/seguinleo/Notida/wiki/Markdown " rel="noopener noreferrer">Markdown or
-                HTML</a>.
-            </div>
-            <div>
-              Create a note with <i class="fa-solid fa-plus"></i> and add
-              tasks, reminders, links, images, etc.
-            </div>
-            <div>
-              Log in with <i class="fa-solid fa-circle-user"></i> to sync your notes across all your devices.
-            </div>
-            <div>
-              All your notes are <kbd>encrypted</kbd> in your browser <span class="bold">and</span> in the cloud.
-            </div>
-            <div>
-              Once logged in, you can share notes using a public link.
+              <p class="align-center">
+                A fast, private and secure web notebook.
+              </p>
+              <p class="align-center">
+                <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8&style=for-the-badge">
+              </p>
+              <h2 id="features">Features</h2>
+              <p>Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown and HTML. They can add online images, audio or videos via URL. Notes can be searched, sorted by category or organized into folders.</p>
+              <p>Users can sync notes across devices in a secure database after signing in without needing an email address, only a username and strong password. Public notes can be shared via random URLs.</p>
+              <p>This website is a Progressive Web App (PWA) that can be installed as an application. Design is responsive and optimized for all mobile devices or macOS/Windows.</p>
+              <p>The site is accessible to users with disabilities.</p>
+              <h2 id="security">Security</h2>
+              <p>The website follows <a href="https://cheatsheetseries.owasp.org/">OWASP security recommendations</a>.</p>
+              <p>All notes are sanitized, validated and encrypted with AES-256-GCM. Each user has a cryptographically secure key generated after signing up.</p>
+              <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server.</p>
+              <h3>Bienvenue 😊</h3>
             </div>
           </div>
         </div>
@@ -573,6 +569,7 @@ export default {
   data() {
     return {
       name: '',
+      lang: 'en',
       spellcheck: true,
       touchstartX: 0,
       touchendX: 0,
@@ -627,8 +624,9 @@ export default {
     document.querySelector('header').classList.remove('d-none')
     document.querySelector('#sidebar').classList.remove('d-none')
     if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js')
-    this.changeLanguage(localStorage.getItem('lang') || 'en')
-    if (!this.name && localStorage.getItem('lang') === 'fr' &&
+    this.lang = localStorage.getItem('lang') || 'en'
+    this.changeLanguage(this.lang)
+    if (!this.name && this.lang === 'fr' &&
       document.querySelector('.details-content-fr')) {
       document.querySelector('.details-content-fr').classList.remove('d-none')
       document.querySelector('.details-content-en').classList.add('d-none')
@@ -1109,9 +1107,9 @@ export default {
           document.querySelector('#create-box').close()
           document.querySelectorAll('form').forEach((form) => form.reset())
           let message = ''
-          if (localStorage.getItem('lang') === 'fr') message = 'Compte créé avec succès ! Vous pouvez maintenant vous connecter.'
-          else if (localStorage.getItem('lang') === 'de') message = 'Konto erfolgreich erstellt! Sie können sich jetzt anmelden.'
-          else if (localStorage.getItem('lang') === 'es') message = '¡Cuenta creada exitosamente! Puedes iniciar sesión ahora.'
+          if (this.lang === 'fr') message = 'Compte créé avec succès ! Vous pouvez maintenant vous connecter.'
+          else if (this.lang === 'de') message = 'Konto erfolgreich erstellt! Sie können sich jetzt anmelden.'
+          else if (this.lang === 'es') message = '¡Cuenta creada exitosamente! Puedes iniciar sesión ahora.'
           else message = 'Account successfully created! You can now log in.'
           this.showSuccess(message)
         } catch (error) {
@@ -1416,9 +1414,8 @@ export default {
       const validLanguages = ['fr', 'de', 'es']
       if (validLanguages.includes(lang)) localStorage.setItem('lang', lang)
       else localStorage.removeItem('lang')
-      this.changeLanguage(localStorage.getItem('lang') || 'en')
-      if (this.name) await this.getCloudNotes()
-      else await this.getLocalNotes()
+      this.lang = localStorage.getItem('lang') || 'en'
+      window.location.reload()
     },
     openSidebar() {
       if (this.isLocked) return
@@ -1756,8 +1753,8 @@ export default {
         })
 
         const numberOfNotesElement = document.createElement('h2')
-        if (localStorage.getItem('lang') === 'de') numberOfNotesElement.textContent = `Notizen (${this.notesJSON.length})`
-        else if (localStorage.getItem('lang') === 'es') numberOfNotesElement.textContent = `Notas (${this.notesJSON.length})`
+        if (this.lang === 'de') numberOfNotesElement.textContent = `Notizen (${this.notesJSON.length})`
+        else if (this.lang === 'es') numberOfNotesElement.textContent = `Notas (${this.notesJSON.length})`
         else numberOfNotesElement.textContent = `Notes (${this.notesJSON.length})`
         document.querySelector('#list-notes').appendChild(numberOfNotesElement)
 
@@ -2126,8 +2123,8 @@ export default {
         })
 
         const numberOfNotesElement = document.createElement('h2')
-        if (localStorage.getItem('lang') === 'de') numberOfNotesElement.textContent = `Notizen (${this.notesJSON.length})`
-        else if (localStorage.getItem('lang') === 'es') numberOfNotesElement.textContent = `Notas (${this.notesJSON.length})`
+        if (this.lang === 'de') numberOfNotesElement.textContent = `Notizen (${this.notesJSON.length})`
+        else if (this.lang === 'es') numberOfNotesElement.textContent = `Notas (${this.notesJSON.length})`
         else numberOfNotesElement.textContent = `Notes (${this.notesJSON.length})`
         document.querySelector('#list-notes').appendChild(numberOfNotesElement)
 
@@ -2484,10 +2481,6 @@ export default {
           document.querySelector('#public-note span').textContent = 'Voulez-vous rendre votre note publique ? Un lien sera disponible pour la partager.'
           document.querySelector('#public-note button').textContent = 'Rendre publique'
         } else {
-          if (document.querySelector('.details-content-fr')) {
-            document.querySelector('.details-content-fr').classList.remove('d-none')
-            document.querySelector('.details-content-en').classList.add('d-none')
-          }
           document.querySelector('#create-account').textContent = 'Pas encore de compte ?'
           document.querySelector('#name-connect').setAttribute('placeholder', 'Nom')
           document.querySelector('#psswd-connect').setAttribute('placeholder', 'Mot de passe')
@@ -2539,10 +2532,6 @@ export default {
           document.querySelector('#public-note span').textContent = 'Möchten Sie Ihre Notiz öffentlich machen? Ein Link wird verfügbar sein, um sie zu teilen.'
           document.querySelector('#public-note button').textContent = 'Öffentlich machen'
         } else {
-          if (document.querySelector('.details-content-fr')) {
-            document.querySelector('.details-content-fr').classList.add('d-none')
-            document.querySelector('.details-content-en').classList.remove('d-none')
-          }
           document.querySelector('#create-account').textContent = 'Noch kein Konto?'
           document.querySelector('#name-connect').setAttribute('placeholder', 'Name')
           document.querySelector('#psswd-connect').setAttribute('placeholder', 'Passwort')
@@ -2594,10 +2583,6 @@ export default {
           document.querySelector('#public-note span').textContent = '¿Desea hacer pública su nota? Un enlace estará disponible para compartirla.'
           document.querySelector('#public-note button').textContent = 'Hacer pública'
         } else {
-          if (document.querySelector('.details-content-fr')) {
-            document.querySelector('.details-content-fr').classList.add('d-none')
-            document.querySelector('.details-content-en').classList.remove('d-none')
-          }
           document.querySelector('#create-account').textContent = '¿Aún no tienes una cuenta?'
           document.querySelector('#name-connect').setAttribute('placeholder', 'Nombre')
           document.querySelector('#psswd-connect').setAttribute('placeholder', 'Contraseña')
@@ -2649,10 +2634,6 @@ export default {
           document.querySelector('#public-note span').textContent = 'Do you want to make your note public? A link will be available to share it.'
           document.querySelector('#public-note button').textContent = 'Make public'
         } else {
-          if (document.querySelector('.details-content-fr')) {
-            document.querySelector('.details-content-fr').classList.add('d-none')
-            document.querySelector('.details-content-en').classList.remove('d-none')
-          }
           document.querySelector('#create-account').textContent = 'Don\'t have an account yet?'
           document.querySelector('#name-connect').setAttribute('placeholder', 'Name')
           document.querySelector('#psswd-connect').setAttribute('placeholder', 'Password')
