@@ -44,8 +44,9 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
 const limiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 10,
+  windowMs: 5 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests, please try again later.',
 })
 
 app.use(limiter)
