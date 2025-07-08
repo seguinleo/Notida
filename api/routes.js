@@ -14,10 +14,10 @@ import { pool } from './config/config.js'
 const app = express()
 const encryption = new Encryption()
 
-const redisClient = createClient();
-redisClient.connect({
-  url: process.env.REDIS_URL
+const redisClient = createClient({
+  url: process.env.REDIS_URL,
 })
+redisClient.connect()
   .then(() => console.log('Redis client connected'))
   .catch(console.error)
 const redisStore = new RedisStore({
