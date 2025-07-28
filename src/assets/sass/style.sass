@@ -26,9 +26,15 @@ html
   &.light
     color: #111111
 
+    ::selection
+      background: rgba(0, 0, 0, .15)
+
+    \::-webkit-scrollbar-thumb
+      background: rgba(0, 0, 0, .15)
+
     *
       &:focus-visible
-        outline: 2px dashed rgba(0, 0, 0, .15)
+        outline: 2px dashed rgba(0, 0, 0, .2)
 
     .bg-red
       background: #ff8787
@@ -60,8 +66,8 @@ html
     .bg-pink
       background: #fdd0e7
 
-    dialog
-      background: rgba(0, 0, 0, .05)
+    hr
+      border-top: 2px solid rgba(0, 0, 0, .05)
 
     input,
     #colors span,
@@ -69,7 +75,13 @@ html
       border: 2px solid rgba(0, 0, 0, .05)
 
     #colors span.selected
-      border: 2px solid rgba(0, 0, 0, .4)
+      border: 2px solid rgba(0, 0, 0, .5)
+
+    input[type=checkbox]
+      background: rgba(0, 0, 0, .15)
+
+    .switch .toggle-thumb
+      background-color: rgba(0, 0, 0, .15)
 
     blockquote
       border-left: 3px solid rgba(0, 0, 0, .05)
@@ -87,34 +99,34 @@ html
     pre,
     button,
     header #div-search,
-    input[type=checkbox],
     #sidebar,
     #sidebar-indicator,
+    #list-notes .custom-check,
     #copy-note-link,
     #psswd-gen,
     .bg-default,
-    .custom-check span
-      background: rgba(0, 0, 0, .05)
+    .reminder-date,
+    .custom-check span,
+    dialog,
+    table thead
+      background: rgba(0, 0, 0, .05) !important
 
     .fullscreen
       background: rgba(255, 255, 255, .1) !important
 
     .custom-check input:checked + span
-      background: rgba(0, 0, 0, .2)
+      background: rgba(0, 0, 0, .15) !important
 
     .popup .content
       background: #fff
 
-    #sidebar #list-notes p
-      &:hover
-        background: rgba(0, 0, 0, .05)
-
     button,
+    #sidebar #list-notes p,
     .bottom-content i,
     .editor-control i,
     .close i
       &:hover
-        background: rgba(0, 0, 0, .15) !important
+        background: rgba(0, 0, 0, .1) !important
 
 *
   color: inherit
@@ -122,7 +134,7 @@ html
   box-sizing: border-box
 
   &:focus-visible
-    outline: 2px dashed rgba(255, 255, 255, .2)
+    outline: 2px dashed rgba(255, 255, 255, .3)
 
 ::selection
   background: rgba(255, 255, 255, .2)
@@ -157,7 +169,6 @@ table
   th,
   td
     padding: 4px 8px
-    border: 1px solid rgb(255, 255, 255, .1)
 
 a:hover
   text-decoration: none
@@ -172,7 +183,7 @@ kbd
 hr
   border: none
   border-top: 2px solid rgba(255, 255, 255, .1)
-  margin: 10px
+  margin: 10px 0
 
 fieldset
   border: 2px solid rgba(255, 255, 255, .1)
@@ -259,7 +270,7 @@ header
     border-radius: 48px
     padding: 10px
     background: rgba(255, 255, 255, .1)
-    backdrop-filter: blur(25px)
+    backdrop-filter: blur(20px)
 
     &:focus-within
       box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
@@ -354,7 +365,7 @@ input
     height: 1.2rem
     border-radius: 10px
     border: none !important
-    background: rgba(255, 255, 255, .1)
+    background: rgba(255, 255, 255, .2)
 
     &::before
       content: ""
@@ -362,7 +373,7 @@ input
       height: 10px
       transform: scale(0)
       transform-origin: bottom left
-      clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%)
+      clip-path: polygon(14% 44%,0 65%,50% 100%,100% 16%,90% 0%,43% 62%)
       box-shadow: inset 1em 1em currentColor
 
     &:checked::before
@@ -380,7 +391,7 @@ input
   top: 0
   bottom: 0
   background: rgba(255, 255, 255, .1)
-  backdrop-filter: blur(25px)
+  backdrop-filter: blur(20px)
   overscroll-behavior: contain
 
   nav
@@ -407,10 +418,6 @@ input
       justify-content: space-between
       margin-bottom: 1rem
 
-      button
-        background: none
-        box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
-
     #list-notes
       overflow-y: auto
 
@@ -422,6 +429,7 @@ input
         align-items: center
         cursor: pointer
         padding: 4px 0
+        margin: 3px
         border-radius: 0 1rem 1rem 0
         font-size: .9rem
         font-weight: 700
@@ -440,7 +448,7 @@ input
         .custom-check
           padding: 4px 8px
           border-radius: 24px
-          box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
+          background: rgba(255, 255, 255, .1)
           min-height: 26px
           display: flex
           justify-content: center
@@ -514,7 +522,7 @@ input
   font-size: 1.6rem
   border-radius: 48px
   z-index: 1
-  backdrop-filter: blur(25px)
+  backdrop-filter: blur(20px)
 
 .note
   display: flex
@@ -598,7 +606,7 @@ button,
   border-radius: 0
   inset: 0
   background: rgba(0, 0, 0, .05) !important
-  backdrop-filter: blur(25px)
+  backdrop-filter: blur(20px)
 
   .title
     justify-content: center
@@ -629,7 +637,7 @@ button,
     border: 2px solid rgba(255, 255, 255, .1)
 
     &.selected
-      border: 2px solid rgba(255, 255, 255, .4)
+      border: 2px solid rgba(255, 255, 255, .5)
 
 .bg-default
   background: rgba(255, 255, 255, .1)
@@ -644,8 +652,8 @@ dialog
   max-width: 100vw
   align-content: center
   overflow-x: hidden
-  background: rgba(100, 100, 100, .1)
-  backdrop-filter: blur(25px)
+  background: rgba(255, 255, 255, .1)
+  backdrop-filter: blur(20px)
 
   .popup
     -webkit-user-select: none
@@ -746,7 +754,7 @@ dialog
     display: flex
     justify-content: space-between
     align-items: center
-    background-color: #c2c2c2
+    background-color: rgba(255, 255, 255, .2)
     border-radius: 40px
     cursor: pointer
 
@@ -844,7 +852,7 @@ dialog
 
 #sidebar-indicator
   background: rgba(255, 255, 255, .1)
-  backdrop-filter: blur(25px)
+  backdrop-filter: blur(20px)
 
 #copy-note-link-btn,
 #copy-password-btn,
@@ -860,9 +868,6 @@ dialog
   width: 36px
   height: 36px
   border-radius: 48px
-
-  &:focus
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
 
 #btn-add-folder,
 #btn-add-category,
