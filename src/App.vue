@@ -596,6 +596,10 @@ export default {
           },
           image({ href, title, text }) {
             return `<img src="${encodeURI(href)}" alt="${text}" title="${title}" crossorigin>`
+          },
+          checkbox({ checked }) {
+            if (checked) return '<label><input type="checkbox" disabled checked>';
+            else return '<label><input type="checkbox" disabled>';
           }
         }
       },
