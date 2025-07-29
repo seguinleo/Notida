@@ -231,11 +231,11 @@ code
   overflow-x: auto
 
 li
-  margin-left: -1rem
+  margin-left: -1.2rem
 
   &:has(input[type=checkbox])
     list-style: none
-    margin-left: -1.5rem
+    margin-left: -2rem
 
   &:has(input[type=checkbox]:checked)
     text-decoration: line-through
@@ -360,9 +360,8 @@ input
     align-items: center
     appearance: none
     margin-right: 10px
-    vertical-align: middle
-    width: 1.2rem
-    height: 1.2rem
+    width: 1rem
+    height: 1rem
     border-radius: 10px
     border: none !important
     background: rgba(255, 255, 255, .2)
@@ -378,6 +377,9 @@ input
 
     &:checked::before
       transform: scale(1)
+
+    &:disabled
+      opacity: 1
 
   &:disabled
     cursor: not-allowed
