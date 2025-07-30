@@ -324,13 +324,13 @@ app.post('/get-notes', checkToken, async (req, res) => {
       return res.status(200).json({ notes: [], lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize: 0 })
     }
 
-    let totalSizeInBytes = 0
+    let dataByteSize = 0
 
     const notes = rows.map(row => {
       const title = encryption.decryptData(row.title, key)
       const content = encryption.decryptData(row.content, key)
       const noteSizeInBytes = Buffer.byteLength(title, 'utf8') + Buffer.byteLength(content, 'utf8')
-      totalSizeInBytes += noteSizeInBytes
+      dataByteSize += noteSizeInBytes
 
       return {
         id: row.id,
@@ -346,8 +346,6 @@ app.post('/get-notes', checkToken, async (req, res) => {
         reminder: row.reminder || null,
       }
     })
-
-    const dataByteSize = totalSizeInBytes / 1024;
 
     res.status(200).json({ notes, lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize })
   } catch {
