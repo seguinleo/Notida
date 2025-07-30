@@ -214,7 +214,7 @@
             <input id="id-note" type="hidden">
             <div class="error-notification d-none"></div>
             <input type="text" id="title" maxlength="30" aria-label="Title" autofocus required>
-            <textarea id="content" maxlength="20000" spellcheck="true" aria-label="Content"
+            <textarea id="content" :maxlength="maxNoteContentLength" spellcheck="true" aria-label="Content"
               @input="updateNoteContentLength()"></textarea>
             <div class="row">
               <span id="textarea-length">
@@ -579,8 +579,8 @@ export default {
       isUpdate: false,
       dataByteSize: 0,
       noteContentLength: 0,
-      maxNoteContentLength: 20000,
-      maxDataByteSize: 1000000,
+      maxNoteContentLength: 0,
+      maxDataByteSize: 0,
       searchValue: '',
       notesJSON: [],
       localDbName: 'notes_db',
@@ -786,10 +786,27 @@ export default {
           const folder = document.querySelector('#folders input[name="add-folder"]:checked').value
           const category = document.querySelector('#categories input[name="add-cat"]:checked').value
           const reminder = document.querySelector('#date-reminder-input').value
+          const allColors = [
+            'bg-default',
+            'bg-red',
+            'bg-orange',
+            'bg-yellow',
+            'bg-lime',
+            'bg-green',
+            'bg-cyan',
+            'bg-light-blue',
+            'bg-blue',
+            'bg-purple',
+            'bg-pink',
+          ]
 
-          if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
           if (this.isUpdate && !noteId) return
+          if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
           if (noteId && !/^[a-zA-Z0-9]+$/.test(noteId)) return
+          if (!allColors.includes(color)) return
+          if (folder && !/^[a-zA-Z0-9]+$/.test(folder)) return
+          if (category && !/^[a-zA-Z0-9]+$/.test(category)) return
+          if (reminder && !new Date(reminder).getTime()) return
 
           const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
 
@@ -915,10 +932,11 @@ export default {
       })
       document.querySelector('#private-note').addEventListener('submit', async () => {
         const noteId = document.querySelector('#id-note-private').value
-        const link = document.querySelector('#link-note-private').value
-        if (!noteId || !link || !/^[a-zA-Z0-9]+$/.test(link)) return
+        const noteLink = document.querySelector('#link-note-private').value
+        if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
+        if (!noteLink || !/^[a-zA-Z0-9]{32}$/.test(noteLink)) return
         try {
-          const data = new URLSearchParams({ noteId, noteLink: link })
+          const data = new URLSearchParams({ noteId, noteLink })
           const res = await fetch('api/private-note/', {
             method: 'POST',
             headers: {
@@ -938,7 +956,7 @@ export default {
       })
       document.querySelector('#public-note').addEventListener('submit', async () => {
         const noteId = document.querySelector('#id-note-public').value
-        if (!noteId) return
+        if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
         try {
           const data = new URLSearchParams({ noteId })
           const res = await fetch('api/public-note/', {
@@ -1126,6 +1144,10 @@ export default {
         const e = document.querySelector('#name-connect').value.trim()
         const t = document.querySelector('#psswd-connect').value
         if (!e || !t || e.length > 30 || t.length > 64) return
+        if (!/^[a-zA-ZÀ-ÿ -]+$/.test(e)) {
+          this.showError('Name can only contain letters, spaces and accents...')
+          return
+        }
         const nameConnect = e
         const psswdConnect = t
         try {
@@ -1143,7 +1165,7 @@ export default {
             const btn = document.querySelector('#connect-form button[type="submit"]')
             const btnText = btn.textContent
             btn.disabled = true
-            this.showError('Wrong username or password...')
+            this.showError(res.statusText)
             const interval = setInterval(() => {
               time -= 1
               btn.textContent = time
@@ -1729,9 +1751,13 @@ export default {
 
         if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
 
-        this.dataByteSize = 0
-        document.querySelector('#storage-usage').textContent = `0 kB / ${this.maxDataByteSize / 1000000} MB`
         const response = await res.json()
+
+        this.dataByteSize = response.dataByteSize
+        this.maxDataByteSize = response.maxDataByteSize
+        this.maxNoteContentLength = response.maxNoteContentLength
+
+        document.querySelector('#storage-usage').textContent = `0 kB / ${this.maxDataByteSize / 1000000} MB`
         this.notesJSON = response.notes
 
         document.querySelector('#last-login-date').textContent = `${response.lastLogin}GMT`
@@ -1772,8 +1798,6 @@ export default {
           } = row
 
           if (!id || !title || !color || !date) return
-
-          this.dataByteSize += new Blob([title, content]).size
 
           const bottomContentElement = document.createElement('div')
           bottomContentElement.classList.add('bottom-content')
@@ -1969,7 +1993,7 @@ export default {
 
         document.querySelector('main').appendChild(fragment)
         document.querySelector('#storage').value = this.dataByteSize
-        document.querySelector('#storage-usage').textContent = `${(this.dataByteSize * 0.001).toFixed(2)} kB / ${this.maxDataByteSize / 1000000} MB`
+        document.querySelector('#storage-usage').textContent = `${this.dataByteSize.toFixed(2)} kB / ${this.maxDataByteSize / 1000000} MB`
         this.noteActions()
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
@@ -2369,7 +2393,7 @@ export default {
       this.noteLink = urlParams.get('link')
       document.querySelector('main').textContent = ''
       document.querySelector('main').classList.add('shared')
-      if (!this.noteLink) {
+      if (!this.noteLink || !/^[a-zA-Z0-9]{32}$/.test(this.noteLink)) {
         const notFoundElement = document.createElement('h1')
         notFoundElement.classList.add('align-center')
         notFoundElement.textContent = 'Note not found or expired.'

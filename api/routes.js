@@ -6,6 +6,7 @@ import { RedisStore } from 'connect-redis'
 import { createClient } from 'redis'
 import crypto from 'crypto'
 import bcrypt from 'bcrypt'
+import { Buffer } from 'buffer'
 import rateLimit from 'express-rate-limit'
 import jwt from 'jsonwebtoken'
 import Encryption from './class/Encryption.js'
@@ -26,6 +27,9 @@ const redisStore = new RedisStore({
   ttl: 604800,
 })
 
+const maxNoteContentLength = 20000
+const maxDataByteSize = 1000000
+
 app.use(session({
   store: redisStore,
   secret: process.env.SESSION_SECRET,
@@ -44,9 +48,15 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
 const limiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
+  windowMs: 3 * 60 * 1000,
   max: 100,
   message: 'Too many requests, please try again later.',
+})
+
+const loginLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 9,
+  message: 'Too many login attempts, please try again later.',
 })
 
 app.use(limiter)
@@ -59,6 +69,9 @@ app.use(limiter)
  */
 const checkToken = (req, res, next) => {
   if (!req.cookies) {
+    return res.status(401).json({ response: 0 })
+  }
+  if (!req.session.name) {
     return res.status(401).json({ response: 0 })
   }
 
@@ -90,7 +103,8 @@ const checkToken = (req, res, next) => {
  * The key is never sent to the client.
  */
 const getKey = async (name, userId) => {
-  if (!name || !userId) return 0
+  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return 0
+  if (!userId || !/^[a-zA-Z0-9]+$/.test(userId)) return 0
 
   try {
     const connection = await pool.getConnection()
@@ -113,7 +127,8 @@ const getKey = async (name, userId) => {
  * @description Get the last login timestamp for a user.
  */
 const getLastLogin = async (name, userId) => {
-  if (!name || !userId) return 0
+  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return 0
+  if (!userId || !/^[a-zA-Z0-9]+$/.test(userId)) return 0
 
   try {
     const connection = await pool.getConnection()
@@ -128,8 +143,15 @@ const getLastLogin = async (name, userId) => {
 }
 
 app.post('/get-lock-app', (req, res) => {
-  const lockApp = req.session.lockApp || false
+  const lockApp = req.session.lockApp ? true : false
   res.status(200).json({ lockApp })
+})
+
+app.post('/lock-app', (req, res) => {
+  if (!req.session.name) return res.status(401)
+  const lockApp = req.session.lockApp ? false : true
+  req.session.lockApp = lockApp
+  res.status(200).send('App lock status updated')
 })
 
 app.post('/get-user', async (req, res) => {
@@ -183,7 +205,7 @@ app.post('/create-user', async (req, res) => {
   }
 })
 
-app.post('/login', limiter, async (req, res) => {
+app.post('/login', loginLimiter, async (req, res) => {
   const { nameConnect, psswdConnect } = req.body
 
   if (!/^[a-zA-ZÀ-ÿ -]+$/.test(nameConnect) || nameConnect.length < 3 || nameConnect.length > 30 || psswdConnect.length < 10 || psswdConnect.length > 64) {
@@ -235,10 +257,10 @@ app.post('/update-password', checkToken, async (req, res) => {
   const { psswdOld, psswdNew } = req.body
   const name = req.session.name
   const userId = req.session.userId
-
-  if (!name || !userId || !psswdOld || psswdNew.length < 10 || psswdNew.length > 64) {
-    return res.status(401).send('Password update failed')
-  }
+  if (!name || !userId || !psswdOld) return res.status(401).send('Password update failed')
+  if (!/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Password update failed')
+  if (!/^[a-zA-Z0-9]+$/.test(userId)) return res.status(401).send('Password update failed')
+  if (psswdNew.length < 10 || psswdNew.length > 64) return res.status(401).send('Password update failed')
 
   try {
     const connection = await pool.getConnection()
@@ -261,9 +283,9 @@ app.post('/delete-user', checkToken, async (req, res) => {
   const name = req.session.name
   const userId = req.session.userId
 
-  if (!name || !userId || psswd.length < 10 || psswd.length > 64) {
-    return res.status(401).send('Account deletion failed')
-  }
+  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Account deletion failed')
+  if (!userId || !/^[a-zA-Z0-9]+$/.test(userId)) return res.status(401).send('Account deletion failed')
+  if (psswd.length < 10 || psswd.length > 64) return res.status(401).send('Account deletion failed')
 
   try {
     const connection = await pool.getConnection()
@@ -289,30 +311,45 @@ app.post('/get-notes', checkToken, async (req, res) => {
   const key = await getKey(name, userId)
   const lastLogin = await getLastLogin(name, userId)
 
-  if (!name || !userId || !key) {
-    return res.status(401).send('Notes retrieval failed')
-  }
+  if (!key) return res.status(401).send('Notes retrieval failed')
+  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Notes retrieval failed')
+  if (!userId || !/^[a-zA-Z0-9]+$/.test(userId)) return res.status(401).send('Notes retrieval failed')
 
   try {
     const connection = await pool.getConnection()
     const [rows] = await connection.execute("SELECT id, title, content, color, dateNote, hiddenNote, category, folder, pinnedNote, link, reminder FROM notes WHERE user = ?", [name])
     connection.release()
 
-    const notes = rows.map(row => ({
-      id: row.id,
-      title: encryption.decryptData(row.title, key),
-      content: encryption.decryptData(row.content, key),
-      color: row.color,
-      date: row.dateNote,
-      folder: row.folder || null,
-      category: row.category || null,
-      link: row.link || null,
-      hidden: row.hiddenNote,
-      pinned: row.pinnedNote,
-      reminder: row.reminder || null,
-    }))
+    if (rows.length === 0) {
+      return res.status(200).json({ notes: [], lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize: 0 })
+    }
 
-    res.status(200).json({ notes, lastLogin })
+    let totalSizeInBytes = 0
+
+    const notes = rows.map(row => {
+      const title = encryption.decryptData(row.title, key)
+      const content = encryption.decryptData(row.content, key)
+      const noteSizeInBytes = Buffer.byteLength(title, 'utf8') + Buffer.byteLength(content, 'utf8')
+      totalSizeInBytes += noteSizeInBytes
+
+      return {
+        id: row.id,
+        title: title,
+        content: content,
+        color: row.color,
+        date: row.dateNote,
+        folder: row.folder || null,
+        category: row.category || null,
+        link: row.link || null,
+        hidden: row.hiddenNote,
+        pinned: row.pinnedNote,
+        reminder: row.reminder || null,
+      }
+    })
+
+    const dataByteSize = totalSizeInBytes / 1024;
+
+    res.status(200).json({ notes, lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize })
   } catch {
     return res.status(401).send('Notes retrieval failed')
   }
@@ -323,14 +360,6 @@ app.post('/add-note', checkToken, async (req, res) => {
   const name = req.session.name
   const userId = req.session.userId
   const key = await getKey(name, userId)
-
-  if (!name || !userId || !key || !title) {
-    return res.status(401).send('Note creation failed')
-  }
-
-  const noteId = crypto.randomBytes(12).toString('hex')
-  const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
-
   const allColors = [
     'bg-default',
     'bg-red',
@@ -345,9 +374,16 @@ app.post('/add-note', checkToken, async (req, res) => {
     'bg-pink',
   ]
 
-  if (title.length > 30 || content.length > 20000 || !allColors.includes(color)) {
-    return res.status(401).send('Note creation failed')
-  }
+  if (!name || !userId || !key || !title) return res.status(401).send('Note creation failed')
+  if (title.length > 30 || content.length > maxNoteContentLength) return res.status(401).send('Note creation failed')
+  if (!allColors.includes(color)) return res.status(401).send('Note creation failed')
+  if (!allColors.includes(color)) return res.status(401).send('Note creation failed')
+  if (folder && !/^[a-zA-Z0-9]+$/.test(folder)) return res.status(401).send('Note creation failed')
+  if (category && !/^[a-zA-Z0-9]+$/.test(category)) return res.status(401).send('Note creation failed')
+  if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Note creation failed')
+
+  const noteId = crypto.randomBytes(12).toString('hex')
+  const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
   try {
     const connection = await pool.getConnection()
@@ -373,40 +409,11 @@ app.post('/add-note', checkToken, async (req, res) => {
   }
 })
 
-app.post('/pin-note', checkToken, async (req, res) => {
-  const { noteId } = req.body
-  const name = req.session.name
-
-  if (!name || !noteId) {
-    return res.status(401).send('Pin note failed')
-  }
-
-  try {
-    const connection = await pool.getConnection()
-    await connection.execute(`
-          UPDATE notes
-          SET pinnedNote = CASE WHEN pinnedNote = '0' THEN '1' ELSE '0' END
-          WHERE id = ? AND user = ?
-      `, [noteId, name])
-    connection.release()
-    res.status(200).send('Note pinned successfully')
-  } catch {
-    return res.status(401).send('Pin note failed')
-  }
-})
-
 app.post('/update-note', checkToken, async (req, res) => {
   const { noteId, title, content, color, hidden, folder, category, reminder } = req.body
   const name = req.session.name
   const userId = req.session.userId
   const key = await getKey(name, userId)
-
-  if (!name || !userId || !key || !noteId || !title) {
-    return res.status(401).send('Update failed')
-  }
-
-  const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
-
   const allColors = [
     'bg-default',
     'bg-red',
@@ -421,9 +428,16 @@ app.post('/update-note', checkToken, async (req, res) => {
     'bg-pink',
   ]
 
-  if (title.length > 30 || content.length > 20000 || !allColors.includes(color)) {
-    return res.status(401).send('Update failed')
-  }
+  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Update failed')
+  if (!name || !userId || !key || !title) return res.status(401).send('Update failed')
+  if (title.length > 30 || content.length > maxNoteContentLength) return res.status(401).send('Update failed')
+  if (!allColors.includes(color)) return res.status(401).send('Update failed')
+  if (!allColors.includes(color)) return res.status(401).send('Update failed')
+  if (folder && !/^[a-zA-Z0-9]+$/.test(folder)) return res.status(401).send('Update failed')
+  if (category && !/^[a-zA-Z0-9]+$/.test(category)) return res.status(401).send('Update failed')
+  if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Update failed')
+
+  const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
   try {
     const connection = await pool.getConnection()
@@ -450,13 +464,33 @@ app.post('/update-note', checkToken, async (req, res) => {
   }
 })
 
+app.post('/pin-note', checkToken, async (req, res) => {
+  const { noteId } = req.body
+  const name = req.session.name
+
+  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Pin note failed')
+  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Pin note failed')
+
+  try {
+    const connection = await pool.getConnection()
+    await connection.execute(`
+          UPDATE notes
+          SET pinnedNote = CASE WHEN pinnedNote = '0' THEN '1' ELSE '0' END
+          WHERE id = ? AND user = ?
+      `, [noteId, name])
+    connection.release()
+    res.status(200).send('Note pinned successfully')
+  } catch {
+    return res.status(401).send('Pin note failed')
+  }
+})
+
 app.post('/delete-note', checkToken, async (req, res) => {
   const { noteId } = req.body
   const name = req.session.name
 
-  if (!name || !noteId) {
-    return res.status(401).send('Note deletion failed')
-  }
+  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Note deletion failed')
+  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Note deletion failed')
 
   try {
     const connection = await pool.getConnection()
@@ -472,9 +506,8 @@ app.post('/public-note', checkToken, async (req, res) => {
   const { noteId } = req.body
   const name = req.session.name
 
-  if (!name || !noteId) {
-    return res.status(401).send('Note modification failed')
-  }
+  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Note modification failed')
+  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Note modification failed')
 
   const noteLink = crypto.randomBytes(16).toString('hex')
 
@@ -492,9 +525,9 @@ app.post('/private-note', checkToken, async (req, res) => {
   const { noteId, noteLink } = req.body
   const name = req.session.name
 
-  if (!name || !noteId || !noteLink) {
-    return res.status(401).send('Note modification failed')
-  }
+  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Note modification failed')
+  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Note modification failed')
+  if (!noteLink || !/^[a-zA-Z0-9]{32}$/.test(noteLink)) return res.status(401).send('Note modification failed')
 
   try {
     const connection = await pool.getConnection()
@@ -538,12 +571,6 @@ app.post('/get-shared-note', async (req, res) => {
   } catch {
     return res.status(401).send('Invalid note link')
   }
-})
-
-app.post('/lock-app', (req, res) => {
-  const lockApp = req.session.lockApp ? !req.session.lockApp : true
-  req.session.lockApp = lockApp
-  res.status(200).send('App lock status updated')
 })
 
 app.get('/health', (req, res) => {
