@@ -356,8 +356,8 @@
               <button type="button" id="log-out"></button>
             </div>
             <div class="row">
-              <span id="storage-usage"></span>
-              <progress id="storage" max="1000000" value="0"></progress>
+              <span id="storage-usage">{{ (dataByteSize / 1000).toFixed(2) }} kB / {{ maxDataByteSize / 1000000 }} MB</span>
+              <progress id="storage" :max="maxDataByteSize" :value="dataByteSize"></progress>
             </div>
             <details id="gen-psswd">
               <summary></summary>
@@ -1756,8 +1756,6 @@ export default {
         this.dataByteSize = response.dataByteSize
         this.maxDataByteSize = response.maxDataByteSize
         this.maxNoteContentLength = response.maxNoteContentLength
-
-        document.querySelector('#storage-usage').textContent = `0 kB / ${this.maxDataByteSize / 1000000} MB`
         this.notesJSON = response.notes
 
         document.querySelector('#last-login-date').textContent = `${response.lastLogin}GMT`
@@ -1992,8 +1990,6 @@ export default {
         this.noteFolderOrCategories(allFolders, allCategories)
 
         document.querySelector('main').appendChild(fragment)
-        document.querySelector('#storage').value = this.dataByteSize
-        document.querySelector('#storage-usage').textContent = `${this.dataByteSize.toFixed(2)} kB / ${this.maxDataByteSize / 1000000} MB`
         this.noteActions()
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
