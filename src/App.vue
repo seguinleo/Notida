@@ -801,13 +801,10 @@ export default {
           ]
 
           if (this.isUpdate && !noteId) return
-          if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
           if (noteId && !/^[a-zA-Z0-9]+$/.test(noteId)) return
+          if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
           if (!allColors.includes(color)) return
-          if (folder && !/^[a-zA-Z0-9]+$/.test(folder)) return
-          if (category && !/^[a-zA-Z0-9]+$/.test(category)) return
           if (reminder && !new Date(reminder).getTime()) return
-
           const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
 
           const data = new URLSearchParams({

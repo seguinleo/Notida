@@ -376,8 +376,6 @@ app.post('/add-note', checkToken, async (req, res) => {
   if (title.length > 30 || content.length > maxNoteContentLength) return res.status(401).send('Note creation failed')
   if (!allColors.includes(color)) return res.status(401).send('Note creation failed')
   if (!allColors.includes(color)) return res.status(401).send('Note creation failed')
-  if (folder && !/^[a-zA-Z0-9]+$/.test(folder)) return res.status(401).send('Note creation failed')
-  if (category && !/^[a-zA-Z0-9]+$/.test(category)) return res.status(401).send('Note creation failed')
   if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Note creation failed')
 
   const noteId = crypto.randomBytes(12).toString('hex')
@@ -431,8 +429,6 @@ app.post('/update-note', checkToken, async (req, res) => {
   if (title.length > 30 || content.length > maxNoteContentLength) return res.status(401).send('Update failed')
   if (!allColors.includes(color)) return res.status(401).send('Update failed')
   if (!allColors.includes(color)) return res.status(401).send('Update failed')
-  if (folder && !/^[a-zA-Z0-9]+$/.test(folder)) return res.status(401).send('Update failed')
-  if (category && !/^[a-zA-Z0-9]+$/.test(category)) return res.status(401).send('Update failed')
   if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Update failed')
 
   const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
