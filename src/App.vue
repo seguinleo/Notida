@@ -1162,7 +1162,8 @@ export default {
             const btn = document.querySelector('#connect-form button[type="submit"]')
             const btnText = btn.textContent
             btn.disabled = true
-            this.showError(res.statusText)
+            const errorMessage = await res.text()
+            this.showError(errorMessage)
             const interval = setInterval(() => {
               time -= 1
               btn.textContent = time
