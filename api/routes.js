@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit'
 import jwt from 'jsonwebtoken'
 import Encryption from './class/Encryption.js'
 import { pool } from './config/config.js'
+import passport from './config/passport.js'
 
 const app = express()
 const encryption = new Encryption()
@@ -62,12 +63,12 @@ const loginLimiter = rateLimit({
 app.use(limiter)
 
 /**
- * @function checkToken
+ * @function checkJWTToken
  * @description Middleware to check if the user is authenticated with a valid JWT token.
  * If the token is missing or invalid, it responds with a 401 status and
  * stops all cloud requests.
  */
-const checkToken = (req, res, next) => {
+const checkJWTToken = (req, res, next) => {
   if (!req.cookies) {
     return res.status(401).json({ response: 0 })
   }
@@ -75,7 +76,7 @@ const checkToken = (req, res, next) => {
     return res.status(401).json({ response: 0 })
   }
 
-  const token = req.cookies.token
+  const token = req.cookies.jwtToken
   if (!token) {
     return res.status(401).json({ response: 0 })
   }
@@ -92,15 +93,24 @@ const checkToken = (req, res, next) => {
 }
 
 /**
+ * @function verifyCsrfToken
+ * @description Middleware to check if the CSRF token is valid.
+ */
+const verifyCsrfToken = (req, res, next) => {
+  const cookieToken = req.session.csrfToken
+  const bodyToken = req.body.csrfToken
+  if (!cookieToken || !bodyToken || cookieToken !== bodyToken) {
+    return res.status(403).send('CSRF token invalid')
+  }
+  next()
+}
+
+/**
  * @function getKey
  * @async
  * @param {string} name - The username of the user.
  * @param {string} userId - The ID of the user.
- * @description Get the encryption/decryption key for a user.
- * 
- * !! Important: This key has to be store in a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution instead of the mysql database !!
- * 
- * The key is never sent to the client.
+ * @description Get the encryption/decryption key for a user. Important: This key has to be store in a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution instead of the mysql database. The key is never sent to the client.
  */
 const getKey = async (name, userId) => {
   if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return 0
@@ -142,18 +152,9 @@ const getLastLogin = async (name, userId) => {
   }
 }
 
-app.post('/get-lock-app', (req, res) => {
-  const lockApp = req.session.lockApp ? true : false
-  res.status(200).json({ lockApp })
-})
-
-app.post('/lock-app', (req, res) => {
-  if (!req.session.name) return res.status(401)
-  const lockApp = req.session.lockApp ? false : true
-  req.session.lockApp = lockApp
-  res.status(200).send('App lock status updated')
-})
-
+/**
+ * @description Route to check if the user is logged in and return their name
+ */
 app.post('/get-user', async (req, res) => {
   const name = req.session.name
 
@@ -176,6 +177,18 @@ app.post('/get-user', async (req, res) => {
   }
 })
 
+app.post('/get-lock-app', (req, res) => {
+  const lockApp = req.session.lockApp ? true : false
+  res.status(200).json({ lockApp })
+})
+
+app.post('/lock-app', (req, res) => {
+  if (!req.session.name) return res.status(401)
+  const lockApp = req.session.lockApp ? false : true
+  req.session.lockApp = lockApp
+  res.status(200).send('App lock status updated')
+})
+
 app.post('/create-user', async (req, res) => {
   const { nameCreate, psswdCreate } = req.body
 
@@ -185,7 +198,7 @@ app.post('/create-user', async (req, res) => {
 
   const id = crypto.randomBytes(12).toString('hex')
   const psswdCreateHash = await bcrypt.hash(psswdCreate, 10)
-  const key = crypto.randomBytes(32);
+  const key = crypto.randomBytes(32)
 
   const binary = []
   const bytes = new Uint8Array(key)
@@ -205,55 +218,59 @@ app.post('/create-user', async (req, res) => {
   }
 })
 
-app.post('/login', loginLimiter, async (req, res) => {
-  const { nameConnect, psswdConnect } = req.body
-
-  if (!/^[a-zA-ZÀ-ÿ -]+$/.test(nameConnect) || nameConnect.length < 3 || nameConnect.length > 30 || psswdConnect.length < 10 || psswdConnect.length > 64) {
-    return res.status(401).send('Connection failed')
-  }
-
-  try {
-    const connection = await pool.getConnection()
-    const [rows] = await connection.execute("SELECT id, name, psswd FROM users WHERE name = ? LIMIT 1", [nameConnect])
-    connection.release()
-
-    if (rows.length !== 1 || !(await bcrypt.compare(psswdConnect, rows[0].psswd))) {
-      return res.status(401).send('Connection failed')
+app.post('/login', loginLimiter, (req, res, next) => {
+  passport.authenticate('local', { session: false }, async (err, user) => {
+    if (err) {
+      return res.status(401).send('Wrong username or password.')
+    }
+    if (!user) {
+      return res.status(401).send('Wrong username or password.')
     }
 
-    res.cookie('token', jwt.sign({ id: rows[0].name }, process.env.JWT_SECRET, {
-      expiresIn: 604800,
-    }), {
-      maxAge: 604800000,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Lax'
+    req.session.regenerate(async (err) => {
+      if (err) {
+        return res.status(401).send('Wrong username or password.')
+      }
+
+      res.cookie('jwtToken', jwt.sign({ id: user.name }, process.env.JWT_SECRET, {
+        expiresIn: 604800,
+      }), {
+        maxAge: 604800000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Lax'
+      })
+
+      req.session.name = user.name
+      req.session.userId = user.id
+      req.session.lockApp = false
+      const csrfToken = crypto.randomBytes(32).toString('hex')
+      req.session.csrfToken = csrfToken
+
+      try {
+        const connection = await pool.getConnection()
+        await connection.execute("UPDATE users SET lastLogin = NOW() WHERE name = ?", [user.name])
+        connection.release()
+      } catch {
+        return res.status(401).send('Wrong username or password.')
+      }
+      res.status(200).json({ csrfToken })
     })
-
-    req.session.name = rows[0].name
-    req.session.userId = rows[0].id
-    req.session.lockApp = false
-
-    await connection.execute("UPDATE users SET lastLogin = NOW() WHERE name = ?", [nameConnect])
-
-    res.status(200).send('Connection successful')
-  } catch {
-    return res.status(401).send('Connection failed')
-  }
+  })(req, res, next)
 })
 
-app.post('/logout', checkToken, async (req, res) => {
-  req.session.destroy(err => {
+app.post('/logout', checkJWTToken, async (req, res) => {
+  req.session.destroy((err) => {
     if (err) {
-      return res.status(500).send('Logout failed')
+      return res.status(401).send('Logout failed')
     }
-    res.clearCookie('token')
     res.clearCookie('connect.sid')
+    res.clearCookie('jwtToken')
     res.status(200).send('Logout successful')
   })
 })
 
-app.post('/update-password', checkToken, async (req, res) => {
+app.post('/update-password', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const { psswdOld, psswdNew } = req.body
   const name = req.session.name
   const userId = req.session.userId
@@ -278,7 +295,7 @@ app.post('/update-password', checkToken, async (req, res) => {
   }
 })
 
-app.post('/delete-user', checkToken, async (req, res) => {
+app.post('/delete-user', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const { psswd } = req.body
   const name = req.session.name
   const userId = req.session.userId
@@ -305,7 +322,7 @@ app.post('/delete-user', checkToken, async (req, res) => {
   }
 })
 
-app.post('/get-notes', checkToken, async (req, res) => {
+app.post('/get-notes', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const name = req.session.name
   const userId = req.session.userId
   const key = await getKey(name, userId)
@@ -353,7 +370,7 @@ app.post('/get-notes', checkToken, async (req, res) => {
   }
 })
 
-app.post('/add-note', checkToken, async (req, res) => {
+app.post('/add-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const { title, content, color, hidden, folder, category, reminder } = req.body
   const name = req.session.name
   const userId = req.session.userId
@@ -405,7 +422,7 @@ app.post('/add-note', checkToken, async (req, res) => {
   }
 })
 
-app.post('/update-note', checkToken, async (req, res) => {
+app.post('/update-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId, title, content, color, hidden, folder, category, reminder } = req.body
   const name = req.session.name
   const userId = req.session.userId
@@ -458,7 +475,7 @@ app.post('/update-note', checkToken, async (req, res) => {
   }
 })
 
-app.post('/pin-note', checkToken, async (req, res) => {
+app.post('/pin-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const name = req.session.name
 
@@ -479,7 +496,7 @@ app.post('/pin-note', checkToken, async (req, res) => {
   }
 })
 
-app.post('/delete-note', checkToken, async (req, res) => {
+app.post('/delete-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const name = req.session.name
 
@@ -496,7 +513,7 @@ app.post('/delete-note', checkToken, async (req, res) => {
   }
 })
 
-app.post('/public-note', checkToken, async (req, res) => {
+app.post('/public-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const name = req.session.name
 
@@ -515,7 +532,7 @@ app.post('/public-note', checkToken, async (req, res) => {
   }
 })
 
-app.post('/private-note', checkToken, async (req, res) => {
+app.post('/private-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId, noteLink } = req.body
   const name = req.session.name
 

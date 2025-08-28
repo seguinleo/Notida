@@ -34,9 +34,8 @@ pool.getConnection()
     console.log('Connected to the database')
     connection.release()
   })
-  .catch(err => {
-    console.error('Connection failed:', err)
-    throw err
+  .catch(() => {
+    console.error('Error connecting to the database')
   })
 
 export { pool }

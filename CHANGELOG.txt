@@ -1,3 +1,9 @@
+#----v25.9.1----#
+-Improve security
+    - Add CSRF tokens
+    - Add passport.js login
+    - Prevent session fixation
+
 #----v25.7.1----# !! DATABASE AND ENCRYPTION CHANGED !!
 -Refactor client code in Node.js
     -Better login system
