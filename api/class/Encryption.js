@@ -27,9 +27,8 @@ class Encryption {
       const cipher = crypto.createCipheriv('aes-256-gcm', keyBuffer, iv)
       const enc = Buffer.concat([cipher.update(plaintextJson, 'utf8'), cipher.final()])
       return `${enc.toString('base64')},${iv.toString('base64')},${cipher.getAuthTag().toString('base64')}`
-    } catch (error) {
-      console.error("Erreur lors du chiffrement :", error)
-      throw error
+    } catch {
+      console.error("Encryption failed")
     }
   }
 
@@ -50,9 +49,8 @@ class Encryption {
       decipher.setAuthTag(authTag)
       const decrypted = Buffer.concat([decipher.update(enc), decipher.final()])
       return JSON.parse(decrypted.toString('utf8'))
-    } catch (error) {
-      console.error("Erreur lors du déchiffrement :", error)
-      throw error
+    } catch {
+      console.error("Encryption failed")
     }
   }
 }

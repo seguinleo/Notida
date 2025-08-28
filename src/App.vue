@@ -332,7 +332,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.7.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.9.1</a>
             </p>
           </div>
         </div>
@@ -598,8 +598,8 @@ export default {
             return `<img src="${encodeURI(href)}" alt="${text}" title="${title}" crossorigin>`
           },
           checkbox({ checked }) {
-            if (checked) return '<label><input type="checkbox" disabled checked>';
-            else return '<label><input type="checkbox" disabled>';
+            if (checked) return '<label><input type="checkbox" disabled checked>'
+            else return '<label><input type="checkbox" disabled>'
           }
         }
       },
@@ -716,19 +716,18 @@ export default {
         const allNotes = document.querySelectorAll('.note')
         if (document.querySelector('#id-note-download').value === '') {
           const notesPromises = Array.from(allNotes).map(async (note) => {
-            const noteId = note.getAttribute('data-note-id');
-            const noteData = this.notesJSON.find((note) => note.id === noteId);
+            const noteId = note.getAttribute('data-note-id')
+            const noteData = this.notesJSON.find((note) => note.id === noteId)
             const title = this.name
               ? noteData.title
-              : await this.decryptLocalNotes(this.localDbKey, noteData.title);
+              : await this.decryptLocalNotes(this.localDbKey, noteData.title)
             const content = this.name
               ? noteData.content
-              : await this.decryptLocalNotes(this.localDbKey, noteData.content);
-            return `# ${title}\n${content}`;
-          });
-
-          allNotesContent = await Promise.all(notesPromises);
-          filename = event.target.value === 'txt' ? 'all-notes.txt' : 'all-notes.md';
+              : await this.decryptLocalNotes(this.localDbKey, noteData.content)
+            return `# ${title}\n${content}`
+          })
+          allNotesContent = await Promise.all(notesPromises)
+          filename = event.target.value === 'txt' ? 'all-notes.txt' : 'all-notes.md'
         } else {
           const note = document.querySelector(`.note[data-note-id="${document.querySelector('#id-note-download').value}"]`)
           const noteId = note.getAttribute('data-note-id')
@@ -814,7 +813,8 @@ export default {
             hidden,
             folder,
             category,
-            reminder
+            reminder,
+            csrfToken: this.getCsrfToken()
           })
 
           if (this.isUpdate) data.set('noteId', noteId)
@@ -883,7 +883,7 @@ export default {
         const psswdOld = a
         const psswdNew = e
         try {
-          const data = new URLSearchParams({ psswdOld, psswdNew })
+          const data = new URLSearchParams({ psswdOld, psswdNew, csrfToken: this.getCsrfToken() })
           const res = await fetch('api/update-password/', {
             method: 'POST',
             headers: {
@@ -908,7 +908,7 @@ export default {
         const psswd = document.querySelector('#delete-psswd').value
         if (!psswd || psswd.length < 10 || psswd.length > 64) return
         try {
-          const data = new URLSearchParams({ psswd })
+          const data = new URLSearchParams({ psswd, csrfToken: this.getCsrfToken() })
           const res = await fetch('api/delete-user/', {
             method: 'POST',
             headers: {
@@ -933,7 +933,7 @@ export default {
         if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
         if (!noteLink || !/^[a-zA-Z0-9]{32}$/.test(noteLink)) return
         try {
-          const data = new URLSearchParams({ noteId, noteLink })
+          const data = new URLSearchParams({ noteId, noteLink, csrfToken: this.getCsrfToken() })
           const res = await fetch('api/private-note/', {
             method: 'POST',
             headers: {
@@ -955,7 +955,7 @@ export default {
         const noteId = document.querySelector('#id-note-public').value
         if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
         try {
-          const data = new URLSearchParams({ noteId })
+          const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
           const res = await fetch('api/public-note/', {
             method: 'POST',
             headers: {
@@ -1032,19 +1032,19 @@ export default {
           }
 
           if (this.isUpdate) {
-            const noteIdToUpdate = document.querySelector('#id-note').value;
-            const noteToUpdate = this.notesJSON.find((note) => note.id === noteIdToUpdate);
+            const noteIdToUpdate = document.querySelector('#id-note').value
+            const noteToUpdate = this.notesJSON.find((note) => note.id === noteIdToUpdate)
 
             if (!noteToUpdate) return
-            noteToUpdate.title = note.title;
-            noteToUpdate.content = note.content;
-            noteToUpdate.color = note.color;
-            noteToUpdate.date = note.date;
-            noteToUpdate.hidden = note.hidden;
-            noteToUpdate.folder = note.folder;
-            noteToUpdate.category = note.category;
-            noteToUpdate.reminder = note.reminder;
-            noteToUpdate.pinned = note.pinned;
+            noteToUpdate.title = note.title
+            noteToUpdate.content = note.content
+            noteToUpdate.color = note.color
+            noteToUpdate.date = note.date
+            noteToUpdate.hidden = note.hidden
+            noteToUpdate.folder = note.folder
+            noteToUpdate.category = note.category
+            noteToUpdate.reminder = note.reminder
+            noteToUpdate.pinned = note.pinned
           } else this.notesJSON.push(note)
 
           localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
@@ -1175,6 +1175,8 @@ export default {
             }, 10000)
             return
           }
+          const response = await res.json()
+          localStorage.setItem('csrfToken', response.csrfToken)
           window.location.reload()
         } catch (error) {
           this.showError(`An error occurred - ${error}`)
@@ -1394,6 +1396,9 @@ export default {
         if (this.name) await this.getCloudNotes()
         else await this.getLocalNotes()
       })
+    },
+    getCsrfToken() {
+      return localStorage.getItem('csrfToken')
     },
     showManageAccountPopup() {
       document.querySelector('#manage-popup-box').showModal()
@@ -1743,8 +1748,13 @@ export default {
       marked.use(markedKatex(this.katexConfig))
 
       try {
+        const data = new URLSearchParams({ csrfToken: this.getCsrfToken() })
         const res = await fetch('api/get-notes/', {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data,
         })
 
         if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
@@ -2007,7 +2017,7 @@ export default {
     async fetchDelete(noteId) {
       if (!noteId) return
       try {
-        const data = new URLSearchParams({ noteId })
+        const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
         const res = await fetch('api/delete-note/', {
           method: 'POST',
           headers: {
@@ -2074,7 +2084,7 @@ export default {
     async pinCloudNote(noteId) {
       if (!noteId) return
       try {
-        const data = new URLSearchParams({ noteId })
+        const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
         const res = await fetch('api/pin-note/', {
           method: 'POST',
           headers: {
