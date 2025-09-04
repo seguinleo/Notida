@@ -153,28 +153,10 @@ const getLastLogin = async (name, userId) => {
 }
 
 /**
- * @description Route to check if the user is logged in and return their name
+ * @description Route to check if the user is logged in.
  */
-app.post('/get-user', async (req, res) => {
-  const name = req.session.name
-
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) {
-    return res.json({ name: false })
-  }
-
-  try {
-    const connection = await pool.getConnection()
-    const [rows] = await connection.execute("SELECT name FROM users WHERE name = ? LIMIT 1", [name])
-    connection.release()
-
-    if (!rows || rows.length !== 1) {
-      return res.status(401).json({ name: false })
-    }
-
-    res.json({ name: rows[0].name })
-  } catch {
-    return res.status(401).json({ name: false })
-  }
+app.post('/get-user', checkJWTToken, async (req, res) => {
+  res.status(200).json({ isAuthenticated: true })
 })
 
 app.post('/get-lock-app', (req, res) => {
@@ -338,7 +320,7 @@ app.post('/get-notes', checkJWTToken, verifyCsrfToken, async (req, res) => {
     connection.release()
 
     if (rows.length === 0) {
-      return res.status(200).json({ notes: [], lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize: 0 })
+      return res.status(200).json({ notes: [], name, lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize: 0 })
     }
 
     let dataByteSize = 0
@@ -364,7 +346,7 @@ app.post('/get-notes', checkJWTToken, verifyCsrfToken, async (req, res) => {
       }
     })
 
-    res.status(200).json({ notes, lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize })
+    res.status(200).json({ notes, name, lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize })
   } catch {
     return res.status(401).send('Notes retrieval failed')
   }

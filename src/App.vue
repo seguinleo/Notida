@@ -19,11 +19,11 @@
         <img v-if="new Date().getMonth() === 11" src="./assets/img/christmas.png" alt="christmas" class="christmas" width="36" height="29" loading="lazy">
       </div>
       <div class="row nav-buttons">
-        <button v-if="name && !isLocked" id="manage-account" type="button" aria-label="Manage account"
+        <button v-if="isAuthenticated && !isLocked" id="manage-account" type="button" aria-label="Manage account"
           @click="showManageAccountPopup()">
           <i class="fa-solid fa-circle-user"></i>
         </button>
-        <button v-if="!name && !isLocked" id="log-in" type="button" aria-label="Log in" @click="showLoginPopup()">
+        <button v-if="!isAuthenticated && !isLocked" id="log-in" type="button" aria-label="Log in" @click="showLoginPopup()">
           <i class="fa-solid fa-circle-user"></i>
         </button>
         <button v-if="!isLocked" type="button" id="btn-sort" aria-label="Sort notes" @click="showSortPopup()">
@@ -100,7 +100,7 @@
           <div class="close">
             <i class="fa-solid fa-xmark"></i>
           </div>
-          <form :id="name ? 'delete-cloud-note' : 'delete-local-note'">
+          <form :id="isAuthenticated ? 'delete-cloud-note' : 'delete-local-note'">
             <div class="error-notification d-none"></div>
             <div class="row">
               <span></span>
@@ -202,7 +202,7 @@
         <div class="content">
           <div class="popup-header">
             <div id="submit-note" class="done">
-              <button type="submit" :form="name ? 'add-cloud-note' : 'add-local-note'" aria-label="Save note">
+              <button type="submit" :form="isAuthenticated ? 'add-cloud-note' : 'add-local-note'" aria-label="Save note">
                 <i class="fa-solid fa-check"></i>
               </button>
             </div>
@@ -210,7 +210,7 @@
               <i class="fa-solid fa-xmark"></i>
             </div>
           </div>
-          <form :id="name ? 'add-cloud-note' : 'add-local-note'" autocomplete="off">
+          <form :id="isAuthenticated ? 'add-cloud-note' : 'add-local-note'" autocomplete="off">
             <input id="id-note" type="hidden">
             <div class="error-notification d-none"></div>
             <input type="text" id="title" maxlength="30" aria-label="Title" autofocus required>
@@ -338,7 +338,7 @@
         </div>
       </div>
     </dialog>
-    <template v-if="name">
+    <template v-if="isAuthenticated">
       <dialog id="manage-popup-box">
         <div class="popup">
           <div class="content">
@@ -576,10 +576,11 @@ export default {
       timeoutNotification: null,
       fingerprintEnabled: true,
       isLocked: true,
+      isAuthenticated: false,
       isUpdate: false,
       dataByteSize: 0,
       noteContentLength: 0,
-      maxNoteContentLength: 0,
+      maxNoteContentLength: 20000,
       maxDataByteSize: 0,
       searchValue: '',
       notesJSON: [],
@@ -630,14 +631,14 @@ export default {
     if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js')
     this.lang = localStorage.getItem('lang') || 'en'
     this.changeLanguage(this.lang)
-    if (!this.name && this.lang === 'fr' &&
+    if (!this.isAuthenticated && this.lang === 'fr' &&
       document.querySelector('.details-content-fr')) {
       document.querySelector('.details-content-fr').classList.remove('d-none')
       document.querySelector('.details-content-en').classList.add('d-none')
     }
     if (navigator.onLine) document.querySelector('#offline').classList.add('d-none')
     else document.querySelector('#offline').classList.remove('d-none')
-    if (this.name) await this.getCloudNotes()
+    if (this.isAuthenticated) await this.getCloudNotes()
     else await this.getLocalNotes()
 
     if (localStorage.getItem('spellcheck') === 'false') {
@@ -718,10 +719,10 @@ export default {
           const notesPromises = Array.from(allNotes).map(async (note) => {
             const noteId = note.getAttribute('data-note-id')
             const noteData = this.notesJSON.find((note) => note.id === noteId)
-            const title = this.name
+            const title = this.isAuthenticated
               ? noteData.title
               : await this.decryptLocalNotes(this.localDbKey, noteData.title)
-            const content = this.name
+            const content = this.isAuthenticated
               ? noteData.content
               : await this.decryptLocalNotes(this.localDbKey, noteData.content)
             return `# ${title}\n${content}`
@@ -731,10 +732,10 @@ export default {
         } else {
           const note = document.querySelector(`.note[data-note-id="${document.querySelector('#id-note-download').value}"]`)
           const noteId = note.getAttribute('data-note-id')
-          const title = this.name
+          const title = this.isAuthenticated
             ? this.notesJSON.find((note) => note.id === noteId).title
             : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).title)
-          const content = this.name
+          const content = this.isAuthenticated
             ? this.notesJSON.find((note) => note.id === noteId).content
             : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).content)
           allNotesContent = [`# ${title}\n${content}`]
@@ -764,12 +765,12 @@ export default {
         if (!['1', '2', '3', '4'].includes(e.value)) return
         if (e.value === '1') localStorage.removeItem('sort_notes')
         else localStorage.setItem('sort_notes', e.value)
-        if (this.name) await this.getCloudNotes()
+        if (this.isAuthenticated) await this.getCloudNotes()
         else await this.getLocalNotes()
       })
     })
 
-    if (this.name) {
+    if (this.isAuthenticated) {
       document.querySelector('#add-cloud-note').addEventListener('submit', async () => {
         try {
           if (this.dataByteSize > this.maxDataByteSize) {
@@ -1393,7 +1394,7 @@ export default {
       await this.verifyFingerprint().then(async (res) => {
         if (!res) return
         this.isLocked = false
-        if (this.name) await this.getCloudNotes()
+        if (this.isAuthenticated) await this.getCloudNotes()
         else await this.getLocalNotes()
       })
     },
@@ -1456,10 +1457,10 @@ export default {
       if (!this.notesJSON.length) return
       document.querySelectorAll('.note').forEach(async (note) => {
         const noteId = note.getAttribute('data-note-id')
-        const noteTitle = this.name
+        const noteTitle = this.isAuthenticated
           ? this.notesJSON.find((note) => note.id === noteId).title
           : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).title)
-        const noteContent = this.name
+        const noteContent = this.isAuthenticated
           ? this.notesJSON.find((note) => note.id === noteId).content
           : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).content)
         if (noteTitle.toLowerCase().includes(searchValue) || noteContent.toLowerCase().includes(searchValue)) {
@@ -1605,10 +1606,10 @@ export default {
           const { target } = event
           const noteId = target.closest('.note').getAttribute('data-note-id')
           if (!noteId) return
-          const noteTitle = this.name
+          const noteTitle = this.isAuthenticated
             ? this.notesJSON.find((note) => note.id === noteId).title
             : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).title)
-          const noteContent = this.name
+          const noteContent = this.isAuthenticated
             ? this.notesJSON.find((note) => note.id === noteId).content
             : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).content)
           const noteColor = this.notesJSON.find((note) => note.id === noteId).color
@@ -1617,7 +1618,7 @@ export default {
           const noteCategory = this.notesJSON.find((note) => note.id === noteId).category || ''
           const noteLink = this.notesJSON.find((note) => note.id === noteId).link
           const noteReminder = this.notesJSON.find((note) => note.id === noteId).reminder
-          if (target.classList.contains('edit-note')) this.name ? this.updateCloudNote(
+          if (target.classList.contains('edit-note')) this.isAuthenticated ? this.updateCloudNote(
             noteId,
             noteTitle,
             noteContent,
@@ -1638,9 +1639,9 @@ export default {
             noteLink,
             noteReminder
           )
-          else if (target.classList.contains('pin-note')) this.name ? this.pinCloudNote(noteId) : this.pinLocalNote(noteId)
+          else if (target.classList.contains('pin-note')) this.isAuthenticated ? this.pinCloudNote(noteId) : this.pinLocalNote(noteId)
           else if (target.classList.contains('copy-note')) this.copy(noteContent)
-          else if (target.classList.contains('delete-note')) this.name ? this.deleteCloudNote(noteId) : this.deleteLocalNote(noteId)
+          else if (target.classList.contains('delete-note')) this.isAuthenticated ? this.deleteCloudNote(noteId) : this.deleteLocalNote(noteId)
           else if (target.classList.contains('download-note')) this.downloadNote(noteId)
           else if (target.classList.contains('share-note')) this.shareNote(noteId, noteLink, noteTitle, noteContent)
         })
@@ -1761,6 +1762,7 @@ export default {
 
         const response = await res.json()
 
+        this.name = response.name
         this.dataByteSize = response.dataByteSize
         this.maxDataByteSize = response.maxDataByteSize
         this.maxNoteContentLength = response.maxNoteContentLength
@@ -2009,7 +2011,7 @@ export default {
           method: 'POST',
         })
         const response = await res.json()
-        this.name = response.name
+        this.isAuthenticated = response.isAuthenticated
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
       }
@@ -2497,7 +2499,7 @@ export default {
         document.querySelector('#link-markdown').textContent = 'Guide Markdown'
         document.querySelector('#link-help').textContent = 'Aide et discussions'
 
-        if (this.name) {
+        if (this.isAuthenticated) {
           document.querySelector('#log-out').textContent = 'Déconnexion'
           document.querySelector('#last-login').textContent = 'Dernière connexion: '
           document.querySelector('#old-psswd').setAttribute('placeholder', 'Ancien mot de passe')
@@ -2548,7 +2550,7 @@ export default {
         document.querySelector('#link-markdown').textContent = 'Markdown-Anleitung'
         document.querySelector('#link-help').textContent = 'Hilfe und Diskussionen'
 
-        if (this.name) {
+        if (this.isAuthenticated) {
           document.querySelector('#log-out').textContent = 'Abmelden'
           document.querySelector('#last-login').textContent = 'Letzter Login: '
           document.querySelector('#old-psswd').setAttribute('placeholder', 'Altes Passwort')
@@ -2599,7 +2601,7 @@ export default {
         document.querySelector('#link-markdown').textContent = 'Guía de Markdown'
         document.querySelector('#link-help').textContent = 'Ayuda y discusiones'
 
-        if (this.name) {
+        if (this.isAuthenticated) {
           document.querySelector('#log-out').textContent = 'Cerrar sesión'
           document.querySelector('#last-login').textContent = 'Último inicio de sesión: '
           document.querySelector('#old-psswd').setAttribute('placeholder', 'Contraseña antigua')
@@ -2650,7 +2652,7 @@ export default {
         document.querySelector('#link-markdown').textContent = 'Markdown guide'
         document.querySelector('#link-help').textContent = 'Help and discussions'
 
-        if (this.name) {
+        if (this.isAuthenticated) {
           document.querySelector('#log-out').textContent = 'Log out'
           document.querySelector('#last-login').textContent = 'Last login: '
           document.querySelector('#old-psswd').setAttribute('placeholder', 'Old password')
