@@ -14,11 +14,11 @@
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "express-rate-limit": "^8.0.1",
+    "express-rate-limit": "^8.1.0",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.14.4",
+    "mysql2": "^3.14.5",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "redis": "^5.8.2"
