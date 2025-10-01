@@ -1,8 +1,8 @@
 <template>
-  <div id="offline" class="d-none">
+  <div v-if="!onLine" id="offline">
     <p>You are offline</p>
   </div>
-  <header class="d-none">
+  <header v-if="(!isLocked && isLockedResponse)">
     <button type="button" id="sidebar-indicator" aria-label="Open sidebar" @click="openSidebar()">
       <i class="fa-solid fa-bars"></i>
     </button>
@@ -13,121 +13,147 @@
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
   </header>
-  <div id="sidebar" class="d-none">
+  <div v-if="(!isLocked && isLockedResponse)" id="sidebar">
     <nav>
       <div class="row">
-        <img v-if="new Date().getMonth() === 11" src="./assets/img/christmas.png" alt="christmas" class="christmas" width="36" height="29" loading="lazy">
+        <img v-if="new Date().getMonth() === 11" src="./assets/img/christmas.png" alt="christmas" class="christmas"
+          width="36" height="29" loading="lazy">
       </div>
       <div class="row nav-buttons">
         <button v-if="isAuthenticated && !isLocked" id="manage-account" type="button" aria-label="Manage account"
-          @click="showManageAccountPopup()">
+          @click="openManageAccountDialog()">
           <i class="fa-solid fa-circle-user"></i>
         </button>
-        <button v-if="!isAuthenticated && !isLocked" id="log-in" type="button" aria-label="Log in" @click="showLoginPopup()">
+        <button v-if="!isAuthenticated && !isLocked" id="log-in" type="button" aria-label="Log in"
+          @click="openLoginDialog()">
           <i class="fa-solid fa-circle-user"></i>
         </button>
-        <button v-if="!isLocked" type="button" id="btn-sort" aria-label="Sort notes" @click="showSortPopup()">
+        <button v-if="!isLocked" type="button" id="btn-sort" aria-label="Sort notes" @click="openSortDialog()">
           <i class="fa-solid fa-arrow-up-wide-short"></i>
         </button>
-        <button v-if="!isLocked" type="button" id="btn-filter" aria-label="Filter notes" @click="showFilterPopup()">
+        <button v-if="!isLocked" type="button" id="btn-filter" aria-label="Filter notes" @click="openFilterDialog()">
           <i class="fa-solid fa-filter"></i>
         </button>
         <button v-if="!isLocked" type="button" id="btn-download-all" aria-label="Download all notes"
           @click="downloadAllNotes()">
           <i class="fa-solid fa-download"></i>
         </button>
-        <button v-if="!isLocked" type="button" id="btn-settings" aria-label="Settings" @click="showSettingsPopup()">
+        <button v-if="!isLocked" type="button" id="btn-settings" aria-label="Settings" @click="openSettingsDialog()">
           <i class="fa-solid fa-gear"></i>
         </button>
-        <button type="button" id="btn-colorpicker" aria-label="Change app color" @click="showColorPickerPopup()">
+        <button type="button" id="btn-colorpicker" aria-label="Change app color" @click="openColorPickerDialog()">
           <i class="fa-solid fa-palette"></i>
         </button>
+      </div>
+      <div class="row">
+        <h2>
+          Notes
+          ({{ notesJSON.length }})
+        </h2>
       </div>
       <div id="list-notes"></div>
     </nav>
   </div>
   <main>
-    <button v-if="isLocked" id="btn-unlock-float" type="button" aria-label="Unlock app" @click="unlockApp()">
+    <button v-if="isLocked && isLockedResponse" id="btn-unlock-float" type="button" aria-label="Unlock app"
+      @click="unlockApp()">
       <i class="fa-solid fa-lock"></i>
     </button>
-    <button v-else type="button" id="btn-add-note" aria-label="Add a note" @click="showAddNotePopup()">
+    <button v-else-if="isLockedResponse" type="button" id="btn-add-note" aria-label="Add a note"
+      @click="openAddNoteDialog()">
       <i class="fa-solid fa-plus"></i>
     </button>
     <div id="success-notification" class="d-none"></div>
-    <dialog id="sort-popup-box">
+    <dialog id="sort-dialog">
       <div class="popup">
         <div class="content">
           <div class="close">
-            <i class="fa-solid fa-xmark"></i>
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
           </div>
           <fieldset>
-            <legend></legend>
+            <legend>Sort notes</legend>
             <div class="row">
               <label class="custom-check">
-                <input type="radio" name="sort-notes" value="1" id="sort-notes1" checked>
-                <span id="sort-notes1-span" tabindex="0" role="button"></span>
-              </label><label class="custom-check">
-                <input type="radio" name="sort-notes" value="2" id="sort-notes2">
-                <span id="sort-notes2-span" tabindex="0" role="button"></span>
-              </label><label class="custom-check">
-                <input type="radio" name="sort-notes" value="3" id="sort-notes3">
-                <span id="sort-notes3-span" tabindex="0" role="button"></span>
-              </label><label class="custom-check">
-                <input type="radio" name="sort-notes" value="4" id="sort-notes4">
-                <span id="sort-notes4-span" tabindex="0" role="button"></span>
+                <input type="radio" name="sort-notes" value="1" id="sort-notes1" @change="selectSortOption($event)"
+                  checked>
+                <span id="sort-notes1-span" tabindex="0" role="button">Modification date</span>
+              </label>
+              <label class="custom-check">
+                <input type="radio" name="sort-notes" value="2" id="sort-notes2" @change="selectSortOption($event)">
+                <span id="sort-notes2-span" tabindex="0" role="button">Modification date (Z-A)</span>
+              </label>
+              <label class="custom-check">
+                <input type="radio" name="sort-notes" value="3" id="sort-notes3" @change="selectSortOption($event)">
+                <span id="sort-notes3-span" tabindex="0" role="button">Title</span>
+              </label>
+              <label class="custom-check">
+                <input type="radio" name="sort-notes" value="4" id="sort-notes4" @change="selectSortOption($event)">
+                <span id="sort-notes4-span" tabindex="0" role="button">Title (Z-A)</span>
               </label>
             </div>
           </fieldset>
         </div>
       </div>
     </dialog>
-    <dialog id="filter-popup-box">
+    <dialog id="filter-dialog">
       <div class="popup">
         <div class="content">
           <div class="close">
-            <i class="fa-solid fa-xmark"></i>
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
           </div>
           <fieldset>
-            <legend></legend>
+            <legend>Filter notes by category</legend>
             <div id="filter-categories" class="row"></div>
           </fieldset>
         </div>
       </div>
     </dialog>
-    <dialog id="delete-note-popup-box">
+    <dialog id="delete-note-dialog">
       <div class="popup">
         <div class="content">
           <div class="close">
-            <i class="fa-solid fa-xmark"></i>
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
           </div>
-          <form :id="isAuthenticated ? 'delete-cloud-note' : 'delete-local-note'">
+          <form :id="isAuthenticated ? 'delete-cloud-note' : 'delete-local-note'"
+            @submit.prevent="isAuthenticated ? deleteCloudNote() : deleteLocalNote()">
             <div class="error-notification d-none"></div>
             <div class="row">
-              <span></span>
+              <span>Deletion is permanent.</span>
             </div>
             <input id="id-note-delete" type="hidden">
             <div class="row">
-              <button type="submit" class="btn-cancel"></button>
+              <button type="submit" class="btn-cancel">Delete note</button>
             </div>
           </form>
         </div>
       </div>
     </dialog>
-    <dialog id="download-popup-box">
+    <dialog id="download-dialog">
       <div class="popup">
         <div class="content">
           <div class="close">
-            <i class="fa-solid fa-xmark"></i>
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
           </div>
           <fieldset>
-            <legend></legend>
+            <legend>Export type</legend>
             <input id="id-note-download" type="hidden">
             <div class="row">
               <label class="custom-check">
-                <input type="radio" name="download-notes" value="txt" id="txt-download">
+                <input type="radio" name="download-notes" value="txt" id="txt-download"
+                  @change="downloadNotes($event.target.value)" checked>
                 <span tabindex="0" role="button">.TXT</span>
-              </label><label class="custom-check">
-                <input type="radio" name="download-notes" value="md" id="md-download">
+              </label>
+              <label class="custom-check">
+                <input type="radio" name="download-notes" value="md" id="md-download"
+                  @change="downloadNotes($event.target.value)">
                 <span tabindex="0" role="button">.MD</span>
               </label>
             </div>
@@ -135,11 +161,13 @@
         </div>
       </div>
     </dialog>
-    <dialog id="folder-popup-box">
+    <dialog id="folder-dialog">
       <div class="popup">
         <div class="content">
           <div class="close">
-            <i class="fa-solid fa-arrow-left"></i>
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
           </div>
           <div id="folders">
             <label class="custom-check">
@@ -150,21 +178,23 @@
             </label>
             <span class="list"></span>
           </div>
-          <form id="add-folder" autocomplete="off">
+          <form id="add-folder" autocomplete="off" @submit.prevent="createFolder()">
             <div class="error-notification d-none"></div>
             <div class="row">
-              <input type="text" id="name-folder" maxlength="18" aria-label="Name">
+              <input type="text" id="name-folder" placeholder="Folder name" maxlength="18" aria-label="Name">
             </div>
-            <button type="submit" @click="createFolder()"></button>
+            <button type="submit">Create folder</button>
           </form>
         </div>
       </div>
     </dialog>
-    <dialog id="category-popup-box">
+    <dialog id="category-dialog">
       <div class="popup">
         <div class="content">
           <div class="close">
-            <i class="fa-solid fa-arrow-left"></i>
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
           </div>
           <div id="categories">
             <label class="custom-check">
@@ -175,21 +205,26 @@
             </label>
             <span class="list"></span>
           </div>
-          <form id="add-category" autocomplete="off">
+          <form id="add-category" autocomplete="off" @submit.prevent="createCategory()">
             <div class="error-notification d-none"></div>
             <div class="row">
-              <input type="text" id="name-category" maxlength="18" aria-label="Name">
+              <input type="text" id="name-category" placeholder="Category name" maxlength="18" aria-label="Name">
             </div>
-            <button type="submit" @click="createCategory()"></button>
+            <button type="submit">Create category</button>
           </form>
         </div>
       </div>
     </dialog>
-    <dialog id="reminder-popup-box">
+    <dialog id="reminder-dialog">
       <div class="popup">
         <div class="content">
           <div class="close">
-            <i class="fa-solid fa-arrow-left"></i>
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+          </div>
+          <div class="row bold">
+            Reminder date
           </div>
           <div class="row">
             <input type="datetime-local" id="date-reminder-input" aria-label="Date">
@@ -197,24 +232,29 @@
         </div>
       </div>
     </dialog>
-    <dialog id="note-popup-box">
+    <dialog id="note-dialog">
       <div class="popup">
         <div class="content">
           <div class="popup-header">
-            <div id="submit-note" class="done">
-              <button type="submit" :form="isAuthenticated ? 'add-cloud-note' : 'add-local-note'" aria-label="Save note">
+            <div class="close">
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+            </div>
+            <div class="done">
+              <button type="submit" id="submit-note-btn" :form="isAuthenticated ? 'add-cloud-note' : 'add-local-note'"
+                aria-label="Save note">
                 <i class="fa-solid fa-check"></i>
               </button>
             </div>
-            <div class="close">
-              <i class="fa-solid fa-xmark"></i>
-            </div>
           </div>
-          <form :id="isAuthenticated ? 'add-cloud-note' : 'add-local-note'" autocomplete="off">
+          <form autocomplete="off" :id="isAuthenticated ? 'add-cloud-note' : 'add-local-note'"
+            @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
             <input id="id-note" type="hidden">
             <div class="error-notification d-none"></div>
-            <input type="text" id="title" maxlength="30" aria-label="Title" autofocus required>
-            <textarea id="content" :maxlength="maxNoteContentLength" spellcheck="true" aria-label="Content"
+            <input type="text" id="title" maxlength="30" aria-label="Title" placeholder="Title" autofocus required>
+            <textarea id="content" :maxlength="maxNoteContentLength" spellcheck="true"
+              placeholder="Content (Raw text, Markdown or HTML)" aria-label="Content"
               @input="updateNoteContentLength()"></textarea>
             <div class="row">
               <span id="textarea-length">
@@ -226,33 +266,44 @@
               </span>
             </div>
             <div class="row">
-              <button type="button" id="btn-add-folder" aria-label="Add a folder" @click="showFolderPopup()">
+              <button type="button" id="btn-add-folder" aria-label="Add a folder" @click="openFolderDialog()">
                 <i class="fa-solid fa-folder"></i>
               </button>
-              <button type="button" id="btn-add-category" aria-label="Add a category" @click="showCatPopup()">
+              <button type="button" id="btn-add-category" aria-label="Add a category" @click="openCatDialog()">
                 <i class="fa-solid fa-tags"></i>
               </button>
-              <button type="button" id="btn-add-reminder" aria-label="Add a reminder" @click="showReminderPopup()">
+              <button type="button" id="btn-add-reminder" aria-label="Add a reminder" @click="openReminderDialog()">
                 <i class="fa-solid fa-bell"></i>
               </button>
             </div>
             <div class="row">
               <div id="colors">
-                <span class="bg-default" tabindex="0" role="button" aria-label="Default"></span>
-                <span class="bg-red" tabindex="0" role="button" aria-label="Red"></span>
-                <span class="bg-orange" tabindex="0" role="button" aria-label="Orange"></span>
-                <span class="bg-yellow" tabindex="0" role="button" aria-label="Yellow"></span>
-                <span class="bg-lime" tabindex="0" role="button" aria-label="Lime"></span>
-                <span class="bg-green" tabindex="0" role="button" aria-label="Green"></span>
-                <span class="bg-cyan" tabindex="0" role="button" aria-label="Cyan"></span>
-                <span class="bg-light-blue" tabindex="0" role="button" aria-label="Light blue"></span>
-                <span class="bg-blue" tabindex="0" role="button" aria-label="Blue"></span>
-                <span class="bg-purple" tabindex="0" role="button" aria-label="Purple"></span>
-                <span class="bg-pink" tabindex="0" role="button" aria-label="Pink"></span>
+                <span class="bg-default" tabindex="0" role="button" aria-label="Default"
+                  @click="selectColor($event)"></span>
+                <span class="bg-red" tabindex="0" role="button" aria-label="Red" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
+                <span class="bg-orange" tabindex="0" role="button" aria-label="Orange" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
+                <span class="bg-yellow" tabindex="0" role="button" aria-label="Yellow" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
+                <span class="bg-lime" tabindex="0" role="button" aria-label="Lime" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
+                <span class="bg-green" tabindex="0" role="button" aria-label="Green" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
+                <span class="bg-cyan" tabindex="0" role="button" aria-label="Cyan" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
+                <span class="bg-light-blue" tabindex="0" role="button" aria-label="Light blue"
+                  @click="selectColor($event)" @keydown.enter="selectColor($event)"></span>
+                <span class="bg-blue" tabindex="0" role="button" aria-label="Blue" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
+                <span class="bg-purple" tabindex="0" role="button" aria-label="Purple" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
+                <span class="bg-pink" tabindex="0" role="button" aria-label="Pink" @click="selectColor($event)"
+                  @keydown.enter="selectColor($event)"></span>
               </div>
             </div>
             <div class="row d-flex align-items-center">
-              <span id="hide-infos"></span>
+              <span>Hide content</span>
               <label class="switch">
                 <input type="checkbox" class="checkbox" id="check-hidden">
                 <span class="toggle-thumb">
@@ -269,39 +320,43 @@
         </div>
       </div>
     </dialog>
-    <dialog id="colorpicker-popup-box">
-      <IroJs />
-    </dialog>
-    <dialog id="settings-popup-box">
-      <div class="popup">
+    <dialog id="colorpicker-dialog">
+      <div class="popup popup-small">
         <div class="content">
           <div class="close">
-            <i class="fa-solid fa-xmark"></i>
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+          </div>
+          <IroJs />
+        </div>
+      </div>
+    </dialog>
+    <dialog id="settings-dialog">
+      <div class="popup popup-small">
+        <div class="content">
+          <div class="close">
+            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
           </div>
           <div class="error-notification d-none"></div>
           <div id="legal" class="row">
-            <a href="https://leoseguin.fr/mentionslegales/"></a>
+            <a href="https://leoseguin.fr/mentionslegales/">Legal notice / privacy</a>
           </div>
           <div class="row">
             <a href="https://github.com/seguinleo/Notida/wiki/Markdown" id="link-markdown"
-              rel="noopener noreferrer"></a>
+              rel="noopener noreferrer">Markdown guide</a>
           </div>
           <div class="row">
             <a href="https://github.com/seguinleo/Notida/wiki/Shortcuts" rel="noopener noreferrer">Shortcuts</a>
           </div>
           <div class="row">
-            <a href="https://github.com/seguinleo/Notida/discussions" id="link-help" rel="noopener noreferrer"></a>
+            <a href="https://github.com/seguinleo/Notida/discussions" id="link-help" rel="noopener noreferrer">Help and
+              discussions</a>
           </div>
-          <div class="row">
-            <select id="language" aria-label="Language" @change="toggleLang($event.target.value)">
-              <option value="fr">FR</option>
-              <option value="en">EN</option>
-              <option value="de">DE</option>
-              <option value="es">ES</option>
-            </select>
-          </div>
-          <div class="row d-flex align-items-center">
-            <span id="spellcheck-slider-info"></span>
+          <div class="row d-flex align-items-center justify-content-between">
+            <span>Spell check</span>
             <label id="spellcheck-slider" class="switch">
               <input v-model="spellcheck" type="checkbox" id="check-spellcheck" class="checkbox" checked
                 @change="toggleSpellcheck()">
@@ -315,8 +370,8 @@
               </span>
             </label>
           </div>
-          <div class="row d-flex align-items-center">
-            <span id="lock-app-slider-info"></span>
+          <div class="row d-flex align-items-center justify-content-between">
+            <span>Lock app</span>
             <label class="switch">
               <input type="checkbox" id="toggle-lock-app" class="checkbox" checked @click="toggleLockApp()">
               <span class="toggle-thumb">
@@ -332,48 +387,51 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.9.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.10.1</a>
             </p>
           </div>
         </div>
       </div>
     </dialog>
-    <template v-if="isAuthenticated">
-      <dialog id="manage-popup-box">
+    <template v-if="(isAuthenticated && isAuthenticatedResponse) && !isLocked">
+      <dialog id="manage-dialog">
         <div class="popup">
           <div class="content">
             <div class="close">
-              <i class="fa-solid fa-xmark"></i>
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
             </div>
             <div id="user-name" class="row bold">
               {{ name }}
             </div>
             <div class="row">
-              <span id="last-login"></span>
+              <span>Last login:</span>
               <span id="last-login-date"></span>
             </div>
             <div class="row">
-              <button type="button" id="log-out"></button>
+              <button type="button" id="log-out" @click="fetchLogout()">Log out</button>
             </div>
             <div class="row">
-              <span id="storage-usage">{{ (dataByteSize / 1000).toFixed(2) }} kB / {{ maxDataByteSize / 1000000 }} MB</span>
+              <span id="storage-usage">{{ (dataByteSize / 1000).toFixed(2) }} kB / {{ maxDataByteSize / 1000000 }}
+                MB</span>
               <progress id="storage" :max="maxDataByteSize" :value="dataByteSize"></progress>
             </div>
             <details id="gen-psswd">
-              <summary></summary>
-              <form id="change-psswd">
+              <summary>Change password</summary>
+              <form id="change-psswd" @submit.prevent="changePassword()">
                 <div class="error-notification d-none"></div>
                 <div class="row">
                   <input id="old-psswd" type="password" minlength="10" maxlength="64" aria-label="Old password"
-                    required>
+                    placeholder="Old password" required>
                 </div>
                 <div class="row">
                   <input id="new-psswd" type="password" minlength="10" maxlength="64" aria-label="New password"
-                    required>
+                    placeholder="New password" required>
                 </div>
                 <div class="row">
                   <input id="new-psswd-valid" type="password" minlength="10" maxlength="64"
-                    aria-label="Confirm new password" required>
+                    placeholder="Confirm new password" aria-label="Confirm new password" required>
                 </div>
                 <div class="row d-flex">
                   <p id="psswd-gen"></p>
@@ -384,89 +442,98 @@
                     <i class="fa-solid fa-arrow-rotate-right"></i>
                   </button>
                 </div>
-                <button type="submit"></button>
+                <button type="submit">Change password</button>
               </form>
             </details>
             <details id="delete-user">
-              <summary></summary>
-              <form id="delete-account">
+              <summary>Delete account</summary>
+              <form id="delete-account" @submit.prevent="deleteAccount()">
                 <div class="error-notification d-none"></div>
                 <div class="row">
-                  <input id="delete-psswd" type="password" minlength="10" maxlength="64" aria-label="Password" required>
+                  <input id="delete-psswd" type="password" minlength="10" maxlength="64" placeholder="Password"
+                    aria-label="Password" required>
                 </div>
-                <button type="submit" class="btn-cancel"></button>
+                <button type="submit" class="btn-cancel">Delete account</button>
               </form>
             </details>
           </div>
         </div>
       </dialog>
-      <dialog id="private-note-popup-box">
+      <dialog id="private-note-dialog">
         <div class="popup">
           <div class="content">
             <div class="close">
-              <i class="fa-solid fa-xmark"></i>
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
             </div>
-            <form id="public-note">
+            <form id="public-note" @submit.prevent="publicNote()">
               <div class="error-notification d-none"></div>
               <div class="row">
-                <span></span>
+                <span>Do you want to make your note public? A link will be available to share it.</span>
               </div>
               <input id="id-note-public" type="hidden">
               <div class="row">
-                <button type="submit"></button>
+                <button type="submit">Make private</button>
               </div>
             </form>
           </div>
         </div>
       </dialog>
-      <dialog id="public-note-popup-box">
+      <dialog id="public-note-dialog">
         <div class="popup">
           <div class="content">
             <div class="close">
-              <i class="fa-solid fa-xmark"></i>
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
             </div>
             <div class="d-flex">
               <p id="copy-note-link"></p>
-              <button type="button" id="copy-note-link-btn" aria-label="Copy link">
+              <button type="button" id="copy-note-link-btn" aria-label="Copy link" @click="copyNoteLink()">
                 <i class="fa-solid fa-clipboard"></i>
               </button>
             </div>
-            <form id="private-note">
+            <form id="private-note" @submit.prevent="privateNote()">
               <div class="error-notification d-none"></div>
               <div class="row">
-                <span></span>
+                <span>Do you want to make your note private? The link will no longer be available.</span>
               </div>
               <input id="id-note-private" type="hidden">
               <input id="link-note-private" type="hidden">
               <div class="row">
-                <button type="submit" class="btn-cancel"></button>
+                <button type="submit" class="btn-cancel">Make private</button>
               </div>
             </form>
           </div>
         </div>
       </dialog>
     </template>
-    <template v-else>
-      <dialog id="login-popup-box">
+    <template v-else-if="isAuthenticatedResponse && !isLocked">
+      <dialog id="login-dialog">
         <div class="popup">
           <div class="content">
             <div class="close">
-              <i class="fa-solid fa-xmark"></i>
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
             </div>
-            <form id="connect-form" autocomplete="off">
+            <form id="connect-user" autocomplete="off" @submit.prevent="connectUser()">
               <div class="error-notification d-none"></div>
               <div class="row">
-                <input id="name-connect" type="text" minlength="3" maxlength="30" spellcheck="false"
+                <input id="name-connect" type="text" minlength="3" maxlength="30" spellcheck="false" placeholder="Name"
                   autocapitalize="off" aria-label="Name" required>
               </div>
               <div class="row">
-                <input id="psswd-connect" type="password" minlength="10" maxlength="64" aria-label="Password" required>
+                <input id="psswd-connect" type="password" minlength="10" maxlength="64" placeholder="Password"
+                  aria-label="Password" required>
               </div>
               <div class="row">
-                <button type="submit"></button>
+                <button type="submit">Log in</button>
               </div>
               <div class="row align-center">
-                <button type="button" id="create-account"></button>
+                <button type="button" id="create-account" @click="openCreateUserDialog()">Don't have an account
+                  yet?</button>
               </div>
             </form>
           </div>
@@ -476,20 +543,23 @@
         <div class="popup">
           <div class="content">
             <div class="close">
-              <i class="fa-solid fa-xmark"></i>
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
             </div>
-            <form id="create-form" autocomplete="off">
+            <form autocomplete="off" id="create-user" @submit.prevent="createUser()">
               <div class="error-notification d-none"></div>
               <div class="row">
                 <input id="name-create" type="text" minlength="3" maxlength="30" spellcheck="false" autocapitalize="off"
-                  aria-label="Name" required>
+                  placeholder="Name" aria-label="Name" required>
               </div>
               <div class="row">
-                <input id="psswd-create" type="password" minlength="10" maxlength="64" aria-label="Password" required>
+                <input id="psswd-create" type="password" minlength="10" maxlength="64" placeholder="Password"
+                  aria-label="Password" required>
               </div>
               <div class="row">
                 <input id="psswd-create-valid" type="password" minlength="10" maxlength="64"
-                  aria-label="Confirm password" required>
+                  placeholder="Confirm password" aria-label="Confirm password" required>
               </div>
               <div class="row d-flex">
                 <p id="psswd-gen"></p>
@@ -502,54 +572,43 @@
               </div>
               <div class="row">
                 <i class="fa-solid fa-circle-info" role="none"></i>
-                <span id="create-infos"></span>
+                <span>Your password is stored securely and your notes are encrypted. You will not be able to recover
+                  your password if you forget it.</span>
               </div>
-              <button type="submit"></button>
+              <button type="submit">Create my account</button>
             </form>
           </div>
         </div>
       </dialog>
-      <div data-note-id="welcome" class="note bg-default d-none">
+      <div v-if="notesJSON.length === 0" data-note-id="welcome" class="note bg-default"
+        @click="toggleFullscreen('welcome')">
         <div class="details">
           <h1 class="title">Notida</h1>
-          <div v-if="lang === 'fr'" class="details-content">
-            <div>
-              <p class="align-center">
-                Un bloc-notes web rapide, privé et sécurisé.
-              </p>
-              <p class="align-center">
-                <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8&style=for-the-badge">
-              </p>
-              <h2 id="features">Fonctionnalités</h2>
-              <p>Les utilisateurs peuvent créer des listes de tâches, des rappels, des tableaux, des liens, des expressions mathématiques ou des blocs de code en utilisant Markdown et HTML. Ils peuvent ajouter des images, de l'audio ou des vidéos en ligne via une URL. Les notes peuvent être recherchées, triées par catégorie ou organisées en dossiers.</p>
-              <p>Les utilisateurs peuvent synchroniser leurs notes sur plusieurs appareils dans une base de données sécurisée après s'être connectés sans avoir besoin d'une adresse e-mail, seulement d'un nom d'utilisateur et d'un mot de passe fort. Les notes publiques peuvent être partagées via des URLs aléatoires.</p>
-              <p>Ce site est une application web progressive (PWA) qui peut être installée comme une application. Le design est réactif et optimisé pour tous les appareils mobiles ou macOS/Windows.</p>
-              <p>Le site est accessible aux utilisateurs en situation de handicap.</p>
-              <h2 id="security">Sécurité</h2>
-              <p>Le site suit les <a href="https://cheatsheetseries.owasp.org/">recommandations de sécurité OWASP</a>.</p>
-              <p>Toutes les notes sont filtrées, validées et chiffrées avec AES-256-GCM. Chaque utilisateur dispose d'une clé cryptographiquement sécurisée générée après son inscription.</p>
-              <p>Les utilisateurs peuvent verrouiller l'application en utilisant la biométrie (empreintes digitales, visage, etc.). Ces données biométriques ne sont jamais envoyées au serveur.</p>
-              <h3>Bienvenue 😊</h3>
-            </div>
-          </div>
-          <div v-else class="details-content">
+          <div class="details-content">
             <div>
               <p class="align-center">
                 A fast, private and secure web notebook.
               </p>
               <p class="align-center">
-                <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8&style=for-the-badge">
+                <img alt="License"
+                  src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8&style=for-the-badge">
               </p>
               <h2 id="features">Features</h2>
-              <p>Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown and HTML. They can add online images, audio or videos via URL. Notes can be searched, sorted by category or organized into folders.</p>
-              <p>Users can sync notes across devices in a secure database after signing in without needing an email address, only a username and strong password. Public notes can be shared via random URLs.</p>
-              <p>This website is a Progressive Web App (PWA) that can be installed as an application. Design is responsive and optimized for all mobile devices or macOS/Windows.</p>
+              <p>Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown
+                and HTML. They can add online images, audio or videos via URL. Notes can be searched, sorted by category
+                or organized into folders.</p>
+              <p>Users can sync notes across devices in a secure database after signing in without needing an email
+                address, only a username and strong password. Public notes can be shared via random URLs.</p>
+              <p>This website is a Progressive Web App (PWA) that can be installed as an application. Design is
+                responsive and optimized for all mobile devices or macOS/Windows.</p>
               <p>The site is accessible to users with disabilities.</p>
               <h2 id="security">Security</h2>
-              <p>The website follows <a href="https://cheatsheetseries.owasp.org/">OWASP security recommendations</a>.</p>
-              <p>All notes are sanitized, validated and encrypted with AES-256-GCM. Each user has a cryptographically secure key generated after signing up.</p>
-              <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server.</p>
-              <h3>Bienvenue 😊</h3>
+              <p>The website follows <a href="https://cheatsheetseries.owasp.org/">OWASP security recommendations</a>.
+              </p>
+              <p>All notes are sanitized, validated and encrypted with AES-256-GCM. Each user has a cryptographically
+                secure key generated after signing up.</p>
+              <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent
+                to the server.</p>
             </div>
           </div>
         </div>
@@ -569,14 +628,16 @@ export default {
   data() {
     return {
       name: '',
-      lang: 'en',
       spellcheck: true,
       touchstartX: 0,
       touchendX: 0,
       timeoutNotification: null,
       fingerprintEnabled: true,
+      onLine: navigator.onLine,
       isLocked: true,
+      isLockedResponse: false,
       isAuthenticated: false,
+      isAuthenticatedResponse: false,
       isUpdate: false,
       dataByteSize: 0,
       noteContentLength: 0,
@@ -618,28 +679,33 @@ export default {
   components: {
     IroJs
   },
+  watch: {
+    async onLine(v) {
+      if (v) {
+        document.querySelector('#offline').classList.add('d-none')
+        if (this.urlParams.get('link')) {
+          await this.showSharedNote()
+          return
+        }
+        if (document.querySelector('dialog').open) return
+        await this.getLockApp()
+        if (this.isLocked) return
+        await this.fetchAccount()
+        if (this.isAuthenticated) await this.getCloudNotes()
+        else await this.getLocalNotes()
+      } else {
+        document.querySelector('#offline').classList.remove('d-none')
+      }
+    }
+  },
   async mounted() {
+    if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js')
+
     this.urlParams = new URLSearchParams(window.location.search)
     if (this.urlParams.get('link')) {
       await this.showSharedNote()
       return
     }
-    await this.getLockApp()
-    await this.fetchAccount()
-    document.querySelector('header').classList.remove('d-none')
-    document.querySelector('#sidebar').classList.remove('d-none')
-    if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js')
-    this.lang = localStorage.getItem('lang') || 'en'
-    this.changeLanguage(this.lang)
-    if (!this.isAuthenticated && this.lang === 'fr' &&
-      document.querySelector('.details-content-fr')) {
-      document.querySelector('.details-content-fr').classList.remove('d-none')
-      document.querySelector('.details-content-en').classList.add('d-none')
-    }
-    if (navigator.onLine) document.querySelector('#offline').classList.add('d-none')
-    else document.querySelector('#offline').classList.remove('d-none')
-    if (this.isAuthenticated) await this.getCloudNotes()
-    else await this.getLocalNotes()
 
     if (localStorage.getItem('spellcheck') === 'false') {
       document.querySelector('#check-spellcheck').checked = false
@@ -668,532 +734,19 @@ export default {
       this.touchendX = e.changedTouches[0].screenX
       if (this.touchendX - this.touchstartX > 75) {
         document.querySelector('#sidebar').classList.add('show')
-        this.preventBodyScrolling(true)
       } else if (this.touchstartX - this.touchendX > 75) {
         document.querySelector('#sidebar').classList.remove('show')
-        this.preventBodyScrolling(false)
       }
     }, { passive: true })
 
-    document.querySelectorAll('#colors span').forEach((span, index) => {
-      span.addEventListener('click', (event) => {
-        document.querySelectorAll('#colors span').forEach((e) => e.classList.remove('selected'))
-        event.target.classList.add('selected')
-      })
-      span.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') span.click()
-      })
-      if (index === 0) span.classList.add('selected')
-    })
+    window.addEventListener('online', () => this.onLine = true)
+    window.addEventListener('offline', () => this.onLine = false)
 
-    document.querySelectorAll('.close i').forEach((e) => {
-      e.addEventListener('click', () => {
-        e.closest('dialog').close()
-      })
-    })
-
-    document.querySelectorAll('dialog').forEach((dialog) => {
-      if (dialog.id === 'folder-popup-box') return
-      if (dialog.id === 'category-popup-box') return
-      if (dialog.id === 'reminder-popup-box') return
-      dialog.addEventListener('close', () => {
-        document.querySelectorAll('form').forEach((form) => form.reset())
-        document.querySelectorAll('input[type="hidden"]').forEach((input) => input.value = '')
-      })
-    })
-
-    document.querySelectorAll('form').forEach((e) => e.addEventListener('submit', (event) => event.preventDefault()))
-
-    document.querySelectorAll('input[name="download-notes"]').forEach((e) => {
-      e.addEventListener('change', async (event) => {
-        if (this.fingerprintEnabled) {
-          const res = await this.verifyFingerprint()
-          if (!res) return
-        }
-        if (this.notesJSON.length === 0) return
-        const a = document.createElement('a')
-        let filename = ''
-        let allNotesContent = []
-        const allNotes = document.querySelectorAll('.note')
-        if (document.querySelector('#id-note-download').value === '') {
-          const notesPromises = Array.from(allNotes).map(async (note) => {
-            const noteId = note.getAttribute('data-note-id')
-            const noteData = this.notesJSON.find((note) => note.id === noteId)
-            const title = this.isAuthenticated
-              ? noteData.title
-              : await this.decryptLocalNotes(this.localDbKey, noteData.title)
-            const content = this.isAuthenticated
-              ? noteData.content
-              : await this.decryptLocalNotes(this.localDbKey, noteData.content)
-            return `# ${title}\n${content}`
-          })
-          allNotesContent = await Promise.all(notesPromises)
-          filename = event.target.value === 'txt' ? 'all-notes.txt' : 'all-notes.md'
-        } else {
-          const note = document.querySelector(`.note[data-note-id="${document.querySelector('#id-note-download').value}"]`)
-          const noteId = note.getAttribute('data-note-id')
-          const title = this.isAuthenticated
-            ? this.notesJSON.find((note) => note.id === noteId).title
-            : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).title)
-          const content = this.isAuthenticated
-            ? this.notesJSON.find((note) => note.id === noteId).content
-            : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).content)
-          allNotesContent = [`# ${title}\n${content}`]
-          filename = event.target.value === 'txt' ? `${title}.txt` : `${title}.md`
-        }
-        const blob = new Blob([allNotesContent.join('\n\n')], { type: 'text/plaincharset=utf-8' })
-        const url = URL.createObjectURL(blob)
-        a.href = url
-        a.download = filename
-        a.style.display = 'none'
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        document.querySelector('#download-popup-box').close()
-      })
-    })
-
-    document.querySelectorAll('.custom-check').forEach((e) => {
-      e.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') e.click()
-      })
-    })
-
-    document.querySelectorAll('#sort-popup-box input[name="sort-notes"]').forEach(async (e) => {
-      e.addEventListener('change', async () => {
-        if (!['1', '2', '3', '4'].includes(e.value)) return
-        if (e.value === '1') localStorage.removeItem('sort_notes')
-        else localStorage.setItem('sort_notes', e.value)
-        if (this.isAuthenticated) await this.getCloudNotes()
-        else await this.getLocalNotes()
-      })
-    })
-
-    if (this.isAuthenticated) {
-      document.querySelector('#add-cloud-note').addEventListener('submit', async () => {
-        try {
-          if (this.dataByteSize > this.maxDataByteSize) {
-            this.showError('You have reached the maximum storage capacity...')
-            return
-          }
-          if (this.isLocked) return
-          const noteId = document.querySelector('#id-note').value
-          const title = document.querySelector('#note-popup-box #title').value.trim()
-          const content = document.querySelector('#note-popup-box #content').value.trim()
-          const color = document.querySelector('#colors .selected').classList[0]
-          const hidden = document.querySelector('#check-hidden').checked ? 1 : 0
-          const folder = document.querySelector('#folders input[name="add-folder"]:checked').value
-          const category = document.querySelector('#categories input[name="add-cat"]:checked').value
-          const reminder = document.querySelector('#date-reminder-input').value
-          const allColors = [
-            'bg-default',
-            'bg-red',
-            'bg-orange',
-            'bg-yellow',
-            'bg-lime',
-            'bg-green',
-            'bg-cyan',
-            'bg-light-blue',
-            'bg-blue',
-            'bg-purple',
-            'bg-pink',
-          ]
-
-          if (this.isUpdate && !noteId) return
-          if (noteId && !/^[a-zA-Z0-9]+$/.test(noteId)) return
-          if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
-          if (!allColors.includes(color)) return
-          if (reminder && !new Date(reminder).getTime()) return
-          const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
-
-          const data = new URLSearchParams({
-            title,
-            content: cleanContent,
-            color,
-            hidden,
-            folder,
-            category,
-            reminder,
-            csrfToken: this.getCsrfToken()
-          })
-
-          if (this.isUpdate) data.set('noteId', noteId)
-
-          const url = this.isUpdate ? 'api/update-note/' : 'api/add-note/'
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: data,
-          })
-          if (!res.ok) {
-            this.showError(`An error occurred - ${res.status}`)
-            return
-          }
-          document.querySelector('#note-popup-box').close()
-          document.querySelector('#note-popup-box form').reset()
-          this.noteContentLength = 0
-          await this.getCloudNotes()
-        } catch (error) {
-          this.showError(`An error occurred - ${error}`)
-        }
-      })
-      document.querySelector('#delete-cloud-note').addEventListener('submit', async () => {
-        const noteId = document.querySelector('#id-note-delete').value
-        if (!noteId) return
-        await this.fetchDelete(noteId)
-        document.querySelector('#delete-note-popup-box').close()
-      })
-      document.querySelector('#copy-note-link-btn').addEventListener('click', () => {
-        const link = document.querySelector('#copy-note-link').textContent
-        const url = new URL(`./?link=${encodeURIComponent(link)}`, window.location.href)
-        navigator.clipboard.writeText(url.href)
-      })
-      document.querySelector('#change-psswd').addEventListener('submit', async () => {
-        if (this.isLocked) return
-        const a = document.querySelector('#old-psswd').value
-        const e = document.querySelector('#new-psswd').value
-        const t = document.querySelector('#new-psswd-valid').value
-        if (!a || !e || !t || e.length < 10 || e.length > 64) return
-        if (/^[0-9]+$/.test(t)) {
-          this.showError('Password too weak (only numbers)...')
-          return
-        }
-        if (/^[a-z]+$/.test(t)) {
-          this.showError('Password too weak (only lowercase letters)...')
-          return
-        }
-        if (/^[A-Z]+$/.test(t)) {
-          this.showError('Password too weak (only uppercase letters)...')
-          return
-        }
-        if (/^[a-zA-Z]+$/.test(t)) {
-          this.showError('Password too weak (only letters)...')
-          return
-        }
-        if (/^[a-zA-Z0-9]+$/.test(t)) {
-          this.showError('Password should contain one special character...')
-          return
-        }
-        if (e !== t) {
-          this.showError('Passwords do not match...')
-          return
-        }
-        const psswdOld = a
-        const psswdNew = e
-        try {
-          const data = new URLSearchParams({ psswdOld, psswdNew, csrfToken: this.getCsrfToken() })
-          const res = await fetch('api/update-password/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: data,
-          })
-          if (!res.ok) {
-            this.showError(`An error occurred - ${res.status}`)
-            document.querySelectorAll('form').forEach((form) => form.reset())
-            return
-          }
-          this.showSuccess('Successfully changed password!')
-          document.querySelectorAll('form').forEach((form) => form.reset())
-        } catch (error) {
-          this.showError(`An error occurred - ${error}`)
-          document.querySelectorAll('form').forEach((form) => form.reset())
-        }
-      })
-      document.querySelector('#delete-account').addEventListener('submit', async () => {
-        if (this.isLocked) return
-        const psswd = document.querySelector('#delete-psswd').value
-        if (!psswd || psswd.length < 10 || psswd.length > 64) return
-        try {
-          const data = new URLSearchParams({ psswd, csrfToken: this.getCsrfToken() })
-          const res = await fetch('api/delete-user/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: data,
-          })
-          if (!res.ok) {
-            this.showError(`An error occurred - ${res.status}`)
-            document.querySelectorAll('form').forEach((form) => form.reset())
-            return
-          }
-          window.location.reload()
-        } catch (error) {
-          this.showError(`An error occurred - ${error}`)
-          document.querySelectorAll('form').forEach((form) => form.reset())
-        }
-      })
-      document.querySelector('#private-note').addEventListener('submit', async () => {
-        const noteId = document.querySelector('#id-note-private').value
-        const noteLink = document.querySelector('#link-note-private').value
-        if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
-        if (!noteLink || !/^[a-zA-Z0-9]{32}$/.test(noteLink)) return
-        try {
-          const data = new URLSearchParams({ noteId, noteLink, csrfToken: this.getCsrfToken() })
-          const res = await fetch('api/private-note/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: data,
-          })
-          if (!res.ok) {
-            this.showError(`An error occurred - ${res.status}`)
-            return
-          }
-          document.querySelector('#public-note-popup-box').close()
-          await this.getCloudNotes()
-        } catch (error) {
-          this.showError(`An error occurred - ${error}`)
-        }
-      })
-      document.querySelector('#public-note').addEventListener('submit', async () => {
-        const noteId = document.querySelector('#id-note-public').value
-        if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
-        try {
-          const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
-          const res = await fetch('api/public-note/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: data,
-          })
-          if (!res.ok) {
-            this.showError(`An error occurred - ${res.status}`)
-            return
-          }
-          document.querySelector('#private-note-popup-box').close()
-          await this.getCloudNotes()
-        } catch (error) {
-          this.showError(`An error occurred - ${error}`)
-        }
-      })
-      document.querySelector('#log-out').addEventListener('click', () => this.fetchLogout())
-    } else {
-      document.querySelector('#add-local-note').addEventListener('submit', async () => {
-        try {
-          if (this.isLocked) return
-          const noteId = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
-          const title = document.querySelector('#note-popup-box #title').value.trim()
-          const content = document.querySelector('#note-popup-box #content').value.trim()
-          const color = document.querySelector('#colors .selected').classList[0]
-          const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
-          const hidden = document.querySelector('#check-hidden').checked ? 1 : 0
-          const folder = document.querySelector('#folders input[name="add-folder"]:checked').value
-          const category = document.querySelector('#categories input[name="add-cat"]:checked').value
-          const reminder = document.querySelector('#date-reminder-input').value
-
-          if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
-
-          const mdContent = DOMPurify.sanitize(content, this.purifyConfig)
-
-          const dbName = 'notes_db'
-          const objectStoreName = 'key'
-          const db = await this.openIndexedDB(dbName, objectStoreName)
-          let key = await this.getKeyFromDB(db, objectStoreName)
-
-          if (!key) {
-            key = await window.crypto.subtle.generateKey(
-              { name: 'AES-GCM', length: 256 },
-              true,
-              ['encrypt', 'decrypt'],
-            )
-            await this.storeKeyInDB(db, objectStoreName, key)
-          }
-
-          const enTitle = await window.crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv: new Uint8Array(12) },
-            key,
-            new TextEncoder().encode(JSON.stringify(title)),
-          )
-
-          const enContent = await window.crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv: new Uint8Array(12) },
-            key,
-            new TextEncoder().encode(JSON.stringify(mdContent)),
-          )
-
-          const note = {
-            id: noteId,
-            title: this.arrayBufferToBase64(enTitle),
-            content: this.arrayBufferToBase64(enContent),
-            color,
-            date,
-            hidden,
-            folder,
-            category,
-            reminder,
-            pinned: 0,
-          }
-
-          if (this.isUpdate) {
-            const noteIdToUpdate = document.querySelector('#id-note').value
-            const noteToUpdate = this.notesJSON.find((note) => note.id === noteIdToUpdate)
-
-            if (!noteToUpdate) return
-            noteToUpdate.title = note.title
-            noteToUpdate.content = note.content
-            noteToUpdate.color = note.color
-            noteToUpdate.date = note.date
-            noteToUpdate.hidden = note.hidden
-            noteToUpdate.folder = note.folder
-            noteToUpdate.category = note.category
-            noteToUpdate.reminder = note.reminder
-            noteToUpdate.pinned = note.pinned
-          } else this.notesJSON.push(note)
-
-          localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
-          document.querySelector('#note-popup-box').close()
-          document.querySelector('#note-popup-box form').reset()
-          this.noteContentLength = 0
-          await this.getLocalNotes()
-        } catch (error) {
-          this.showError(`An error occurred - ${error}`)
-        }
-      })
-      document.querySelector('#delete-local-note').addEventListener('submit', async () => {
-        const noteId = document.querySelector('#id-note-delete').value
-        if (!noteId) return
-        this.notesJSON.splice(noteId, 1)
-        localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
-        document.querySelector(`.note[data-note-id="${noteId}"]`).remove()
-        await this.getLocalNotes()
-        document.querySelector('#delete-note-popup-box').close()
-      })
-      document.querySelector('#create-account').addEventListener('click', () => {
-        document.querySelector('#login-popup-box').close()
-        document.querySelector('#create-box').showModal()
-      })
-      document.querySelector('#create-form').addEventListener('submit', async () => {
-        if (this.isLocked) return
-        const e = document.querySelector('#name-create').value.trim()
-        const t = document.querySelector('#psswd-create').value
-        const o = document.querySelector('#psswd-create-valid').value
-        if (!e || !t || !o || e.length < 3 || e.length > 30 || t.length < 10 || t.length > 64) return
-        if (!/^[a-zA-ZÀ-ÿ -]+$/.test(e)) {
-          this.showError('Name can only contain letters, spaces and accents...')
-          return
-        }
-        if (/^[0-9]+$/.test(t)) {
-          this.showError('Password too weak (only numbers)...')
-          return
-        }
-        if (/^[a-z]+$/.test(t)) {
-          this.showError('Password too weak (only lowercase letters)...')
-          return
-        }
-        if (/^[A-Z]+$/.test(t)) {
-          this.showError('Password too weak (only uppercase letters)...')
-          return
-        }
-        if (/^[a-zA-Z]+$/.test(t)) {
-          this.showError('Password too weak (only letters)...')
-          return
-        }
-        if (/^[a-zA-Z0-9]+$/.test(t)) {
-          this.showError('Password should contain one special character...')
-          return
-        }
-        if (t !== o) {
-          this.showError('Passwords do not match...')
-          return
-        }
-        if (e === t) {
-          this.showError('Username and password cannot be the same...')
-          return
-        }
-        const nameCreate = e
-        const psswdCreate = t
-        try {
-          const data = new URLSearchParams({ nameCreate, psswdCreate })
-          const res = await fetch('api/create-user/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: data,
-          })
-          if (!res.ok) {
-            this.showError('Username already taken...')
-            document.querySelectorAll('form').forEach((form) => form.reset())
-            return
-          }
-          document.querySelector('#create-box').close()
-          document.querySelectorAll('form').forEach((form) => form.reset())
-          let message = ''
-          if (this.lang === 'fr') message = 'Compte créé avec succès ! Vous pouvez maintenant vous connecter.'
-          else if (this.lang === 'de') message = 'Konto erfolgreich erstellt! Sie können sich jetzt anmelden.'
-          else if (this.lang === 'es') message = '¡Cuenta creada exitosamente! Puedes iniciar sesión ahora.'
-          else message = 'Account successfully created! You can now log in.'
-          this.showSuccess(message)
-        } catch (error) {
-          this.showError(`An error occurred - ${error}`)
-          document.querySelectorAll('form').forEach((form) => form.reset())
-        }
-      })
-      document.querySelector('#connect-form').addEventListener('submit', async () => {
-        if (this.isLocked) return
-        const e = document.querySelector('#name-connect').value.trim()
-        const t = document.querySelector('#psswd-connect').value
-        if (!e || !t || e.length > 30 || t.length > 64) return
-        if (!/^[a-zA-ZÀ-ÿ -]+$/.test(e)) {
-          this.showError('Name can only contain letters, spaces and accents...')
-          return
-        }
-        const nameConnect = e
-        const psswdConnect = t
-        try {
-          const data = new URLSearchParams({ nameConnect, psswdConnect })
-          const res = await fetch('api/login/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: data,
-          })
-          if (!res.ok) {
-            document.querySelectorAll('form').forEach((form) => form.reset())
-            let time = 10
-            const btn = document.querySelector('#connect-form button[type="submit"]')
-            const btnText = btn.textContent
-            btn.disabled = true
-            const errorMessage = await res.text()
-            this.showError(errorMessage)
-            const interval = setInterval(() => {
-              time -= 1
-              btn.textContent = time
-            }, 1000)
-            setTimeout(() => {
-              clearInterval(interval)
-              btn.disabled = false
-              btn.textContent = btnText
-            }, 10000)
-            return
-          }
-          const response = await res.json()
-          localStorage.setItem('csrfToken', response.csrfToken)
-          window.location.reload()
-        } catch (error) {
-          this.showError(`An error occurred - ${error}`)
-          document.querySelectorAll('form').forEach((form) => form.reset())
-        }
-      })
-    }
-
-    window.addEventListener('offline', async () => {
-      document.querySelector('#offline').classList.remove('d-none')
-    })
-
-    window.addEventListener('online', async () => {
-      document.querySelector('#offline').classList.add('d-none')
-      await this.getCloudNotes()
-    })
+    await this.getLockApp()
+    if (this.isLocked) return
+    await this.fetchAccount()
+    if (this.isAuthenticated) await this.getCloudNotes()
+    else await this.getLocalNotes()
   },
   methods: {
     arrayBufferToBase64(buffer) {
@@ -1250,6 +803,15 @@ export default {
       window.crypto.getRandomValues(array)
       return array
     },
+    closeDialog(e) {
+      const dialog = e.target.closest('dialog')
+      dialog.close()
+      if (dialog.id === 'folder-dialog') return
+      if (dialog.id === 'category-dialog') return
+      if (dialog.id === 'reminder-dialog') return
+      document.querySelectorAll('form').forEach((form) => form.reset())
+      document.querySelectorAll('input[type="hidden"]').forEach((input) => input.value = '')
+    },
     getPassword(length) {
       const lowercase = 'abcdefghijklmnopqrstuvwxyz'
       const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -1269,6 +831,9 @@ export default {
       const psswd = document.querySelector('#psswd-gen').textContent
       navigator.clipboard.writeText(psswd)
     },
+    getCsrfToken() {
+      return localStorage.getItem('csrfToken')
+    },
     async getLockApp() {
       try {
         const res = await fetch('api/get-lock-app/', {
@@ -1281,8 +846,9 @@ export default {
           this.showError(`An error occurred - ${res.status}`)
           return
         }
-        const serverLocked = await res.json()
-        if (!serverLocked.lockApp) {
+        const response = await res.json()
+        this.isLockedResponse = true
+        if (!response.lockApp) {
           this.fingerprintEnabled = false
           this.isLocked = false
           document.querySelector('#toggle-lock-app').checked = false
@@ -1290,6 +856,45 @@ export default {
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
       }
+    },
+    async toggleLockApp() {
+      if (this.isLocked) return
+      if (this.fingerprintEnabled) {
+        const res = await this.verifyFingerprint()
+        if (!res) {
+          document.querySelector('#toggle-lock-app').checked = true
+          return
+        }
+        this.fingerprintEnabled = false
+      } else {
+        const res = await this.createFingerprint()
+        if (!res) {
+          document.querySelector('#toggle-lock-app').checked = false
+          return
+        }
+      }
+      try {
+        const res = await fetch('api/lock-app/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+        }
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+      }
+    },
+    async unlockApp() {
+      await this.verifyFingerprint().then(async (res) => {
+        if (!res) return
+        this.isLocked = false
+        await this.fetchAccount()
+        if (this.isAuthenticated) await this.getCloudNotes()
+        else await this.getLocalNotes()
+      })
     },
     async verifyFingerprint() {
       try {
@@ -1361,68 +966,277 @@ export default {
         return 0
       }
     },
-    async toggleLockApp() {
+    async createUser() {
       if (this.isLocked) return
-      if (this.fingerprintEnabled) {
-        const res = await this.verifyFingerprint()
-        if (!res) {
-          document.querySelector('#toggle-lock-app').checked = true
-          return
-        }
-      } else {
-        const res = await this.createFingerprint()
-        if (!res) {
-          document.querySelector('#toggle-lock-app').checked = false
-          return
-        }
+      const e = document.querySelector('#name-create').value.trim()
+      const t = document.querySelector('#psswd-create').value
+      const o = document.querySelector('#psswd-create-valid').value
+      if (!e || !t || !o || e.length < 3 || e.length > 30 || t.length < 10 || t.length > 64) return
+      if (!/^[a-zA-ZÀ-ÿ -]+$/.test(e)) {
+        this.showError('Name can only contain letters, spaces and accents...')
+        return
       }
+      if (/^[0-9]+$/.test(t)) {
+        this.showError('Password too weak (only numbers)...')
+        return
+      }
+      if (/^[a-z]+$/.test(t)) {
+        this.showError('Password too weak (only lowercase letters)...')
+        return
+      }
+      if (/^[A-Z]+$/.test(t)) {
+        this.showError('Password too weak (only uppercase letters)...')
+        return
+      }
+      if (/^[a-zA-Z]+$/.test(t)) {
+        this.showError('Password too weak (only letters)...')
+        return
+      }
+      if (/^[a-zA-Z0-9]+$/.test(t)) {
+        this.showError('Password should contain one special character...')
+        return
+      }
+      if (t !== o) {
+        this.showError('Passwords do not match...')
+        return
+      }
+      if (e === t) {
+        this.showError('Username and password cannot be the same...')
+        return
+      }
+      const nameCreate = e
+      const psswdCreate = t
       try {
-        const res = await fetch('api/lock-app/', {
+        const data = new URLSearchParams({ nameCreate, psswdCreate })
+        const res = await fetch('api/create-user/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
+          body: data,
+        })
+        if (!res.ok) {
+          this.showError('Username already taken...')
+          document.querySelectorAll('form').forEach((form) => form.reset())
+          return
+        }
+        document.querySelector('#create-box').close()
+        document.querySelectorAll('form').forEach((form) => form.reset())
+        this.showSuccess('Account successfully created! You can now log in.')
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+        document.querySelectorAll('form').forEach((form) => form.reset())
+      }
+    },
+    async connectUser() {
+      if (this.isLocked) return
+      const e = document.querySelector('#name-connect').value.trim()
+      const t = document.querySelector('#psswd-connect').value
+      if (!e || !t || e.length > 30 || t.length > 64) return
+      if (!/^[a-zA-ZÀ-ÿ -]+$/.test(e)) {
+        this.showError('Name can only contain letters, spaces and accents...')
+        return
+      }
+      const nameConnect = e
+      const psswdConnect = t
+      try {
+        const data = new URLSearchParams({ nameConnect, psswdConnect })
+        const res = await fetch('api/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data,
+        })
+        if (!res.ok) {
+          document.querySelectorAll('form').forEach((form) => form.reset())
+          let time = 10
+          const btn = document.querySelector('#connect-user button[type="submit"]')
+          const btnText = btn.textContent
+          btn.disabled = true
+          const errorMessage = await res.text()
+          this.showError(errorMessage)
+          const interval = setInterval(() => {
+            time -= 1
+            btn.textContent = time
+          }, 1000)
+          setTimeout(() => {
+            clearInterval(interval)
+            btn.disabled = false
+            btn.textContent = btnText
+          }, 10000)
+          return
+        }
+        const response = await res.json()
+        localStorage.setItem('csrfToken', response.csrfToken)
+        window.location.reload()
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+        document.querySelectorAll('form').forEach((form) => form.reset())
+      }
+    },
+    async changePassword() {
+      if (this.isLocked) return
+      const a = document.querySelector('#old-psswd').value
+      const e = document.querySelector('#new-psswd').value
+      const t = document.querySelector('#new-psswd-valid').value
+      if (!a || !e || !t || e.length < 10 || e.length > 64) return
+      if (/^[0-9]+$/.test(t)) {
+        this.showError('Password too weak (only numbers)...')
+        return
+      }
+      if (/^[a-z]+$/.test(t)) {
+        this.showError('Password too weak (only lowercase letters)...')
+        return
+      }
+      if (/^[A-Z]+$/.test(t)) {
+        this.showError('Password too weak (only uppercase letters)...')
+        return
+      }
+      if (/^[a-zA-Z]+$/.test(t)) {
+        this.showError('Password too weak (only letters)...')
+        return
+      }
+      if (/^[a-zA-Z0-9]+$/.test(t)) {
+        this.showError('Password should contain one special character...')
+        return
+      }
+      if (e !== t) {
+        this.showError('Passwords do not match...')
+        return
+      }
+      const psswdOld = a
+      const psswdNew = e
+      try {
+        const data = new URLSearchParams({ psswdOld, psswdNew, csrfToken: this.getCsrfToken() })
+        const res = await fetch('api/update-password/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data,
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
+          document.querySelectorAll('form').forEach((form) => form.reset())
+          return
         }
+        document.querySelector('#manage-dialog').close()
+        this.showSuccess('Successfully changed password!')
+        document.querySelectorAll('form').forEach((form) => form.reset())
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+        document.querySelectorAll('form').forEach((form) => form.reset())
+      }
+    },
+    async deleteAccount() {
+      if (this.isLocked) return
+      const psswd = document.querySelector('#delete-psswd').value
+      if (!psswd || psswd.length < 10 || psswd.length > 64) return
+      try {
+        const data = new URLSearchParams({ psswd, csrfToken: this.getCsrfToken() })
+        const res = await fetch('api/delete-user/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data,
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          document.querySelectorAll('form').forEach((form) => form.reset())
+          return
+        }
+        window.location.reload()
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+        document.querySelectorAll('form').forEach((form) => form.reset())
+      }
+    },
+    async privateNote() {
+      const noteId = document.querySelector('#id-note-private').value
+      const noteLink = document.querySelector('#link-note-private').value
+      if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
+      if (!noteLink || !/^[a-zA-Z0-9]{32}$/.test(noteLink)) return
+      try {
+        const data = new URLSearchParams({ noteId, noteLink, csrfToken: this.getCsrfToken() })
+        const res = await fetch('api/private-note/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data,
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        document.querySelector('#public-note-dialog').close()
+        await this.getCloudNotes()
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
       }
     },
-    async unlockApp() {
-      await this.verifyFingerprint().then(async (res) => {
-        if (!res) return
-        this.isLocked = false
-        if (this.isAuthenticated) await this.getCloudNotes()
-        else await this.getLocalNotes()
-      })
+    async publicNote() {
+      const noteId = document.querySelector('#id-note-public').value
+      if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
+      try {
+        const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
+        const res = await fetch('api/public-note/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data,
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        document.querySelector('#private-note-dialog').close()
+        await this.getCloudNotes()
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+      }
     },
-    getCsrfToken() {
-      return localStorage.getItem('csrfToken')
+    openSidebar() {
+      if (this.isLocked) return
+      document.querySelector('#sidebar').classList.add('show')
     },
-    showManageAccountPopup() {
-      document.querySelector('#manage-popup-box').showModal()
+    openCreateUserDialog() {
+      document.querySelector('#login-dialog').close()
+      document.querySelector('#create-box').showModal()
     },
-    showLoginPopup() {
-      document.querySelector('#login-popup-box').showModal()
+    openDeleteCloudNoteDialog(noteId) {
+      document.querySelector('#delete-note-dialog').showModal()
+      document.querySelector('#id-note-delete').value = noteId
     },
-    showSettingsPopup() {
-      document.querySelector('#settings-popup-box').showModal()
+    openDeleteLocalNoteDialog(noteId) {
+      document.querySelector('#delete-note-dialog').showModal()
+      document.querySelector('#id-note-delete').value = noteId
     },
-    showSortPopup() {
-      document.querySelector('#sort-popup-box').showModal()
+    openManageAccountDialog() {
+      document.querySelector('#manage-dialog').showModal()
     },
-    showFilterPopup() {
-      document.querySelector('#filter-popup-box').showModal()
+    openLoginDialog() {
+      document.querySelector('#login-dialog').showModal()
     },
-    showColorPickerPopup() {
-      document.querySelector('#settings-popup-box').close()
-      document.querySelector('#colorpicker-popup-box').showModal()
+    openSettingsDialog() {
+      document.querySelector('#settings-dialog').showModal()
     },
-    showAddNotePopup() {
+    openSortDialog() {
+      document.querySelector('#sort-dialog').showModal()
+    },
+    openFilterDialog() {
+      document.querySelector('#filter-dialog').showModal()
+    },
+    openColorPickerDialog() {
+      document.querySelector('#settings-dialog').close()
+      document.querySelector('#colorpicker-dialog').showModal()
+    },
+    openAddNoteDialog() {
       this.isUpdate = false
-      document.querySelector('#note-popup-box').showModal()
+      document.querySelector('#note-dialog').showModal()
       document.querySelectorAll('#colors span').forEach((e) => {
         e.classList.remove('selected')
       })
@@ -1431,26 +1245,22 @@ export default {
       document.querySelector('#folders input[name="add-folder"][value=""').checked = true
       document.querySelector('#categories input[name="add-cat"][value=""').checked = true
     },
-    showFolderPopup() {
-      document.querySelector('#folder-popup-box').showModal()
+    openFolderDialog() {
+      document.querySelector('#folder-dialog').showModal()
     },
-    showCatPopup() {
-      document.querySelector('#category-popup-box').showModal()
+    openCatDialog() {
+      document.querySelector('#category-dialog').showModal()
     },
-    showReminderPopup() {
-      document.querySelector('#reminder-popup-box').showModal()
+    openDownloadNoteDialog(noteId) {
+      if (!noteId) return
+      document.querySelector('#id-note-download').value = noteId
+      document.querySelectorAll('#download-dialog input[name="download-notes"]').forEach((e) => {
+        e.checked = false
+      })
+      document.querySelector('#download-dialog').showModal()
     },
-    async toggleLang(lang) {
-      const validLanguages = ['fr', 'de', 'es']
-      if (validLanguages.includes(lang)) localStorage.setItem('lang', lang)
-      else localStorage.removeItem('lang')
-      this.lang = localStorage.getItem('lang') || 'en'
-      window.location.reload()
-    },
-    openSidebar() {
-      if (this.isLocked) return
-      this.preventBodyScrolling(true)
-      document.querySelector('#sidebar').classList.add('show')
+    openReminderDialog() {
+      document.querySelector('#reminder-dialog').showModal()
     },
     searchNotes() {
       const searchValue = this.searchValue.trim().toLowerCase()
@@ -1489,7 +1299,7 @@ export default {
       label.appendChild(span)
       folders.appendChild(label)
       document.querySelector('#name-folder').value = ''
-      document.querySelector('#folder-popup-box').close()
+      document.querySelector('#folder-dialog').close()
     },
     createCategory() {
       const categoryName = document.querySelector('#name-category').value.trim()
@@ -1512,38 +1322,29 @@ export default {
       label.appendChild(span)
       categories.appendChild(label)
       document.querySelector('#name-category').value = ''
-      document.querySelector('#category-popup-box').close()
+      document.querySelector('#category-dialog').close()
     },
     downloadAllNotes() {
-      document.querySelectorAll('#download-popup-box input[name="download-notes"]').forEach((e) => {
+      document.querySelectorAll('#download-dialog input[name="download-notes"]').forEach((e) => {
         e.checked = false
       })
-      document.querySelector('#download-popup-box').showModal()
+      document.querySelector('#download-dialog').showModal()
     },
     toggleSpellcheck() {
       if (this.spellcheck) {
         localStorage.removeItem('spellcheck')
-        document.querySelector('#note-popup-box #content').setAttribute('spellcheck', 'true')
+        document.querySelector('#note-dialog #content').setAttribute('spellcheck', 'true')
       } else {
         localStorage.setItem('spellcheck', 'false')
-        document.querySelector('#note-popup-box #content').setAttribute('spellcheck', 'false')
+        document.querySelector('#note-dialog #content').setAttribute('spellcheck', 'false')
       }
     },
     clearNoteContent() {
-      document.querySelector('#note-popup-box #content').value = ''
+      document.querySelector('#note-dialog #content').value = ''
       this.noteContentLength = 0
     },
-    preventBodyScrolling(bool) {
-      if (bool) {
-        document.body.style.overflowY = 'hidden'
-        document.body.style.position = 'fixed'
-      } else {
-        document.body.style.overflowY = 'auto'
-        document.body.style.position = 'relative'
-      }
-    },
     updateNoteContentLength() {
-      const content = document.querySelector('#note-popup-box #content').value
+      const content = document.querySelector('#note-dialog #content').value
       this.noteContentLength = content.length
     },
     showSuccess(message) {
@@ -1565,40 +1366,6 @@ export default {
           e.classList.add('d-none')
         }, 5000)
       })
-    },
-    downloadNote(noteId) {
-      if (!noteId) return
-      document.querySelector('#id-note-download').value = noteId
-      document.querySelectorAll('#download-popup-box input[name="download-notes"]').forEach((e) => {
-        e.checked = false
-      })
-      document.querySelector('#download-popup-box').showModal()
-    },
-    copy(content) {
-      navigator.clipboard.writeText(content)
-    },
-    toggleFullscreen(noteId) {
-      if (!noteId) return
-      document.querySelectorAll('.note').forEach((note) => {
-        if (note.getAttribute('data-note-id') !== noteId) note.classList.remove('fullscreen')
-      })
-      document.querySelector('#sidebar').classList.remove('show')
-      const note = document.querySelector(`.note[data-note-id="${noteId}"]`)
-      note.querySelector('.details').scrollTop = 0
-      note.classList.toggle('fullscreen')
-      this.preventBodyScrolling(false)
-    },
-    shareNote(noteId, link) {
-      if (!noteId) return
-      if (link) {
-        document.querySelector('#public-note-popup-box').showModal()
-        document.querySelector('#id-note-private').value = noteId
-        document.querySelector('#link-note-private').value = link
-        document.querySelector('#copy-note-link').textContent = link
-      } else {
-        document.querySelector('#private-note-popup-box').showModal()
-        document.querySelector('#id-note-public').value = noteId
-      }
     },
     noteActions() {
       document.querySelectorAll('.bottom-content i').forEach((e) => {
@@ -1641,8 +1408,8 @@ export default {
           )
           else if (target.classList.contains('pin-note')) this.isAuthenticated ? this.pinCloudNote(noteId) : this.pinLocalNote(noteId)
           else if (target.classList.contains('copy-note')) this.copy(noteContent)
-          else if (target.classList.contains('delete-note')) this.isAuthenticated ? this.deleteCloudNote(noteId) : this.deleteLocalNote(noteId)
-          else if (target.classList.contains('download-note')) this.downloadNote(noteId)
+          else if (target.classList.contains('delete-note')) this.isAuthenticated ? this.openDeleteCloudNoteDialog(noteId) : this.openDeleteLocalNoteDialog(noteId)
+          else if (target.classList.contains('download-note')) this.openDownloadNoteDialog(noteId)
           else if (target.classList.contains('share-note')) this.shareNote(noteId, noteLink, noteTitle, noteContent)
         })
         e.addEventListener('keydown', (event) => {
@@ -1657,10 +1424,10 @@ export default {
           this.toggleFullscreen(event.currentTarget.getAttribute('data-note-id'))
         })
       })
-      document.querySelectorAll('#filter-popup-box input[name="filter-notes"]').forEach((e) => {
+      document.querySelectorAll('#filter-dialog input[name="filter-notes"]').forEach((e) => {
         e.addEventListener('change', () => {
           const selectedCategories = []
-          const checkedCategories = document.querySelectorAll('#filter-popup-box input[name="filter-notes"]:checked')
+          const checkedCategories = document.querySelectorAll('#filter-dialog input[name="filter-notes"]:checked')
           if (checkedCategories.length === 0) {
             document.querySelectorAll('.note').forEach((note) => note.classList.remove('d-none'))
             return
@@ -1735,10 +1502,428 @@ export default {
         sortCategories.appendChild(sortLabel)
       }
     },
+    selectColor(element) {
+      document.querySelectorAll('#colors span').forEach((e) => e.classList.remove('selected'));
+      element.target.classList.add('selected')
+    },
+    async selectSortOption(e) {
+      const option = e.target.value
+      if (!['1', '2', '3', '4'].includes(option)) return
+      if (option === '1') localStorage.removeItem('sort_notes')
+      else localStorage.setItem('sort_notes', option)
+      if (this.isAuthenticated) await this.getCloudNotes()
+      else await this.getLocalNotes()
+    },
+    async downloadNotes(type) {
+      if (this.fingerprintEnabled) {
+        const res = await this.verifyFingerprint()
+        if (!res) return
+      }
+      if (this.notesJSON.length === 0) return
+      const a = document.createElement('a')
+      let filename = ''
+      let allNotesContent = []
+      const allNotes = document.querySelectorAll('.note')
+      if (document.querySelector('#id-note-download').value === '') {
+        const notesPromises = Array.from(allNotes).map(async (note) => {
+          const noteId = note.getAttribute('data-note-id')
+          const noteData = this.notesJSON.find((note) => note.id === noteId)
+          const title = this.isAuthenticated
+            ? noteData.title
+            : await this.decryptLocalNotes(this.localDbKey, noteData.title)
+          const content = this.isAuthenticated
+            ? noteData.content
+            : await this.decryptLocalNotes(this.localDbKey, noteData.content)
+          return `# ${title}\n${content}`
+        })
+        allNotesContent = await Promise.all(notesPromises)
+        filename = type === 'txt' ? 'notes.txt' : 'notes.md'
+      } else {
+        const note = document.querySelector(`.note[data-note-id="${document.querySelector('#id-note-download').value}"]`)
+        const noteId = note.getAttribute('data-note-id')
+        const title = this.isAuthenticated
+          ? this.notesJSON.find((note) => note.id === noteId).title
+          : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).title)
+        const content = this.isAuthenticated
+          ? this.notesJSON.find((note) => note.id === noteId).content
+          : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).content)
+        allNotesContent = [`# ${title}\n${content}`]
+        filename = type === 'txt' ? `${title}.txt` : `${title}.md`
+      }
+      const blob = new Blob([allNotesContent.join('\n\n')], { type: 'text/plaincharset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      a.href = url
+      a.download = filename
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      document.querySelector('#download-dialog').close()
+    },
+    async getLocalNotes() {
+      if (this.isLocked) return
+
+      this.notesJSON = JSON.parse(localStorage.getItem('local_notes')) || []
+
+      if (this.notesJSON.length === 0) return
+
+      const sort = localStorage.getItem('sort_notes') || '1'
+      document.querySelector(`#sort-dialog input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
+      document.querySelector('#list-notes').textContent = ''
+      document.querySelector('#filter-categories').textContent = ''
+      document.querySelector('#folders .list').textContent = ''
+      document.querySelector('#categories .list').textContent = ''
+      document.querySelectorAll('.local-note').forEach((e) => e.remove())
+
+      marked.use(this.markedConfig)
+      marked.use(markedKatex(this.katexConfig))
+
+      try {
+        const db = await this.openIndexedDB(this.localDbName, this.localDbKeyName)
+        this.localDbKey = await this.getKeyFromDB(db, this.localDbKeyName)
+
+        this.notesJSON.sort((a, b) => {
+          if (a.pinned === 1 && b.pinned === 0) return -1
+          if (a.pinned === 0 && b.pinned === 1) return 1
+
+          switch (sort) {
+            case '1':
+              return b.date.localeCompare(a.date)
+            case '2':
+              return a.date.localeCompare(b.date)
+            case '3':
+              return a.title.localeCompare(b.title)
+            case '4':
+              return b.title.localeCompare(a.title)
+            default:
+              break
+          }
+        })
+
+        const fragment = document.createDocumentFragment()
+        const allFolders = new Set()
+        const allCategories = new Set()
+
+        const promises = this.notesJSON.map(async (row) => {
+          const {
+            id, title, content, color, date, hidden, pinned, folder, category, reminder
+          } = row
+          if (!title || !color || !date) return
+          const deTitleString = await this.decryptLocalNotes(this.localDbKey, title)
+          const deContentString = await this.decryptLocalNotes(this.localDbKey, content)
+          const bottomContentElement = document.createElement('div')
+          bottomContentElement.classList.add('bottom-content')
+
+          const paragraph = document.createElement('p')
+          paragraph.classList.add('p-note-list')
+          paragraph.tabIndex = 0
+          paragraph.setAttribute('role', 'button')
+          paragraph.setAttribute('data-note-id', id)
+
+          const noteElement = document.createElement('div')
+          noteElement.classList.add('note', color, 'local-note')
+          noteElement.setAttribute('data-note-id', id)
+
+          const titleElement = document.createElement('h2')
+          titleElement.classList.add('title')
+          titleElement.textContent = deTitleString
+
+          const contentElement = document.createElement('div')
+          contentElement.classList.add('details-content')
+
+          const detailsElement = document.createElement('div')
+          detailsElement.classList.add('details')
+          detailsElement.appendChild(titleElement)
+          detailsElement.appendChild(contentElement)
+
+          const dateElement = document.createElement('div')
+          dateElement.classList.add('date')
+          dateElement.textContent += new Date(date).toLocaleDateString()
+
+          const editIconElement = document.createElement('i')
+          editIconElement.classList.add('fa-solid', 'fa-pen', 'note-action', 'edit-note')
+          editIconElement.tabIndex = 0
+          editIconElement.setAttribute('role', 'button')
+          editIconElement.setAttribute('aria-label', 'Edit note')
+          bottomContentElement.appendChild(editIconElement)
+
+          const pinElement = document.createElement('i')
+          pinElement.classList.add('fa-solid', 'note-action', 'pin-note')
+          pinElement.tabIndex = 0
+          pinElement.setAttribute('role', 'button')
+          pinElement.setAttribute('aria-label', 'Pin note')
+          bottomContentElement.appendChild(pinElement)
+
+          const trashIconElement = document.createElement('i')
+          trashIconElement.classList.add('fa-solid', 'fa-trash-can', 'note-action', 'delete-note')
+          trashIconElement.tabIndex = 0
+          trashIconElement.setAttribute('role', 'button')
+          trashIconElement.setAttribute('aria-label', 'Delete note')
+          bottomContentElement.appendChild(trashIconElement)
+
+          if (pinned) {
+            noteElement.classList.add('pinned')
+            const pinnedElement = document.createElement('span')
+            pinnedElement.classList.add('custom-check')
+            const iconPin = document.createElement('i')
+            iconPin.classList.add('fa-solid', 'fa-thumbtack')
+            pinnedElement.appendChild(iconPin)
+            paragraph.appendChild(pinnedElement)
+            pinElement.classList.add('fa-thumbtack-slash')
+          } else pinElement.classList.add('fa-thumbtack')
+
+          if (reminder) {
+            const reminderElement = document.createElement('span')
+            reminderElement.classList.add('custom-check')
+            const iconReminder = document.createElement('i')
+            iconReminder.classList.add('fa-solid', 'fa-bell')
+            reminderElement.appendChild(iconReminder)
+            paragraph.appendChild(reminderElement)
+
+            const reminderElementTitle = document.createElement('span')
+            reminderElementTitle.classList.add('reminder-date')
+            const reminderIcon = document.createElement('i')
+            reminderIcon.classList.add('fa-solid', 'fa-bell')
+            reminderElementTitle.appendChild(reminderIcon)
+            const reminderSpan = document.createElement('span')
+            reminderSpan.textContent = new Date(reminder).toLocaleDateString(undefined, {
+              weekday: 'short',
+              year: '2-digit',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+            reminderElementTitle.appendChild(reminderSpan)
+            titleElement.appendChild(reminderElementTitle)
+          }
+
+          if (hidden) {
+            const hiddenElement = document.createElement('span')
+            hiddenElement.classList.add('custom-check')
+            const eyeIconElement = document.createElement('i')
+            eyeIconElement.classList.add('fa-solid', 'fa-eye-slash')
+            const iconEye = document.createElement('i')
+            iconEye.classList.add('fa-solid', 'fa-eye-slash')
+            hiddenElement.appendChild(iconEye)
+            paragraph.appendChild(hiddenElement)
+            contentElement.appendChild(eyeIconElement)
+          } else {
+            if (deContentString) {
+              const clipboardIconElement = document.createElement('i')
+              clipboardIconElement.classList.add('fa-solid', 'fa-clipboard', 'note-action', 'copy-note')
+              clipboardIconElement.tabIndex = 0
+              clipboardIconElement.setAttribute('role', 'button')
+              clipboardIconElement.setAttribute('aria-label', 'Copy note content')
+              bottomContentElement.appendChild(clipboardIconElement)
+
+              const downloadIconElement = document.createElement('i')
+              downloadIconElement.classList.add('fa-solid', 'fa-download', 'note-action', 'download-note')
+              downloadIconElement.tabIndex = 0
+              downloadIconElement.setAttribute('role', 'button')
+              downloadIconElement.setAttribute('aria-label', 'Download note')
+              bottomContentElement.appendChild(downloadIconElement)
+
+              const parsedContent = marked.parse(deContentString)
+              contentElement.innerHTML = parsedContent
+            }
+          }
+
+          if (folder) {
+            allFolders.add(folder)
+            paragraph.setAttribute('data-folder', folder)
+          }
+
+          if (category) {
+            allCategories.add(category)
+            paragraph.setAttribute('data-category', category)
+            const categoryElement = document.createElement('span')
+            categoryElement.classList.add('custom-check')
+            categoryElement.textContent = category
+            paragraph.appendChild(categoryElement)
+          }
+
+          noteElement.appendChild(detailsElement)
+          noteElement.appendChild(dateElement)
+          noteElement.appendChild(bottomContentElement)
+
+          const titleSpan = document.createElement('span')
+          titleSpan.classList.add('title-list')
+          titleSpan.textContent = deTitleString
+
+          const dateSpan = document.createElement('span')
+          dateSpan.classList.add('date-list')
+          dateSpan.textContent = new Date(date).toLocaleDateString(undefined, {
+            weekday: 'short',
+            year: '2-digit',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+
+          fragment.appendChild(noteElement)
+          paragraph.appendChild(titleSpan)
+          paragraph.appendChild(dateSpan)
+          if (!folder) document.querySelector('#list-notes').appendChild(paragraph)
+          else {
+            const folderDetails = document.querySelector(`details[data-folder="${encodeURIComponent(folder)}"]`)
+            if (!folderDetails) {
+              const newFolderDetails = document.createElement('details')
+              newFolderDetails.setAttribute('open', 'open')
+              newFolderDetails.setAttribute('data-folder', encodeURIComponent(folder))
+              const summary = document.createElement('summary')
+              const folderIcon = document.createElement('i')
+              folderIcon.classList.add('fa-solid', 'fa-folder')
+              summary.appendChild(folderIcon)
+              const folderSpan = document.createElement('span')
+              folderSpan.textContent = folder
+              summary.appendChild(folderSpan)
+              newFolderDetails.appendChild(summary)
+              newFolderDetails.appendChild(paragraph)
+              document.querySelector('#list-notes').appendChild(newFolderDetails)
+            } else {
+              folderDetails.appendChild(paragraph)
+            }
+          }
+        })
+        await Promise.all(promises)
+
+        this.noteFolderOrCategories(allFolders, allCategories)
+
+        document.querySelector('main').appendChild(fragment)
+        this.noteActions()
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+      }
+    },
+    async addLocalNote() {
+      try {
+        if (this.isLocked) return
+        const noteId = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
+        const title = document.querySelector('#note-dialog #title').value.trim()
+        const content = document.querySelector('#note-dialog #content').value.trim()
+        const color = document.querySelector('#colors .selected').classList[0]
+        const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
+        const hidden = document.querySelector('#check-hidden').checked ? 1 : 0
+        const folder = document.querySelector('#folders input[name="add-folder"]:checked').value
+        const category = document.querySelector('#categories input[name="add-cat"]:checked').value
+        const reminder = document.querySelector('#date-reminder-input').value
+
+        if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
+
+        const mdContent = DOMPurify.sanitize(content, this.purifyConfig)
+
+        const dbName = 'notes_db'
+        const objectStoreName = 'key'
+        const db = await this.openIndexedDB(dbName, objectStoreName)
+        let key = await this.getKeyFromDB(db, objectStoreName)
+
+        if (!key) {
+          key = await window.crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 },
+            true,
+            ['encrypt', 'decrypt'],
+          )
+          await this.storeKeyInDB(db, objectStoreName, key)
+        }
+
+        const enTitle = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: new Uint8Array(12) },
+          key,
+          new TextEncoder().encode(JSON.stringify(title)),
+        )
+
+        const enContent = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: new Uint8Array(12) },
+          key,
+          new TextEncoder().encode(JSON.stringify(mdContent)),
+        )
+
+        const note = {
+          id: noteId,
+          title: this.arrayBufferToBase64(enTitle),
+          content: this.arrayBufferToBase64(enContent),
+          color,
+          date,
+          hidden,
+          folder,
+          category,
+          reminder,
+          pinned: 0,
+        }
+
+        if (this.isUpdate) {
+          const noteIdToUpdate = document.querySelector('#id-note').value
+          const noteToUpdate = this.notesJSON.find((note) => note.id === noteIdToUpdate)
+
+          if (!noteToUpdate) return
+          noteToUpdate.title = note.title
+          noteToUpdate.content = note.content
+          noteToUpdate.color = note.color
+          noteToUpdate.date = note.date
+          noteToUpdate.hidden = note.hidden
+          noteToUpdate.folder = note.folder
+          noteToUpdate.category = note.category
+          noteToUpdate.reminder = note.reminder
+          noteToUpdate.pinned = note.pinned
+        } else this.notesJSON.push(note)
+
+        localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
+        document.querySelector('#note-dialog').close()
+        document.querySelector('#note-dialog form').reset()
+        this.noteContentLength = 0
+        await this.getLocalNotes()
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+      }
+    },
+    async updateLocalNote(noteId, title, content, color, hidden, folder, category, reminder) {
+      if (hidden && this.fingerprintEnabled) {
+        const res = await this.verifyFingerprint()
+        if (!res) return
+      }
+      this.isUpdate = true
+      this.noteContentLength = content.length
+      document.querySelector('#note-dialog').showModal()
+      document.querySelector('#id-note').value = noteId
+      document.querySelector('#note-dialog #title').value = title
+      document.querySelector('#note-dialog #content').value = content
+      document.querySelector(`#folders input[name="add-folder"][value="${folder}"]`).checked = true
+      document.querySelector(`#categories input[name="add-cat"][value="${category}"]`).checked = true
+      document.querySelector('#date-reminder-input').value = reminder
+      document.querySelectorAll('#colors span').forEach((e) => {
+        if (e.classList.contains(color)) e.classList.add('selected')
+        else e.classList.remove('selected')
+      })
+      document.querySelector('#check-hidden').checked = hidden
+      document.querySelector('#note-dialog #content').focus()
+    },
+    async pinLocalNote(noteId) {
+      if (!noteId) return
+      const note = document.querySelector(`.note[data-note-id="${noteId}"]`)
+      const pinned = note.classList.contains('pinned')
+      if (pinned) note.classList.add('pinned')
+      else note.classList.remove('pinned')
+      this.notesJSON.find((note) => note.id === noteId).pinned = pinned ? 0 : 1
+      localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
+      await this.getLocalNotes()
+    },
+    async deleteLocalNote() {
+      const noteId = document.querySelector('#id-note-delete').value
+      if (!noteId) return
+      this.notesJSON.splice(noteId, 1)
+      localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
+      document.querySelector(`.note[data-note-id="${noteId}"]`).remove()
+      await this.getLocalNotes()
+      document.querySelector('#delete-note-dialog').close()
+    },
     async getCloudNotes() {
       if (this.isLocked) return
+
       const sort = localStorage.getItem('sort_notes') || '1'
-      document.querySelector(`#sort-popup-box input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
+      document.querySelector(`#sort-dialog input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
       document.querySelector('#list-notes').textContent = ''
       document.querySelector('#filter-categories').textContent = ''
       document.querySelector('#folders .list').textContent = ''
@@ -1789,12 +1974,6 @@ export default {
               break
           }
         })
-
-        const numberOfNotesElement = document.createElement('h2')
-        if (this.lang === 'de') numberOfNotesElement.textContent = `Notizen (${this.notesJSON.length})`
-        else if (this.lang === 'es') numberOfNotesElement.textContent = `Notas (${this.notesJSON.length})`
-        else numberOfNotesElement.textContent = `Notes (${this.notesJSON.length})`
-        document.querySelector('#list-notes').appendChild(numberOfNotesElement)
 
         const fragment = document.createDocumentFragment()
         const allFolders = new Set()
@@ -2005,18 +2184,140 @@ export default {
         this.showError(`An error occurred - ${error}`)
       }
     },
+    async addCloudNote() {
+      try {
+        if (this.dataByteSize > this.maxDataByteSize) {
+          this.showError('You have reached the maximum storage capacity...')
+          return
+        }
+        if (this.isLocked) return
+        document.querySelector('#submit-note-btn').disabled = true
+        const noteId = document.querySelector('#id-note').value
+        const title = document.querySelector('#note-dialog #title').value.trim()
+        const content = document.querySelector('#note-dialog #content').value.trim()
+        const color = document.querySelector('#colors .selected').classList[0]
+        const hidden = document.querySelector('#check-hidden').checked ? 1 : 0
+        const folder = document.querySelector('#folders input[name="add-folder"]:checked').value
+        const category = document.querySelector('#categories input[name="add-cat"]:checked').value
+        const reminder = document.querySelector('#date-reminder-input').value
+        const allColors = [
+          'bg-default',
+          'bg-red',
+          'bg-orange',
+          'bg-yellow',
+          'bg-lime',
+          'bg-green',
+          'bg-cyan',
+          'bg-light-blue',
+          'bg-blue',
+          'bg-purple',
+          'bg-pink',
+        ]
+
+        if (this.isUpdate && !noteId) return
+        if (noteId && !/^[a-zA-Z0-9]+$/.test(noteId)) return
+        if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
+        if (!allColors.includes(color)) return
+        if (reminder && !new Date(reminder).getTime()) return
+        const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
+
+        const data = new URLSearchParams({
+          title,
+          content: cleanContent,
+          color,
+          hidden,
+          folder,
+          category,
+          reminder,
+          csrfToken: this.getCsrfToken()
+        })
+
+        if (this.isUpdate) data.set('noteId', noteId)
+
+        const url = this.isUpdate ? 'api/update-note/' : 'api/add-note/'
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data,
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        document.querySelector('#note-dialog').close()
+        document.querySelector('#note-dialog form').reset()
+        this.noteContentLength = 0
+        await this.getCloudNotes()
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+      } finally {
+        document.querySelector('#submit-note-btn').disabled = false
+      }
+    },
+    async updateCloudNote(noteId, title, content, color, hidden, folder, category, link, reminder) {
+      if (hidden && this.fingerprintEnabled) {
+        const res = await this.verifyFingerprint()
+        if (!res) return
+      }
+      this.isUpdate = true
+      this.noteContentLength = content.length
+      document.querySelector('#note-dialog').showModal()
+      document.querySelector('#id-note').value = noteId
+      document.querySelector('#note-dialog #title').value = title
+      document.querySelector('#note-dialog #content').value = content
+      document.querySelector(`#folders input[name="add-folder"][value="${folder}"]`).checked = true
+      document.querySelector(`#categories input[name="add-cat"][value="${category}"]`).checked = true
+      document.querySelector('#date-reminder-input').value = reminder
+      document.querySelectorAll('#colors span').forEach((e) => {
+        if (e.classList.contains(color)) e.classList.add('selected')
+        else e.classList.remove('selected')
+      })
+      document.querySelector('#check-hidden').checked = hidden
+      if (!link) document.querySelector('#check-hidden').disabled = false
+      else document.querySelector('#check-hidden').disabled = true
+      document.querySelector('#note-dialog #content').focus()
+    },
+    async pinCloudNote(noteId) {
+      if (!noteId) return
+      try {
+        const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
+        const res = await fetch('api/pin-note/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data,
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        await this.getCloudNotes()
+      } catch (error) {
+        this.showError(`An error occurred - ${error}`)
+      }
+    },
+    async deleteCloudNote() {
+      const noteId = document.querySelector('#id-note-delete').value
+      if (!noteId) return
+      await this.fetchDeleteNote(noteId)
+      document.querySelector('#delete-note-dialog').close()
+    },
     async fetchAccount() {
       try {
         const res = await fetch('api/get-user/', {
           method: 'POST',
         })
         const response = await res.json()
+        this.isAuthenticatedResponse = true
         this.isAuthenticated = response.isAuthenticated
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
       }
     },
-    async fetchDelete(noteId) {
+    async fetchDeleteNote(noteId) {
       if (!noteId) return
       try {
         const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
@@ -2049,350 +2350,6 @@ export default {
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
       }
-    },
-    async updateCloudNote(noteId, title, content, color, hidden, folder, category, link, reminder) {
-      if (hidden && this.fingerprintEnabled) {
-        const res = await this.verifyFingerprint()
-        if (!res) return
-      }
-      this.isUpdate = true
-      this.noteContentLength = content.length
-      document.querySelector('#note-popup-box').showModal()
-      document.querySelector('#id-note').value = noteId
-      document.querySelector('#note-popup-box #title').value = title
-      document.querySelector('#note-popup-box #content').value = content
-      document.querySelector(`#folders input[name="add-folder"][value="${folder}"]`).checked = true
-      document.querySelector(`#categories input[name="add-cat"][value="${category}"]`).checked = true
-      document.querySelector('#date-reminder-input').value = reminder
-      document.querySelectorAll('#colors span').forEach((e) => {
-        if (e.classList.contains(color)) e.classList.add('selected')
-        else e.classList.remove('selected')
-      })
-      document.querySelector('#check-hidden').checked = hidden
-      if (!link) document.querySelector('#check-hidden').disabled = false
-      else document.querySelector('#check-hidden').disabled = true
-      document.querySelector('#note-popup-box #content').focus()
-    },
-    async pinLocalNote(noteId) {
-      if (!noteId) return
-      const note = document.querySelector(`.note[data-note-id="${noteId}"]`)
-      const pinned = note.classList.contains('pinned')
-      if (pinned) note.classList.add('pinned')
-      else note.classList.remove('pinned')
-      this.notesJSON.find((note) => note.id === noteId).pinned = pinned ? 0 : 1
-      localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
-      await this.getLocalNotes()
-    },
-    async pinCloudNote(noteId) {
-      if (!noteId) return
-      try {
-        const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
-        const res = await fetch('api/pin-note/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: data,
-        })
-        if (!res.ok) {
-          this.showError(`An error occurred - ${res.status}`)
-          return
-        }
-        await this.getCloudNotes()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
-      }
-    },
-    deleteCloudNote(noteId) {
-      document.querySelector('#delete-note-popup-box').showModal()
-      document.querySelector('#id-note-delete').value = noteId
-    },
-    async getLocalNotes() {
-      if (this.isLocked) return
-      const sort = localStorage.getItem('sort_notes') || '1'
-      document.querySelector(`#sort-popup-box input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
-      document.querySelector('#list-notes').textContent = ''
-      document.querySelector('#filter-categories').textContent = ''
-      document.querySelector('#folders .list').textContent = ''
-      document.querySelector('#categories .list').textContent = ''
-
-      marked.use(this.markedConfig)
-      marked.use(markedKatex(this.katexConfig))
-
-      try {
-        this.notesJSON = JSON.parse(localStorage.getItem('local_notes')) || []
-
-        if (this.notesJSON.length === 0) {
-          if (!document.querySelector('.note[data-note-id="welcome"]')) return
-          document.querySelector('.note[data-note-id="welcome"]').classList.remove('d-none')
-          document.querySelector('.note[data-note-id="welcome"]').addEventListener('click', (event) => {
-            if (event.target.parentElement.classList.contains('bottom-content') || event.target.classList.contains('bottom-content')) return
-            if (event.target.tabIndex > -1) return
-            if (document.getSelection().toString()) return
-            this.toggleFullscreen(event.currentTarget.getAttribute('data-note-id'))
-          })
-          return
-        }
-        document.querySelectorAll('.note').forEach((e) => e.remove())
-
-        const db = await this.openIndexedDB(this.localDbName, this.localDbKeyName)
-        this.localDbKey = await this.getKeyFromDB(db, this.localDbKeyName)
-
-        this.notesJSON.sort((a, b) => {
-          if (a.pinned === 1 && b.pinned === 0) return -1
-          if (a.pinned === 0 && b.pinned === 1) return 1
-
-          switch (sort) {
-            case '1':
-              return b.date.localeCompare(a.date)
-            case '2':
-              return a.date.localeCompare(b.date)
-            case '3':
-              return a.title.localeCompare(b.title)
-            case '4':
-              return b.title.localeCompare(a.title)
-            default:
-              break
-          }
-        })
-
-        const numberOfNotesElement = document.createElement('h2')
-        if (this.lang === 'de') numberOfNotesElement.textContent = `Notizen (${this.notesJSON.length})`
-        else if (this.lang === 'es') numberOfNotesElement.textContent = `Notas (${this.notesJSON.length})`
-        else numberOfNotesElement.textContent = `Notes (${this.notesJSON.length})`
-        document.querySelector('#list-notes').appendChild(numberOfNotesElement)
-
-        const fragment = document.createDocumentFragment()
-        const allFolders = new Set()
-        const allCategories = new Set()
-
-        const promises = this.notesJSON.map(async (row) => {
-          const {
-            id, title, content, color, date, hidden, pinned, folder, category, reminder
-          } = row
-          if (!title || !color || !date) return
-          const deTitleString = await this.decryptLocalNotes(this.localDbKey, title)
-          const deContentString = await this.decryptLocalNotes(this.localDbKey, content)
-          const bottomContentElement = document.createElement('div')
-          bottomContentElement.classList.add('bottom-content')
-
-          const paragraph = document.createElement('p')
-          paragraph.classList.add('p-note-list')
-          paragraph.tabIndex = 0
-          paragraph.setAttribute('role', 'button')
-          paragraph.setAttribute('data-note-id', id)
-
-          const noteElement = document.createElement('div')
-          noteElement.classList.add('note', color)
-          noteElement.setAttribute('data-note-id', id)
-
-          const titleElement = document.createElement('h2')
-          titleElement.classList.add('title')
-          titleElement.textContent = deTitleString
-
-          const contentElement = document.createElement('div')
-          contentElement.classList.add('details-content')
-
-          const detailsElement = document.createElement('div')
-          detailsElement.classList.add('details')
-          detailsElement.appendChild(titleElement)
-          detailsElement.appendChild(contentElement)
-
-          const dateElement = document.createElement('div')
-          dateElement.classList.add('date')
-          dateElement.textContent += new Date(date).toLocaleDateString()
-
-          const editIconElement = document.createElement('i')
-          editIconElement.classList.add('fa-solid', 'fa-pen', 'note-action', 'edit-note')
-          editIconElement.tabIndex = 0
-          editIconElement.setAttribute('role', 'button')
-          editIconElement.setAttribute('aria-label', 'Edit note')
-          bottomContentElement.appendChild(editIconElement)
-
-          const pinElement = document.createElement('i')
-          pinElement.classList.add('fa-solid', 'note-action', 'pin-note')
-          pinElement.tabIndex = 0
-          pinElement.setAttribute('role', 'button')
-          pinElement.setAttribute('aria-label', 'Pin note')
-          bottomContentElement.appendChild(pinElement)
-
-          const trashIconElement = document.createElement('i')
-          trashIconElement.classList.add('fa-solid', 'fa-trash-can', 'note-action', 'delete-note')
-          trashIconElement.tabIndex = 0
-          trashIconElement.setAttribute('role', 'button')
-          trashIconElement.setAttribute('aria-label', 'Delete note')
-          bottomContentElement.appendChild(trashIconElement)
-
-          if (pinned) {
-            noteElement.classList.add('pinned')
-            const pinnedElement = document.createElement('span')
-            pinnedElement.classList.add('custom-check')
-            const iconPin = document.createElement('i')
-            iconPin.classList.add('fa-solid', 'fa-thumbtack')
-            pinnedElement.appendChild(iconPin)
-            paragraph.appendChild(pinnedElement)
-            pinElement.classList.add('fa-thumbtack-slash')
-          } else pinElement.classList.add('fa-thumbtack')
-
-          if (reminder) {
-            const reminderElement = document.createElement('span')
-            reminderElement.classList.add('custom-check')
-            const iconReminder = document.createElement('i')
-            iconReminder.classList.add('fa-solid', 'fa-bell')
-            reminderElement.appendChild(iconReminder)
-            paragraph.appendChild(reminderElement)
-
-            const reminderElementTitle = document.createElement('span')
-            reminderElementTitle.classList.add('reminder-date')
-            const reminderIcon = document.createElement('i')
-            reminderIcon.classList.add('fa-solid', 'fa-bell')
-            reminderElementTitle.appendChild(reminderIcon)
-            const reminderSpan = document.createElement('span')
-            reminderSpan.textContent = new Date(reminder).toLocaleDateString(undefined, {
-              weekday: 'short',
-              year: '2-digit',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-            reminderElementTitle.appendChild(reminderSpan)
-            titleElement.appendChild(reminderElementTitle)
-          }
-
-          if (hidden) {
-            const hiddenElement = document.createElement('span')
-            hiddenElement.classList.add('custom-check')
-            const eyeIconElement = document.createElement('i')
-            eyeIconElement.classList.add('fa-solid', 'fa-eye-slash')
-            const iconEye = document.createElement('i')
-            iconEye.classList.add('fa-solid', 'fa-eye-slash')
-            hiddenElement.appendChild(iconEye)
-            paragraph.appendChild(hiddenElement)
-            contentElement.appendChild(eyeIconElement)
-          } else {
-            if (deContentString) {
-              const clipboardIconElement = document.createElement('i')
-              clipboardIconElement.classList.add('fa-solid', 'fa-clipboard', 'note-action', 'copy-note')
-              clipboardIconElement.tabIndex = 0
-              clipboardIconElement.setAttribute('role', 'button')
-              clipboardIconElement.setAttribute('aria-label', 'Copy note content')
-              bottomContentElement.appendChild(clipboardIconElement)
-
-              const downloadIconElement = document.createElement('i')
-              downloadIconElement.classList.add('fa-solid', 'fa-download', 'note-action', 'download-note')
-              downloadIconElement.tabIndex = 0
-              downloadIconElement.setAttribute('role', 'button')
-              downloadIconElement.setAttribute('aria-label', 'Download note')
-              bottomContentElement.appendChild(downloadIconElement)
-
-              const parsedContent = marked.parse(deContentString)
-              contentElement.innerHTML = parsedContent
-            }
-          }
-
-          if (folder) {
-            allFolders.add(folder)
-            paragraph.setAttribute('data-folder', folder)
-          }
-
-          if (category) {
-            allCategories.add(category)
-            paragraph.setAttribute('data-category', category)
-            const categoryElement = document.createElement('span')
-            categoryElement.classList.add('custom-check')
-            categoryElement.textContent = category
-            paragraph.appendChild(categoryElement)
-          }
-
-          noteElement.appendChild(detailsElement)
-          noteElement.appendChild(dateElement)
-          noteElement.appendChild(bottomContentElement)
-
-          const titleSpan = document.createElement('span')
-          titleSpan.classList.add('title-list')
-          titleSpan.textContent = deTitleString
-
-          const dateSpan = document.createElement('span')
-          dateSpan.classList.add('date-list')
-          dateSpan.textContent = new Date(date).toLocaleDateString(undefined, {
-            weekday: 'short',
-            year: '2-digit',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-
-          fragment.appendChild(noteElement)
-          paragraph.appendChild(titleSpan)
-          paragraph.appendChild(dateSpan)
-          if (!folder) document.querySelector('#list-notes').appendChild(paragraph)
-          else {
-            const folderDetails = document.querySelector(`details[data-folder="${encodeURIComponent(folder)}"]`)
-            if (!folderDetails) {
-              const newFolderDetails = document.createElement('details')
-              newFolderDetails.setAttribute('open', 'open')
-              newFolderDetails.setAttribute('data-folder', encodeURIComponent(folder))
-              const summary = document.createElement('summary')
-              const folderIcon = document.createElement('i')
-              folderIcon.classList.add('fa-solid', 'fa-folder')
-              summary.appendChild(folderIcon)
-              const folderSpan = document.createElement('span')
-              folderSpan.textContent = folder
-              summary.appendChild(folderSpan)
-              newFolderDetails.appendChild(summary)
-              newFolderDetails.appendChild(paragraph)
-              document.querySelector('#list-notes').appendChild(newFolderDetails)
-            } else {
-              folderDetails.appendChild(paragraph)
-            }
-          }
-        })
-        await Promise.all(promises)
-
-        this.noteFolderOrCategories(allFolders, allCategories)
-
-        document.querySelector('main').appendChild(fragment)
-        this.noteActions()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
-      }
-    },
-    async updateLocalNote(noteId, title, content, color, hidden, folder, category, reminder) {
-      if (hidden && this.fingerprintEnabled) {
-        const res = await this.verifyFingerprint()
-        if (!res) return
-      }
-      this.isUpdate = true
-      this.noteContentLength = content.length
-      document.querySelector('#note-popup-box').showModal()
-      document.querySelector('#id-note').value = noteId
-      document.querySelector('#note-popup-box #title').value = title
-      document.querySelector('#note-popup-box #content').value = content
-      document.querySelector(`#folders input[name="add-folder"][value="${folder}"]`).checked = true
-      document.querySelector(`#categories input[name="add-cat"][value="${category}"]`).checked = true
-      document.querySelector('#date-reminder-input').value = reminder
-      document.querySelectorAll('#colors span').forEach((e) => {
-        if (e.classList.contains(color)) e.classList.add('selected')
-        else e.classList.remove('selected')
-      })
-      document.querySelector('#check-hidden').checked = hidden
-      document.querySelector('#note-popup-box #content').focus()
-    },
-    async pin(noteId) {
-      if (!noteId) return
-      const note = document.querySelector(`.note[data-note-id="${noteId}"]`)
-      const pinned = note.classList.contains('pinned')
-      if (pinned) note.classList.add('pinned')
-      else note.classList.remove('pinned')
-      this.notesJSON.find((note) => note.id === noteId).pinned = pinned ? 0 : 1
-      localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
-      await this.getLocalNotes()
-    },
-    deleteLocalNote(noteId) {
-      document.querySelector('#delete-note-popup-box').showModal()
-      document.querySelector('#id-note-delete').value = noteId
     },
     async showSharedNote() {
       const urlParams = new URLSearchParams(window.location.search)
@@ -2473,212 +2430,35 @@ export default {
       noteElement.appendChild(bottomContentElement)
       document.querySelector('main').appendChild(noteElement)
     },
-    changeLanguage(language) {
-      if (language === 'fr') {
-        document.documentElement.setAttribute('lang', 'fr-FR')
-        document.querySelector('#language').value = 'fr'
-        document.querySelector('#legal a').textContent = 'Mentions légales / confidentialité'
-        document.querySelector('#sort-popup-box legend').textContent = 'Trier les notes'
-        document.querySelector('#sort-notes1-span').textContent = 'Date de modification'
-        document.querySelector('#sort-notes2-span').textContent = 'Date de modification (Z-A)'
-        document.querySelector('#sort-notes3-span').textContent = 'Titre'
-        document.querySelector('#sort-notes4-span').textContent = 'Titre (Z-A)'
-        document.querySelector('#filter-popup-box legend').textContent = 'Filtrer les notes par catégorie'
-        document.querySelector('#download-popup-box legend').textContent = 'Type d\'export'
-        document.querySelector('#spellcheck-slider-info').textContent = 'Vérif. ortho.'
-        document.querySelector('#lock-app-slider-info').textContent = 'Vérouiller app'
-        document.querySelector('#hide-infos').textContent = 'Masquer contenu'
-        document.querySelector('#note-popup-box #title').setAttribute('placeholder', 'Titre')
-        document.querySelector('#note-popup-box textarea').setAttribute('placeholder', 'Contenu (Texte brut, Markdown ou HTML)')
-        document.querySelector('#delete-note-popup-box button').textContent = 'Supprimer la note'
-        document.querySelector('#delete-note-popup-box span').textContent = 'La suppression est définitive.'
-        document.querySelector('#folder-popup-box button').textContent = 'Créer le dossier'
-        document.querySelector('#folder-popup-box #name-folder').setAttribute('placeholder', 'Nom du dossier')
-        document.querySelector('#category-popup-box button').textContent = 'Créer la catégorie'
-        document.querySelector('#category-popup-box #name-category').setAttribute('placeholder', 'Nom de la catégorie')
-        document.querySelector('#link-markdown').textContent = 'Guide Markdown'
-        document.querySelector('#link-help').textContent = 'Aide et discussions'
-
-        if (this.isAuthenticated) {
-          document.querySelector('#log-out').textContent = 'Déconnexion'
-          document.querySelector('#last-login').textContent = 'Dernière connexion: '
-          document.querySelector('#old-psswd').setAttribute('placeholder', 'Ancien mot de passe')
-          document.querySelector('#new-psswd').setAttribute('placeholder', 'Nouveau mot de passe')
-          document.querySelector('#new-psswd-valid').setAttribute('placeholder', 'Confirmer le mot de passe')
-          document.querySelector('#change-psswd button[type="submit"]').textContent = 'Changer le mot de passe'
-          document.querySelector('#gen-psswd summary').textContent = 'Changer le mot de passe'
-          document.querySelector('#delete-user summary').textContent = 'Supprimer le compte'
-          document.querySelector('#delete-psswd').setAttribute('placeholder', 'Mot de passe')
-          document.querySelector('#delete-user button').textContent = 'Supprimer le compte'
-          document.querySelector('#private-note span').textContent = 'Voulez-vous rendre votre note privée ? Le lien ne sera plus disponible.'
-          document.querySelector('#private-note button').textContent = 'Rendre privée'
-          document.querySelector('#public-note span').textContent = 'Voulez-vous rendre votre note publique ? Un lien sera disponible pour la partager.'
-          document.querySelector('#public-note button').textContent = 'Rendre publique'
-        } else {
-          document.querySelector('#create-account').textContent = 'Pas encore de compte ?'
-          document.querySelector('#name-connect').setAttribute('placeholder', 'Nom')
-          document.querySelector('#psswd-connect').setAttribute('placeholder', 'Mot de passe')
-          document.querySelector('#connect-form').querySelector('button').textContent = 'Se connecter'
-          document.querySelector('#name-create').setAttribute('placeholder', 'Nom')
-          document.querySelector('#psswd-create').setAttribute('placeholder', 'Mot de passe')
-          document.querySelector('#psswd-create-valid').setAttribute('placeholder', 'Confirmer le mot de passe')
-          document.querySelector('#create-infos').textContent = 'Votre mot de passe est stocké en toute sécurité et vos notes chiffrées. Il vous sera impossible de récupérer votre mot de passe si vous l\'oubliez.'
-          document.querySelector('#create-form button[type="submit"]').textContent = 'Créer mon compte'
-        }
-      } else if (language === 'de') {
-        document.documentElement.setAttribute('lang', 'de')
-        document.querySelector('#language').value = 'de'
-        document.querySelector('#legal a').textContent = 'Impressum / Datenschutz'
-        document.querySelector('#sort-popup-box legend').textContent = 'Notizen sortieren'
-        document.querySelector('#sort-notes1-span').textContent = 'Änderungsdatum'
-        document.querySelector('#sort-notes2-span').textContent = 'Änderungsdatum (Z-A)'
-        document.querySelector('#sort-notes3-span').textContent = 'Titel'
-        document.querySelector('#sort-notes4-span').textContent = 'Titel (Z-A)'
-        document.querySelector('#filter-popup-box legend').textContent = 'Notizen filtern nach Kategorie'
-        document.querySelector('#download-popup-box legend').textContent = 'Exporttyp'
-        document.querySelector('#spellcheck-slider-info').textContent = 'Rechtschreibprüfung'
-        document.querySelector('#lock-app-slider-info').textContent = 'App sperren'
-        document.querySelector('#hide-infos').textContent = 'Inhalt ausblenden'
-        document.querySelector('#note-popup-box #title').setAttribute('placeholder', 'Titel')
-        document.querySelector('#note-popup-box textarea').setAttribute('placeholder', 'Inhalt (Rohtext, Markdown oder HTML)')
-        document.querySelector('#delete-note-popup-box button').textContent = 'Notiz löschen'
-        document.querySelector('#delete-note-popup-box span').textContent = 'Die Löschung ist endgültig.'
-        document.querySelector('#folder-popup-box button').textContent = 'Erstellen'
-        document.querySelector('#folder-popup-box #name-folder').setAttribute('placeholder', 'Ordnername')
-        document.querySelector('#category-popup-box button').textContent = 'Erstellen'
-        document.querySelector('#category-popup-box #name-category').setAttribute('placeholder', 'Kategoriename')
-        document.querySelector('#link-markdown').textContent = 'Markdown-Anleitung'
-        document.querySelector('#link-help').textContent = 'Hilfe und Diskussionen'
-
-        if (this.isAuthenticated) {
-          document.querySelector('#log-out').textContent = 'Abmelden'
-          document.querySelector('#last-login').textContent = 'Letzter Login: '
-          document.querySelector('#old-psswd').setAttribute('placeholder', 'Altes Passwort')
-          document.querySelector('#new-psswd').setAttribute('placeholder', 'Neues Passwort')
-          document.querySelector('#new-psswd-valid').setAttribute('placeholder', 'Passwort bestätigen')
-          document.querySelector('#change-psswd button[type="submit"]').textContent = 'Passwort ändern'
-          document.querySelector('#gen-psswd summary').textContent = 'Passwort ändern'
-          document.querySelector('#delete-user summary').textContent = 'Konto löschen'
-          document.querySelector('#delete-psswd').setAttribute('placeholder', 'Passwort')
-          document.querySelector('#delete-user button').textContent = 'Konto löschen'
-          document.querySelector('#private-note span').textContent = 'Möchten Sie Ihre Notiz privat machen? Der Link ist nicht mehr verfügbar.'
-          document.querySelector('#private-note button').textContent = 'Privat machen'
-          document.querySelector('#public-note span').textContent = 'Möchten Sie Ihre Notiz öffentlich machen? Ein Link wird verfügbar sein, um sie zu teilen.'
-          document.querySelector('#public-note button').textContent = 'Öffentlich machen'
-        } else {
-          document.querySelector('#create-account').textContent = 'Noch kein Konto?'
-          document.querySelector('#name-connect').setAttribute('placeholder', 'Name')
-          document.querySelector('#psswd-connect').setAttribute('placeholder', 'Passwort')
-          document.querySelector('#connect-form').querySelector('button').textContent = 'Anmelden'
-          document.querySelector('#name-create').setAttribute('placeholder', 'Name')
-          document.querySelector('#psswd-create').setAttribute('placeholder', 'Passwort')
-          document.querySelector('#psswd-create-valid').setAttribute('placeholder', 'Passwort bestätigen')
-          document.querySelector('#create-infos').textContent = 'Ihr Passwort wird sicher gespeichert und Ihre Notizen verschlüsselt. Sie können Ihr Passwort nicht wiederherstellen, wenn Sie es vergessen.'
-          document.querySelector('#create-form button[type="submit"]').textContent = 'Mein Konto erstellen'
-        }
-      } else if (language === 'es') {
-        document.documentElement.setAttribute('lang', 'es')
-        document.querySelector('#language').value = 'es'
-        document.querySelector('#legal a').textContent = 'Aviso legal / privacidad'
-        document.querySelector('#sort-popup-box legend').textContent = 'Ordenar notas'
-        document.querySelector('#sort-notes1-span').textContent = 'Fecha de modificación'
-        document.querySelector('#sort-notes2-span').textContent = 'Fecha de modificación (Z-A)'
-        document.querySelector('#sort-notes3-span').textContent = 'Título'
-        document.querySelector('#sort-notes4-span').textContent = 'Título (Z-A)'
-        document.querySelector('#filter-popup-box legend').textContent = 'Filtrar notas por categoría'
-        document.querySelector('#download-popup-box legend').textContent = 'Tipo de exportación'
-        document.querySelector('#spellcheck-slider-info').textContent = 'Corrector ortográfico'
-        document.querySelector('#lock-app-slider-info').textContent = 'Bloquear aplicación'
-        document.querySelector('#hide-infos').textContent = 'Ocultar contenido'
-        document.querySelector('#note-popup-box #title').setAttribute('placeholder', 'Título')
-        document.querySelector('#note-popup-box textarea').setAttribute('placeholder', 'Contenido (Texto sin formato, Markdown o HTML)')
-        document.querySelector('#delete-note-popup-box button').textContent = 'Eliminar nota'
-        document.querySelector('#delete-note-popup-box span').textContent = 'La eliminación es definitiva.'
-        document.querySelector('#folder-popup-box button').textContent = 'Crear'
-        document.querySelector('#folder-popup-box #name-folder').setAttribute('placeholder', 'Nombre de la carpeta')
-        document.querySelector('#category-popup-box button').textContent = 'Crear'
-        document.querySelector('#category-popup-box #name-category').setAttribute('placeholder', 'Nombre de la categoría')
-        document.querySelector('#link-markdown').textContent = 'Guía de Markdown'
-        document.querySelector('#link-help').textContent = 'Ayuda y discusiones'
-
-        if (this.isAuthenticated) {
-          document.querySelector('#log-out').textContent = 'Cerrar sesión'
-          document.querySelector('#last-login').textContent = 'Último inicio de sesión: '
-          document.querySelector('#old-psswd').setAttribute('placeholder', 'Contraseña antigua')
-          document.querySelector('#new-psswd').setAttribute('placeholder', 'Nueva contraseña')
-          document.querySelector('#new-psswd-valid').setAttribute('placeholder', 'Confirmar contraseña')
-          document.querySelector('#change-psswd button[type="submit"]').textContent = 'Cambiar contraseña'
-          document.querySelector('#gen-psswd summary').textContent = 'Cambiar contraseña'
-          document.querySelector('#delete-user summary').textContent = 'Eliminar cuenta'
-          document.querySelector('#delete-psswd').setAttribute('placeholder', 'Contraseña')
-          document.querySelector('#delete-user button').textContent = 'Eliminar cuenta'
-          document.querySelector('#private-note span').textContent = '¿Desea hacer privada su nota? El enlace ya no estará disponible.'
-          document.querySelector('#private-note button').textContent = 'Hacer privada'
-          document.querySelector('#public-note span').textContent = '¿Desea hacer pública su nota? Un enlace estará disponible para compartirla.'
-          document.querySelector('#public-note button').textContent = 'Hacer pública'
-        } else {
-          document.querySelector('#create-account').textContent = '¿Aún no tienes una cuenta?'
-          document.querySelector('#name-connect').setAttribute('placeholder', 'Nombre')
-          document.querySelector('#psswd-connect').setAttribute('placeholder', 'Contraseña')
-          document.querySelector('#connect-form').querySelector('button').textContent = 'Iniciar sesión'
-          document.querySelector('#name-create').setAttribute('placeholder', 'Nombre')
-          document.querySelector('#psswd-create').setAttribute('placeholder', 'Contraseña')
-          document.querySelector('#psswd-create-valid').setAttribute('placeholder', 'Confirmar contraseña')
-          document.querySelector('#create-infos').textContent = 'Su contraseña se almacena de forma segura y sus notas están cifradas. No podrá recuperar su contraseña si la olvida.'
-          document.querySelector('#create-form button[type="submit"]').textContent = 'Crear mi cuenta'
-        }
+    shareNote(noteId, link) {
+      if (!noteId) return
+      if (link) {
+        document.querySelector('#public-note-dialog').showModal()
+        document.querySelector('#id-note-private').value = noteId
+        document.querySelector('#link-note-private').value = link
+        document.querySelector('#copy-note-link').textContent = link
       } else {
-        document.documentElement.setAttribute('lang', 'en')
-        document.querySelector('#language').value = 'en'
-        document.querySelector('#legal a').textContent = 'Legal notice / privacy'
-        document.querySelector('#sort-popup-box legend').textContent = 'Sort notes'
-        document.querySelector('#sort-notes1-span').textContent = 'Modification date'
-        document.querySelector('#sort-notes2-span').textContent = 'Modification date (Z-A)'
-        document.querySelector('#sort-notes3-span').textContent = 'Title'
-        document.querySelector('#sort-notes4-span').textContent = 'Title (Z-A)'
-        document.querySelector('#filter-popup-box legend').textContent = 'Filter notes by category'
-        document.querySelector('#download-popup-box legend').textContent = 'Export type'
-        document.querySelector('#spellcheck-slider-info').textContent = 'Spell check'
-        document.querySelector('#lock-app-slider-info').textContent = 'Lock app'
-        document.querySelector('#hide-infos').textContent = 'Hide content'
-        document.querySelector('#note-popup-box #title').setAttribute('placeholder', 'Title')
-        document.querySelector('#note-popup-box textarea').setAttribute('placeholder', 'Content (Raw text, Markdown or HTML)')
-        document.querySelector('#delete-note-popup-box button').textContent = 'Delete note'
-        document.querySelector('#delete-note-popup-box span').textContent = 'Deletion is permanent.'
-        document.querySelector('#folder-popup-box button').textContent = 'Create folder'
-        document.querySelector('#folder-popup-box #name-folder').setAttribute('placeholder', 'Folder name')
-        document.querySelector('#category-popup-box button').textContent = 'Create category'
-        document.querySelector('#category-popup-box #name-category').setAttribute('placeholder', 'Category name')
-        document.querySelector('#link-markdown').textContent = 'Markdown guide'
-        document.querySelector('#link-help').textContent = 'Help and discussions'
-
-        if (this.isAuthenticated) {
-          document.querySelector('#log-out').textContent = 'Log out'
-          document.querySelector('#last-login').textContent = 'Last login: '
-          document.querySelector('#old-psswd').setAttribute('placeholder', 'Old password')
-          document.querySelector('#new-psswd').setAttribute('placeholder', 'New password')
-          document.querySelector('#new-psswd-valid').setAttribute('placeholder', 'Confirm password')
-          document.querySelector('#change-psswd button[type="submit"]').textContent = 'Change password'
-          document.querySelector('#gen-psswd summary').textContent = 'Change password'
-          document.querySelector('#delete-user summary').textContent = 'Delete account'
-          document.querySelector('#delete-psswd').setAttribute('placeholder', 'Password')
-          document.querySelector('#delete-user button').textContent = 'Delete account'
-          document.querySelector('#private-note span').textContent = 'Do you want to make your note private? The link will no longer be available.'
-          document.querySelector('#private-note button').textContent = 'Make private'
-          document.querySelector('#public-note span').textContent = 'Do you want to make your note public? A link will be available to share it.'
-          document.querySelector('#public-note button').textContent = 'Make public'
-        } else {
-          document.querySelector('#create-account').textContent = 'Don\'t have an account yet?'
-          document.querySelector('#name-connect').setAttribute('placeholder', 'Name')
-          document.querySelector('#psswd-connect').setAttribute('placeholder', 'Password')
-          document.querySelector('#connect-form').querySelector('button').textContent = 'Log in'
-          document.querySelector('#name-create').setAttribute('placeholder', 'Name')
-          document.querySelector('#psswd-create').setAttribute('placeholder', 'Password')
-          document.querySelector('#psswd-create-valid').setAttribute('placeholder', 'Confirm password')
-          document.querySelector('#create-infos').textContent = 'Your password is stored securely and your notes are encrypted. You will not be able to recover your password if you forget it.'
-          document.querySelector('#create-form button[type="submit"]').textContent = 'Create my account'
-        }
+        document.querySelector('#private-note-dialog').showModal()
+        document.querySelector('#id-note-public').value = noteId
       }
+    },
+    toggleFullscreen(noteId) {
+      if (!noteId) return
+      document.querySelectorAll('.note').forEach((note) => {
+        if (note.getAttribute('data-note-id') !== noteId) note.classList.remove('fullscreen')
+      })
+      document.querySelector('#sidebar').classList.remove('show')
+      const note = document.querySelector(`.note[data-note-id="${noteId}"]`)
+      note.querySelector('.details').scrollTop = 0
+      note.classList.toggle('fullscreen')
+    },
+    copy(content) {
+      navigator.clipboard.writeText(content)
+    },
+    copyNoteLink() {
+      const link = document.querySelector('#copy-note-link').textContent
+      const url = new URL(`./?link=${encodeURIComponent(link)}`, window.location.href)
+      navigator.clipboard.writeText(url.href)
     }
   }
 }

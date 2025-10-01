@@ -1,3 +1,9 @@
+#----v25.10.1----#
+-Improve UI/UX
+-Improve code structure
+-Accessibility fixes
+-Bug fixes
+
 #----v25.9.1----#
 -Improve security
     - Add CSRF tokens

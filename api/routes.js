@@ -165,7 +165,6 @@ app.post('/get-lock-app', (req, res) => {
 })
 
 app.post('/lock-app', (req, res) => {
-  if (!req.session.name) return res.status(401)
   const lockApp = req.session.lockApp ? false : true
   req.session.lockApp = lockApp
   res.status(200).send('App lock status updated')
