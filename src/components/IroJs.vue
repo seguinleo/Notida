@@ -1,12 +1,5 @@
 <template>
-  <div class="popup">
-    <div class="content">
-      <div class="close">
-        <i class="fa-solid fa-xmark"></i>
-      </div>
-      <div id="colorPicker" class="row"></div>
-    </div>
-  </div>
+  <div id="colorPicker" class="row"></div>
 </template>
 
 <script>

@@ -86,36 +86,24 @@ html
     blockquote
       border-left: 3px solid rgba(0, 0, 0, .05)
 
-    #success-notification
-      background: #78db62
-
-    #offline,
-    #noscript,
-    .error-notification,
-    .btn-cancel
-      background: #ff9b9b
-
     \::-webkit-scrollbar-thumb,
     pre,
     button,
     header #div-search,
     #sidebar,
     #sidebar-indicator,
-    #list-notes .custom-check,
+    #sidebar #list-notes p .custom-check,
+    #sidebar #list-notes p .custom-check span,
     #copy-note-link,
     #psswd-gen,
     .bg-default,
     .reminder-date,
     .custom-check span,
-    dialog,
     table thead
-      background: rgba(0, 0, 0, .05) !important
+      background: rgba(0, 0, 0, .05)
 
     .fullscreen
       background: rgba(255, 255, 255, .1) !important
-
-    .custom-check input:checked + span
-      background: rgba(0, 0, 0, .15) !important
 
     .popup .content
       background: #fff
@@ -123,8 +111,7 @@ html
     button,
     #sidebar #list-notes p,
     .bottom-content i,
-    .editor-control i,
-    .close i
+    .editor-control i
       &:hover
         background: rgba(0, 0, 0, .1) !important
 
@@ -145,9 +132,6 @@ html
 \::-webkit-scrollbar
   width: 4px
   height: 4px
-
-\::placeholder
-  opacity: .8
 
 h1
   font-size: 1.3rem
@@ -197,7 +181,7 @@ fieldset
 blockquote
   border-left: 3px solid rgba(255, 255, 255, .1)
   padding-left: 10px
-          
+
 details
   margin: 1rem auto
 
@@ -285,6 +269,8 @@ header
       border-radius: 0
       outline: none
       background: none
+      -webkit-appearance: none
+      appearance: none
 
 main
   display: flex
@@ -345,6 +331,8 @@ input
   &[type=number],
   &[type=date],
   &[type=datetime-local]
+    -webkit-appearance: none
+    appearance: none
     height: 36px
     width: 100%
     font-size: 1rem
@@ -358,6 +346,7 @@ input
     display: inline-flex
     justify-content: center
     align-items: center
+    -webkit-appearance: none
     appearance: none
     margin-right: 10px
     width: 1rem
@@ -422,9 +411,7 @@ input
 
     #list-notes
       overflow-y: auto
-
-      h2
-        margin-bottom: 10px
+      overscroll-behavior: contain
 
       p
         display: flex
@@ -473,7 +460,6 @@ input
   right: 0
   text-align: center
   padding: 4px
-  background: #b02d19
 
 .note,
 .shared-note
@@ -497,7 +483,7 @@ input
     -webkit-user-select: none
     user-select: none
     text-align: center
-    margin-bottom: 8px
+    margin-bottom: 10px
 
     i
       cursor: pointer
@@ -507,8 +493,8 @@ input
       font-size: 1.1rem
       transition: .1s
       margin: 0 4px
-      width: 30px
-      height: 30px
+      width: 2rem
+      height: 2rem
       border-radius: 50%
 
 #btn-add-note
@@ -579,6 +565,7 @@ input
   display: flex
   justify-content: flex-end
   padding: 10px 0
+  width: 40px
 
   button
     height: 30px
@@ -594,11 +581,20 @@ input
     border-radius: 50%
     transition: .1s
 
+.done button,
+#success-notification
+  background: rgba(0, 255, 0, .3) !important
+
+#offline,
+#noscript,
+.error-notification,
+.btn-cancel
+  background: rgba(255, 0, 0, .2) !important
+
 button,
 #sidebar #list-notes p,
 .bottom-content i,
-.editor-control i,
-.close i
+.editor-control i
   &:hover
     background: rgba(255, 255, 255, .2) !important
 
@@ -654,7 +650,7 @@ dialog
   max-width: 100vw
   align-content: center
   overflow-x: hidden
-  background: rgba(255, 255, 255, .1)
+  background: none
   backdrop-filter: blur(20px)
 
   .popup
@@ -667,12 +663,16 @@ dialog
     .content
       padding: 4px 1rem
       border-radius: 1rem
+      border: 1px solid rgba(255, 255, 255, .2)
       background: #000
 
-#note-popup-box
+  .popup-small
+    max-width: 350px
+
+#note-dialog
   .popup
     max-width: 1200px
-  
+
   .content
     input,
     textarea
@@ -713,7 +713,7 @@ dialog
     background: rgba(255, 255, 255, .1)
 
   input:checked + span
-    background: rgba(255, 255, 255, .3)
+    background: rgba(0, 255, 0, .3) !important
 
   input[type=radio],
   input[type=checkbox]
@@ -724,7 +724,7 @@ dialog
   align-items: center
   justify-content: center
   font-size: .8rem
-  margin-left: 4px
+  margin-left: 8px
   padding: 4px 8px
   border-radius: 24px
   background: rgba(255, 255, 255, .1)
@@ -778,10 +778,14 @@ dialog
       transform: translateX(26px)
 
     &:checked + .toggle-thumb
-      background-color: #6fd869
+      background-color: rgba(0, 255, 0, .3)
 
 .IroSlider
   margin: auto
+
+#folders,
+#categories
+  margin-top: 1rem
 
 .div-folder-cat div
   display: inline-flex
@@ -815,7 +819,6 @@ dialog
   text-align: center
   padding: 4px 4px 1.5rem
   border-radius: 10px 10px 0 0
-  background: #b02d19
 
 #success-notification,
 .error-notification
@@ -828,12 +831,6 @@ dialog
   padding: 10px
   border-radius: 4px
   z-index: 5
-
-#success-notification
-  background: #217423
-
-.error-notification
-  background: #b02d19
 
 #copy-password-btn
   margin-right: 4px
@@ -881,14 +878,13 @@ dialog
   display: flex
   justify-content: center
   align-items: center
-  top: 50svh
+  top: 50%
+  left: 50%
+  transform: translate(-50%, -50%)
   font-size: 1.6rem
   border-radius: 48px
   width: 75px
   height: 75px
-
-.btn-cancel
-  background: #b02d19
 
 .bg-red
   background: #5e140c
@@ -957,7 +953,7 @@ dialog
     bottom: 1.5rem
     right: 1.5rem
 
-  #note-popup-box
+  #note-dialog
     align-content: flex-end
 
     .popup .content
@@ -1074,6 +1070,9 @@ dialog
 
 .justify-content-between
   justify-content: space-between !important
+
+.justify-content-around
+  justify-content: space-around !important
 
 .align-items-center
   align-items: center !important
