@@ -4,7 +4,7 @@
   </div>
   <header v-if="(!isLocked && isLockedResponse)">
     <button type="button" id="sidebar-indicator" aria-label="Open sidebar" @click="openSidebar()">
-      <i class="fa-solid fa-bars"></i>
+      <svg width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sidebar"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
     </button>
     <div id="div-search" role="search">
       <i class="fa-solid fa-magnifying-glass" role="none"></i>
@@ -23,33 +23,39 @@
         <button v-if="isAuthenticated && !isLocked" id="manage-account" type="button" aria-label="Manage account"
           @click="openManageAccountDialog()">
           <i class="fa-solid fa-circle-user"></i>
+          <span>Manage account</span>
         </button>
         <button v-if="!isAuthenticated && !isLocked" id="log-in" type="button" aria-label="Log in"
           @click="openLoginDialog()">
           <i class="fa-solid fa-circle-user"></i>
-        </button>
-        <button v-if="!isLocked" type="button" id="btn-sort" aria-label="Sort notes" @click="openSortDialog()">
-          <i class="fa-solid fa-arrow-up-wide-short"></i>
-        </button>
-        <button v-if="!isLocked" type="button" id="btn-filter" aria-label="Filter notes" @click="openFilterDialog()">
-          <i class="fa-solid fa-filter"></i>
-        </button>
-        <button v-if="!isLocked" type="button" id="btn-download-all" aria-label="Download all notes"
-          @click="downloadAllNotes()">
-          <i class="fa-solid fa-download"></i>
-        </button>
-        <button v-if="!isLocked" type="button" id="btn-settings" aria-label="Settings" @click="openSettingsDialog()">
-          <i class="fa-solid fa-gear"></i>
+          <span>Log in</span>
         </button>
         <button type="button" id="btn-colorpicker" aria-label="Change app color" @click="openColorPickerDialog()">
           <i class="fa-solid fa-palette"></i>
+          <span>Palette</span>
+        </button>
+        <button v-if="!isLocked" type="button" id="btn-settings" aria-label="Settings" @click="openSettingsDialog()">
+          <i class="fa-solid fa-gear"></i>
+          <span>Settings</span>
         </button>
       </div>
-      <div class="row">
-        <h2>
+      <div class="d-flex justify-content-between align-items-center">
+        <p class="bold">
           Notes
           ({{ notesJSON.length }})
-        </h2>
+        </p>
+        <div v-if="notesJSON.length" id="manage-notes">
+          <button v-if="!isLocked" type="button" id="btn-sort" aria-label="Sort notes" @click="openSortDialog()">
+            <i class="fa-solid fa-arrow-up-wide-short"></i>
+          </button>
+          <button v-if="!isLocked" type="button" id="btn-filter" aria-label="Filter notes" @click="openFilterDialog()">
+            <i class="fa-solid fa-filter"></i>
+          </button>
+          <button v-if="!isLocked" type="button" id="btn-download-all" aria-label="Download all notes"
+            @click="downloadAllNotes()">
+            <i class="fa-solid fa-download"></i>
+          </button>
+        </div>
       </div>
       <div id="list-notes"></div>
     </nav>
@@ -181,7 +187,7 @@
           <form id="add-folder" autocomplete="off" @submit.prevent="createFolder()">
             <div class="error-notification d-none"></div>
             <div class="row">
-              <input type="text" id="name-folder" placeholder="Folder name" maxlength="18" aria-label="Name">
+              <input type="text" id="name-folder" placeholder="Folder name" maxlength="18" aria-label="Name" required>
             </div>
             <button type="submit">Create folder</button>
           </form>
@@ -208,7 +214,7 @@
           <form id="add-category" autocomplete="off" @submit.prevent="createCategory()">
             <div class="error-notification d-none"></div>
             <div class="row">
-              <input type="text" id="name-category" placeholder="Category name" maxlength="18" aria-label="Name">
+              <input type="text" id="name-category" placeholder="Category name" maxlength="18" aria-label="Name" required>
             </div>
             <button type="submit">Create category</button>
           </form>
@@ -405,8 +411,8 @@
             <div id="user-name" class="row bold">
               {{ name }}
             </div>
-            <div class="row">
-              <span>Last login:</span>
+            <div class="row last-login">
+              <span>Last login: </span>
               <span id="last-login-date"></span>
             </div>
             <div class="row">
@@ -418,7 +424,10 @@
               <progress id="storage" :max="maxDataByteSize" :value="dataByteSize"></progress>
             </div>
             <details id="gen-psswd">
-              <summary>Change password</summary>
+              <summary>
+                Change password
+                <i class="fa-solid fa-chevron-up"></i>
+              </summary>
               <form id="change-psswd" @submit.prevent="changePassword()">
                 <div class="error-notification d-none"></div>
                 <div class="row">
@@ -446,7 +455,10 @@
               </form>
             </details>
             <details id="delete-user">
-              <summary>Delete account</summary>
+              <summary>
+                Delete account
+                <i class="fa-solid fa-chevron-up"></i>
+              </summary>
               <form id="delete-account" @submit.prevent="deleteAccount()">
                 <div class="error-notification d-none"></div>
                 <div class="row">
@@ -2163,12 +2175,12 @@ export default {
               newFolderDetails.setAttribute('open', 'open')
               newFolderDetails.setAttribute('data-folder', encodeURIComponent(folder))
               const summary = document.createElement('summary')
-              const folderIcon = document.createElement('i')
-              folderIcon.classList.add('fa-solid', 'fa-folder')
-              summary.appendChild(folderIcon)
               const folderSpan = document.createElement('span')
               folderSpan.textContent = folder
               summary.appendChild(folderSpan)
+              const folderIcon = document.createElement('i')
+              folderIcon.classList.add('fa-solid', 'fa-chevron-up')
+              summary.appendChild(folderIcon)
               newFolderDetails.appendChild(summary)
               newFolderDetails.appendChild(paragraph)
               document.querySelector('#list-notes').appendChild(newFolderDetails)

@@ -69,6 +69,9 @@ html
     hr
       border-top: 2px solid rgba(0, 0, 0, .05)
 
+    details
+      border: 1px solid rgba(0, 0, 0, .05)
+
     input,
     #colors span,
     fieldset
@@ -109,7 +112,6 @@ html
       background: #fff
 
     button,
-    #sidebar #list-notes p,
     .bottom-content i,
     .editor-control i
       &:hover
@@ -184,13 +186,28 @@ blockquote
 
 details
   margin: 1rem auto
+  border: 1px solid rgba(255, 255, 255, .1)
+  border-radius: 24px
+  padding: 0 5px
+
+  &[open] summary .fa-chevron-up
+    rotate: 180deg
 
   summary
+    display: flex
+    align-items: center
+    justify-content: space-between
+    border-radius: 48px
     font-weight: 700
     cursor: pointer
+    padding: 10px
 
-    i
-      margin-right: 4px
+    .fa-chevron-up
+      transition: .2s
+
+    &::marker,
+    &::-webkit-details-marker
+      display: none
 
 progress
   width: 100%
@@ -244,12 +261,12 @@ header
   user-select: none
 
   div
-    display: inline-flex
+    display: flex
     align-items: center
 
   #div-search
     flex-grow: 1
-    max-width: 300px
+    max-width: 320px
     height: 36px
     border-radius: 48px
     padding: 10px
@@ -353,7 +370,7 @@ input
     height: 1rem
     border-radius: 10px
     border: none !important
-    background: rgba(255, 255, 255, .2)
+    background: rgba(255, 255, 255, .1)
 
     &::before
       content: ""
@@ -405,9 +422,20 @@ input
       transform: rotate(-25deg)
 
     .nav-buttons
-      display: flex
-      justify-content: space-between
       margin-bottom: 1rem
+
+      button
+        background: none !important
+        width: 100%
+        font-weight: 700
+        justify-content: flex-start
+
+        i
+          margin-right: 10px
+    
+    #manage-notes button
+      margin-left: 5px
+      background: none !important
 
     #list-notes
       overflow-y: auto
@@ -432,7 +460,7 @@ input
 
         &:hover .date-list,
         &:focus .date-list
-          display: inline-flex
+          display: flex
 
         .custom-check
           padding: 4px 8px
@@ -572,10 +600,11 @@ input
 
   i
     cursor: pointer
-    display: inline-flex
+    display: flex
     align-items: center
     justify-content: center
     font-size: 1.1rem
+    margin-left: -2px
     width: 30px
     height: 30px
     border-radius: 50%
@@ -592,7 +621,6 @@ input
   background: rgba(255, 0, 0, .2) !important
 
 button,
-#sidebar #list-notes p,
 .bottom-content i,
 .editor-control i
   &:hover
@@ -787,14 +815,13 @@ dialog
 #categories
   margin-top: 1rem
 
-.div-folder-cat div
-  display: inline-flex
-  margin-right: 10px
-
 .version
   text-align: right
   font-size: .9rem
   margin: 0 4px
+
+.last-login
+  font-size: .9rem
 
 #language
   width: 50px
@@ -837,16 +864,16 @@ dialog
 
 #copy-note-link,
 #psswd-gen
-  display: inline-flex
-  align-items: center
+  align-content: center
   flex: 1
   height: 36px
   margin-right: 4px
   border-radius: 20px
-  justify-content: center
   text-align: center
   font-weight: 700
-  word-break: break-all
+  overflow: hidden
+  text-overflow: ellipsis
+  white-space: nowrap
   background: rgba(255, 255, 255, .1)
 
 #sidebar-indicator
@@ -927,8 +954,6 @@ dialog
     gap: 1rem
 
     #div-search
-      max-width: 200px
-
       kbd
         display: none
 
@@ -998,6 +1023,9 @@ dialog
 
   #colors
     justify-content: space-between
+
+    span
+      margin-right: 0
 
 .pointer-events-none
   pointer-events: none
