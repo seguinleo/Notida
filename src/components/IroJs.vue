@@ -13,7 +13,7 @@ export default {
   mounted() {
     const colorPicker = new iro.ColorPicker('#colorPicker', {
       color: localStorage.getItem('accent_color') || '#151e15',
-      width: 320,
+      width: 316,
       borderWidth: 2,
       borderColor: '#fff',
       layout: [
