@@ -750,10 +750,10 @@ dialog
   position: relative
 
   .off
-    fill: #ffffff
+    fill: #fff
 
   .on
-    stroke: #ffffff
+    stroke: #fff
 
   .toggle-thumb
     position: absolute
@@ -776,17 +776,23 @@ dialog
       left: 4px
       bottom: 4px
       border-radius: 50%
-      background-color: #ffffff
+      background-color: #fff
       transition: .3s all ease
 
   input[type=checkbox]
     display: none
 
+    &:checked + .toggle-thumb
+      background-color: rgba(0, 255, 0, .3)
+
     &:checked + .toggle-thumb:before
       transform: translateX(26px)
 
-    &:checked + .toggle-thumb
-      background-color: rgba(0, 255, 0, .3)
+    &:disabled + .toggle-thumb
+      cursor: not-allowed
+
+    &:disabled + .toggle-thumb:before
+      background-color: #ccc
 
 .IroSlider
   margin: auto
