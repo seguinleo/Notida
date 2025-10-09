@@ -2421,7 +2421,6 @@ export default {
       const contentHtml = marked.parse(cleanContent)
       const noteElement = document.createElement('div')
       noteElement.classList.add('shared-note')
-      noteElement.tabIndex = 0
 
       const detailsElement = document.createElement('div')
       detailsElement.classList.add('details')
@@ -2487,3 +2486,4 @@ export default {
   }
 }
 </script>
+
