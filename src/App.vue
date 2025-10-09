@@ -4,7 +4,12 @@
   </div>
   <header v-if="(!isLocked && isLockedResponse)">
     <button type="button" id="sidebar-indicator" aria-label="Open sidebar" @click="openSidebar()">
-      <svg width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sidebar"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+      <svg width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"
+        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+        class="feather feather-sidebar">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="9" y1="3" x2="9" y2="21"></line>
+      </svg>
     </button>
     <div id="div-search" role="search">
       <i class="fa-solid fa-magnifying-glass" role="none"></i>
@@ -15,9 +20,12 @@
   </header>
   <div v-if="(!isLocked && isLockedResponse)" id="sidebar">
     <nav>
-      <div class="row">
-        <img v-if="new Date().getMonth() === 11" src="./assets/img/christmas.png" alt="christmas" class="christmas"
-          width="36" height="29" loading="lazy">
+      <div v-if="new Date().getMonth() === 11" class="row">
+        <img src="./assets/img/christmas.png" alt="christmas" class="christmas" loading="lazy">
+      </div>
+      <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
+        class="row">
+        <img src="./assets/img/halloween.png" alt="halloween" class="halloween" loading="lazy">
       </div>
       <div class="row nav-buttons">
         <button v-if="isAuthenticated && !isLocked" id="manage-account" type="button" aria-label="Manage account"
@@ -214,7 +222,8 @@
           <form id="add-category" autocomplete="off" @submit.prevent="createCategory()">
             <div class="error-notification d-none"></div>
             <div class="row">
-              <input type="text" id="name-category" placeholder="Category name" maxlength="18" aria-label="Name" required>
+              <input type="text" id="name-category" placeholder="Category name" maxlength="18" aria-label="Name"
+                required>
             </div>
             <button type="submit">Create category</button>
           </form>
@@ -680,7 +689,8 @@ export default {
       purifyConfig: {
         SANITIZE_NAMED_PROPS: true,
         ALLOW_DATA_ATTR: false,
-        FORBID_TAGS: ['dialog', 'footer', 'form', 'header', 'main', 'nav', 'style']
+        FORBID_TAGS: ['dialog', 'footer', 'form', 'header', 'main', 'nav', 'style'],
+        FORBID_ATTR: ['style', 'class']
       },
       katexConfig: {
         throwOnError: false,
@@ -2126,7 +2136,9 @@ export default {
               linkIconElement.setAttribute('role', 'button')
               linkIconElement.setAttribute('aria-label', 'Share note')
               bottomContentElement.appendChild(linkIconElement)
-              const parsedContent = marked.parse(content)
+
+              const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
+              const parsedContent = marked.parse(cleanContent)
               contentElement.innerHTML = parsedContent
             }
           }
