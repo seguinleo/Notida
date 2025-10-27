@@ -14,7 +14,6 @@ A fast, private and secure web notebook.
 ## Table of contents
 *   [Features](#features)
 *   [Security](#security)
-*   [Todo](#todo)
 *   [Community](#community)
 *   [Self-hosting](#self-hosting)
 *   [Production](#production)
@@ -35,19 +34,11 @@ All notes are sanitized and validated through the DOMPurify library. All notes a
 
 Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server.
 
-## Todo
-*   2FA login
-*   WEB Notification for reminders
-*   Calendar for reminders
-*   Offline mode for cloud notes
-
 ## Community
 If you find [issues](https://github.com/seguinleo/Notida/issues), [vulnerabilities](https://github.com/seguinleo/Notida/security) or if you have any [suggestions](https://github.com/seguinleo/Notida/discussions) to improve this project, feel free to discuss!
 
 ## Self-hosting
-``docker-compose up --build -d`` to build the Docker container
-
-``docker-compose up`` to start the Docker container
+``docker-compose up --build`` to build the Docker container
 
 > [!IMPORTANT]
 > Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to install a SSL certificate to use note encryption (Web Crypto API requires HTTPs).
