@@ -1,4 +1,3 @@
-# Build stage
 FROM node:22 AS build-stage
 
 WORKDIR /app
@@ -11,12 +10,25 @@ COPY . .
 
 RUN npm run build
 
-# Production stage
 FROM nginx:stable-alpine AS production-stage
 
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+
+COPY nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
+
+RUN addgroup -S lowgroup && adduser -S lowuser -G lowgroup
+
+RUN mkdir -p /var/cache/nginx/client_temp && \
+    mkdir -p /var/log/nginx && \
+    mkdir -p /tmp/nginx && \
+    chown -R lowuser:lowgroup /var/cache/nginx && \
+    chown -R lowuser:lowgroup /var/log/nginx && \
+    chown -R lowuser:lowgroup /usr/share/nginx/html && \
+    chown -R lowuser:lowgroup /tmp
+
+USER lowuser
 
 EXPOSE 80
 

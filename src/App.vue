@@ -21,11 +21,11 @@
   <div v-if="(!isLocked && isLockedResponse)" id="sidebar">
     <nav>
       <div v-if="new Date().getMonth() === 11" class="row">
-        <img src="./assets/img/christmas.png" alt="christmas" class="christmas" loading="lazy">
+        <img src="./assets/img/christmas.png" alt="christmas" class="eventImage" loading="lazy">
       </div>
       <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
         class="row">
-        <img src="./assets/img/halloween.png" alt="halloween" class="halloween" loading="lazy">
+        <img src="./assets/img/halloween.png" alt="halloween" class="eventImage" loading="lazy">
       </div>
       <div class="row nav-buttons">
         <button v-if="isAuthenticated && !isLocked" id="manage-account" type="button" aria-label="Manage account"
@@ -402,7 +402,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.10.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.10.2</a>
             </p>
           </div>
         </div>
@@ -652,6 +652,8 @@ export default {
       spellcheck: true,
       touchstartX: 0,
       touchendX: 0,
+      touchstartY: 0,
+      touchendY: 0,
       timeoutNotification: null,
       fingerprintEnabled: true,
       onLine: navigator.onLine,
@@ -749,15 +751,18 @@ export default {
 
     document.addEventListener('touchstart', (e) => {
       this.touchstartX = e.changedTouches[0].screenX
+      this.touchstartY = e.changedTouches[0].screenY
     }, { passive: true })
 
     document.addEventListener('touchend', (e) => {
       if (this.isLocked) return
       this.touchendX = e.changedTouches[0].screenX
-      if (this.touchendX - this.touchstartX > 75) {
-        document.querySelector('#sidebar').classList.add('show')
-      } else if (this.touchstartX - this.touchendX > 75) {
-        document.querySelector('#sidebar').classList.remove('show')
+      this.touchendY = e.changedTouches[0].screenY
+      if (this.touchstartY - this.touchendY > 50 || this.touchendY - this.touchstartY > 50) return
+      if (this.touchendX - this.touchstartX > 35) {
+        this.openSidebar()
+      } else if (this.touchstartX - this.touchendX > 35) {
+        this.closeSidebar()
       }
     }, { passive: true })
 
@@ -1224,6 +1229,9 @@ export default {
     openSidebar() {
       if (this.isLocked) return
       document.querySelector('#sidebar').classList.add('show')
+    },
+    closeSidebar() {
+      document.querySelector('#sidebar').classList.remove('show')
     },
     openCreateUserDialog() {
       document.querySelector('#login-dialog').close()
@@ -2470,7 +2478,7 @@ export default {
       document.querySelectorAll('.note').forEach((note) => {
         if (note.getAttribute('data-note-id') !== noteId) note.classList.remove('fullscreen')
       })
-      document.querySelector('#sidebar').classList.remove('show')
+      this.closeSidebar()
       const note = document.querySelector(`.note[data-note-id="${noteId}"]`)
       note.querySelector('.details').scrollTop = 0
       note.classList.toggle('fullscreen')

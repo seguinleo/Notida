@@ -13,15 +13,11 @@
   src: url("../fonts/OpenSans-700.woff2") format("woff2")
 
 html
-  position: relative
   color: #dddddd
   scroll-behavior: smooth
   -webkit-tap-highlight-color: transparent
   scrollbar-color: rgba(150, 150, 150, .2) transparent
   font-family: OpenSans, Helvetica Neue, Helvetica, Arial, sans-serif
-
-  body
-    position: relative
 
   &.light
     color: #111111
@@ -290,12 +286,15 @@ header
       appearance: none
 
 main
+  position: relative
   display: flex
   justify-content: center
   align-items: center
   padding: 60px 1rem 1rem 370px
   flex-wrap: wrap
   gap: 1rem
+  max-height: 100dvh
+  overflow-y: auto
 
 main.shared
   padding: 0
@@ -415,6 +414,10 @@ input
       position: absolute
       left: -100%
 
+    .eventImage
+      width: 100%
+      max-width: 400px
+
     .nav-buttons
       margin-bottom: 1rem
 
@@ -422,6 +425,7 @@ input
         background: none !important
         width: 100%
         font-weight: 700
+        margin-bottom: 5px
         justify-content: flex-start
 
         i
