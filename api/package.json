@@ -1,6 +1,6 @@
 {
   "name": "notida",
-  "version": "25.10.2",
+  "version": "25.11.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "express-rate-limit": "^8.1.0",
+    "express-rate-limit": "^8.2.0",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",

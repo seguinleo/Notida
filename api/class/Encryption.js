@@ -21,6 +21,7 @@ class Encryption {
    */
   encryptData(plaintext, keyBase64) {
     try {
+      if (!plaintext || plaintext === null) return ''
       const plaintextJson = JSON.stringify(plaintext)
       const keyBuffer = this.#base64ToArrayBuffer(keyBase64)
       const iv = crypto.randomBytes(12)
@@ -38,6 +39,7 @@ class Encryption {
    * @returns 
    */
   decryptData(ciphertext, keyBase64) {
+    if (!ciphertext || ciphertext === null) return ''
     try {
       const arrayCiphertext = ciphertext.split(',')
       const keyBuffer = this.#base64ToArrayBuffer(keyBase64)
@@ -50,7 +52,7 @@ class Encryption {
       const decrypted = Buffer.concat([decipher.update(enc), decipher.final()])
       return JSON.parse(decrypted.toString('utf8'))
     } catch {
-      console.error("Encryption failed")
+      console.error("Decryption failed")
     }
   }
 }

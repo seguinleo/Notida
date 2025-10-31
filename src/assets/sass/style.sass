@@ -296,8 +296,8 @@ main
   max-height: 100dvh
   overflow-y: auto
 
-main.shared
-  padding: 0
+  &.shared
+    padding: 0
 
 select,
 textarea,
@@ -666,8 +666,6 @@ dialog
   backdrop-filter: blur(20px)
 
   .popup
-    -webkit-user-select: none
-    user-select: none
     margin: auto
     max-width: 500px
     overflow-y: auto
@@ -695,7 +693,7 @@ dialog
       outline: none
 
     textarea
-      height: calc(100svh - 320px)
+      height: calc(100dvh - 320px)
       overscroll-behavior: none
 
 .row
@@ -967,13 +965,6 @@ dialog
   #btn-add-note
     bottom: 1.5rem
     right: 1.5rem
-
-  #note-dialog
-    align-content: flex-end
-
-    .popup .content
-      border-radius: 1rem 1rem 0 0
-      padding-bottom: 1rem
 
   .note
     .date,

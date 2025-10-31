@@ -17,6 +17,7 @@ CREATE TABLE `notes` (
   `id` varchar(63) NOT NULL,
   `title` text NOT NULL,
   `content` longtext,
+  `historic` longtext,
   `color` varchar(63) NOT NULL DEFAULT 'bg-default',
   `dateNote` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `hiddenNote` tinyint NOT NULL DEFAULT '0',
