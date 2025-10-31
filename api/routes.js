@@ -315,7 +315,7 @@ app.post('/get-notes', checkJWTToken, verifyCsrfToken, async (req, res) => {
 
   try {
     const connection = await pool.getConnection()
-    const [rows] = await connection.execute("SELECT id, title, content, color, dateNote, hiddenNote, category, folder, pinnedNote, link, reminder FROM notes WHERE user = ?", [name])
+    const [rows] = await connection.execute("SELECT id, title, content, historic, color, dateNote, hiddenNote, category, folder, pinnedNote, link, reminder FROM notes WHERE user = ?", [name])
     connection.release()
 
     if (rows.length === 0) {
@@ -327,13 +327,15 @@ app.post('/get-notes', checkJWTToken, verifyCsrfToken, async (req, res) => {
     const notes = rows.map(row => {
       const title = encryption.decryptData(row.title, key)
       const content = encryption.decryptData(row.content, key)
+      const historic = encryption.decryptData(row.historic, key)
       const noteSizeInBytes = Buffer.byteLength(title, 'utf8') + Buffer.byteLength(content, 'utf8')
       dataByteSize += noteSizeInBytes
 
       return {
         id: row.id,
-        title: title,
-        content: content,
+        title,
+        content,
+        historic,
         color: row.color,
         date: row.dateNote,
         folder: row.folder || null,
@@ -421,25 +423,43 @@ app.post('/update-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
     'bg-purple',
     'bg-pink',
   ]
-
   if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Update failed')
   if (!name || !userId || !key || !title) return res.status(401).send('Update failed')
   if (title.length > 30 || content.length > maxNoteContentLength) return res.status(401).send('Update failed')
   if (!allColors.includes(color)) return res.status(401).send('Update failed')
-  if (!allColors.includes(color)) return res.status(401).send('Update failed')
   if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Update failed')
 
   const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
+  const connection = await pool.getConnection()
 
   try {
-    const connection = await pool.getConnection()
+    const [rows] = await connection.execute(
+      'SELECT content FROM notes WHERE id = ? AND user = ?',
+      [noteId, name]
+    )
+    if (rows.length === 0) {
+      connection.release()
+      return res.status(401).send('Update failed')
+    }
+    const oldContent = rows[0].content
+
     await connection.execute(`
-            UPDATE notes
-            SET title = ?, content = ?, dateNote = ?, color = ?, hiddenNote = ?, folder = ?, category = ?, reminder = ?
-            WHERE id = ? AND user = ?
-        `, [
+      UPDATE notes
+      SET
+        title = ?,
+        content = ?,
+        historic = ?,
+        dateNote = ?,
+        color = ?,
+        hiddenNote = ?,
+        folder = ?,
+        category = ?,
+        reminder = ?
+      WHERE id = ? AND user = ?
+    `, [
       encryption.encryptData(title, key),
       encryption.encryptData(content, key),
+      oldContent, // Stockage de l'ancienne version chiffrée
       dateNote,
       color,
       hidden,
@@ -449,9 +469,11 @@ app.post('/update-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
       noteId,
       name
     ])
+
     connection.release()
     res.status(200).send('Note updated successfully')
-  } catch {
+  } catch (err) {
+    connection.release()
     return res.status(401).send('Update failed')
   }
 })

@@ -1,3 +1,8 @@
+#----v25.11.1----# !! DATABASE CHANGED !!
+-Add latest note history
+-Improve mobile PWA
+-Bug fixes
+
 #----v25.10.2----#
 -Improve mobile gesture
 -Improve UI/UX

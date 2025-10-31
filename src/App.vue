@@ -137,8 +137,8 @@
           <form :id="isAuthenticated ? 'delete-cloud-note' : 'delete-local-note'"
             @submit.prevent="isAuthenticated ? deleteCloudNote() : deleteLocalNote()">
             <div class="error-notification d-none"></div>
-            <div class="row">
-              <span>Deletion is permanent.</span>
+            <div class="row bold">
+              Deletion is permanent!
             </div>
             <input id="id-note-delete" type="hidden">
             <div class="row">
@@ -402,7 +402,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.10.2</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.11.1</a>
             </p>
           </div>
         </div>
@@ -495,7 +495,7 @@
               </div>
               <input id="id-note-public" type="hidden">
               <div class="row">
-                <button type="submit">Make private</button>
+                <button type="submit">Make public</button>
               </div>
             </form>
           </div>
@@ -526,6 +526,23 @@
                 <button type="submit" class="btn-cancel">Make private</button>
               </div>
             </form>
+          </div>
+        </div>
+      </dialog>
+      <dialog id="note-historic-dialog">
+        <div class="popup">
+          <div class="content">
+            <div class="close">
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+            </div>
+            <div class="row bold">
+              Last note version
+            </div>
+            <div class="row">
+              <p id="note-historic-content"></p>
+            </div>
           </div>
         </div>
       </dialog>
@@ -1414,6 +1431,7 @@ export default {
           const noteFolder = this.notesJSON.find((note) => note.id === noteId).folder || ''
           const noteCategory = this.notesJSON.find((note) => note.id === noteId).category || ''
           const noteLink = this.notesJSON.find((note) => note.id === noteId).link
+          const noteHistoric = this.notesJSON.find((note) => note.id === noteId).historic || ''
           const noteReminder = this.notesJSON.find((note) => note.id === noteId).reminder
           if (target.classList.contains('edit-note')) this.isAuthenticated ? this.updateCloudNote(
             noteId,
@@ -1433,7 +1451,6 @@ export default {
             noteHidden,
             noteFolder,
             noteCategory,
-            noteLink,
             noteReminder
           )
           else if (target.classList.contains('pin-note')) this.isAuthenticated ? this.pinCloudNote(noteId) : this.pinLocalNote(noteId)
@@ -1441,6 +1458,7 @@ export default {
           else if (target.classList.contains('delete-note')) this.isAuthenticated ? this.openDeleteCloudNoteDialog(noteId) : this.openDeleteLocalNoteDialog(noteId)
           else if (target.classList.contains('download-note')) this.openDownloadNoteDialog(noteId)
           else if (target.classList.contains('share-note')) this.shareNote(noteId, noteLink, noteTitle, noteContent)
+          else if (target.classList.contains('historic-note')) this.showNoteHistoric(noteId, noteHistoric)
         })
         e.addEventListener('keydown', (event) => {
           if (event.key === 'Enter') e.click()
@@ -1533,7 +1551,7 @@ export default {
       }
     },
     selectColor(element) {
-      document.querySelectorAll('#colors span').forEach((e) => e.classList.remove('selected'));
+      document.querySelectorAll('#colors span').forEach((e) => e.classList.remove('selected'))
       element.target.classList.add('selected')
     },
     async selectSortOption(e) {
@@ -2011,7 +2029,7 @@ export default {
 
         this.notesJSON.forEach((row) => {
           const {
-            id, title, content, color, date, hidden, folder, category, pinned, link, reminder
+            id, title, content, historic, color, date, hidden, folder, category, pinned, link, reminder
           } = row
 
           if (!id || !title || !color || !date) return
@@ -2144,6 +2162,15 @@ export default {
               linkIconElement.setAttribute('role', 'button')
               linkIconElement.setAttribute('aria-label', 'Share note')
               bottomContentElement.appendChild(linkIconElement)
+
+              if (historic) {
+                const historicIconElement = document.createElement('i')
+                historicIconElement.classList.add('fa-solid', 'fa-clock-rotate-left', 'note-action', 'historic-note')
+                historicIconElement.tabIndex = 0
+                historicIconElement.setAttribute('role', 'button')
+                historicIconElement.setAttribute('aria-label', 'View last note historic')
+                bottomContentElement.appendChild(historicIconElement)
+              }
 
               const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
               const parsedContent = marked.parse(cleanContent)
@@ -2473,6 +2500,11 @@ export default {
         document.querySelector('#id-note-public').value = noteId
       }
     },
+    showNoteHistoric(noteId, historic) {
+      if (!noteId || !historic) return
+      document.querySelector('#note-historic-dialog').showModal()
+      document.querySelector('#note-historic-content').textContent = historic
+    },
     toggleFullscreen(noteId) {
       if (!noteId) return
       document.querySelectorAll('.note').forEach((note) => {
@@ -2494,4 +2526,3 @@ export default {
   }
 }
 </script>
-
