@@ -21,6 +21,6 @@
     "mysql2": "^3.15.3",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
-    "redis": "^5.9.0"
+    "redis": "^5.10.0"
   }
 }

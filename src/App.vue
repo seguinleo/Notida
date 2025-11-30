@@ -2141,6 +2141,15 @@ export default {
             paragraph.appendChild(hiddenElement)
             contentElement.appendChild(eyeIconElement)
           } else {
+            if (historic) {
+              const historicIconElement = document.createElement('i')
+              historicIconElement.classList.add('fa-solid', 'fa-clock-rotate-left', 'note-action', 'historic-note')
+              historicIconElement.tabIndex = 0
+              historicIconElement.setAttribute('role', 'button')
+              historicIconElement.setAttribute('aria-label', 'View last note historic')
+              bottomContentElement.appendChild(historicIconElement)
+            }
+
             if (content) {
               const clipboardIconElement = document.createElement('i')
               clipboardIconElement.classList.add('fa-solid', 'fa-clipboard', 'note-action', 'copy-note')
@@ -2162,15 +2171,6 @@ export default {
               linkIconElement.setAttribute('role', 'button')
               linkIconElement.setAttribute('aria-label', 'Share note')
               bottomContentElement.appendChild(linkIconElement)
-
-              if (historic) {
-                const historicIconElement = document.createElement('i')
-                historicIconElement.classList.add('fa-solid', 'fa-clock-rotate-left', 'note-action', 'historic-note')
-                historicIconElement.tabIndex = 0
-                historicIconElement.setAttribute('role', 'button')
-                historicIconElement.setAttribute('aria-label', 'View last note historic')
-                bottomContentElement.appendChild(historicIconElement)
-              }
 
               const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
               const parsedContent = marked.parse(cleanContent)
