@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@jaames/iro": "^5.5.2",
-    "dompurify": "^3.3.0",
-    "katex": "^0.16.25",
+    "dompurify": "^3.3.1",
+    "katex": "^0.16.27",
     "marked": "^17.0.1",
     "marked-katex-extension": "^5.1.6",
     "vue": "^3.5.25"
@@ -23,6 +23,6 @@
     "eslint": "^9.39.1",
     "eslint-plugin-vue": "^10.6.2",
     "globals": "^16.5.0",
-    "vite": "^7.2.6"
+    "vite": "^7.2.7"
   }
 }

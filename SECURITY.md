@@ -4,13 +4,12 @@
 
 | Version | Supported          |
 |---------|--------------------|
+| 25.x    | :white_check_mark: |
 | 24.x    | :white_check_mark: |
-| 22.x    | :white_check_mark: |
-| 21.x    | :white_check_mark: |
-| < 20    | :x:                |
+| < 24    | :x:                |
 
 ## DOCKER version
-I recommend using the latest version of Docker.
+I recommend using the latest version of Docker images.
 
 ## Reporting a Vulnerability
 

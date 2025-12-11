@@ -2,9 +2,9 @@
   <div v-if="!onLine" id="offline">
     <p>You are offline</p>
   </div>
-  <header v-if="(!isLocked && isLockedResponse)">
+  <header v-if="!isLocked && isLockedResponse">
     <button type="button" id="sidebar-indicator" aria-label="Open sidebar" @click="openSidebar()">
-      <svg width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"
+      <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"
         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
         class="feather feather-sidebar">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -18,7 +18,7 @@
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
   </header>
-  <div v-if="(!isLocked && isLockedResponse)" id="sidebar">
+  <div v-if="!isLocked && isLockedResponse" id="sidebar">
     <nav>
       <div v-if="new Date().getMonth() === 11" class="row">
         <img src="./assets/img/christmas.png" alt="christmas" class="eventImage" loading="lazy">
@@ -418,7 +418,7 @@
               </button>
             </div>
             <div id="user-name" class="row bold">
-              {{ name }}
+              {{ username }}
             </div>
             <div class="row last-login">
               <span>Last login: </span>
@@ -665,7 +665,7 @@ import 'katex/dist/katex.min.css'
 export default {
   data() {
     return {
-      name: '',
+      username: '',
       spellcheck: true,
       touchstartX: 0,
       touchendX: 0,
@@ -1995,7 +1995,7 @@ export default {
 
         const response = await res.json()
 
-        this.name = response.name
+        this.username = response.name
         this.dataByteSize = response.dataByteSize
         this.maxDataByteSize = response.maxDataByteSize
         this.maxNoteContentLength = response.maxNoteContentLength
