@@ -267,7 +267,7 @@ header
     border-radius: 48px
     padding: 10px
     background: rgba(255, 255, 255, .1)
-    backdrop-filter: blur(20px)
+    backdrop-filter: blur(10px)
 
     &:focus-within
       box-shadow: 0 1px 3px rgba(0, 0, 0, .3)
@@ -398,7 +398,7 @@ input
   top: 0
   bottom: 0
   background: rgba(255, 255, 255, .1)
-  backdrop-filter: blur(20px)
+  backdrop-filter: blur(10px)
   overscroll-behavior: contain
 
   nav
@@ -426,9 +426,12 @@ input
         width: 100%
         font-weight: 700
         margin-bottom: 5px
+        display: flex
+        align-items: center
         justify-content: flex-start
 
         i
+          font-size: 1.2rem
           margin-right: 10px
 
     #manage-notes button
@@ -479,14 +482,6 @@ input
           display: none
           margin: 0 4px
 
-#noscript
-  position: fixed
-  top: 0
-  left: 0
-  right: 0
-  text-align: center
-  padding: 4px
-
 .note,
 .shared-note
   .title
@@ -536,7 +531,7 @@ input
   font-size: 1.6rem
   border-radius: 48px
   z-index: 1
-  backdrop-filter: blur(20px)
+  backdrop-filter: blur(10px)
 
 .note
   display: flex
@@ -581,11 +576,6 @@ input
   .details
     font-size: 1rem
 
-.popup-header
-  display: flex
-  justify-content: space-between
-  align-items: center
-
 .done,
 .close
   padding: 10px 0
@@ -594,15 +584,17 @@ input
     width: 40px
     height: 30px
 
+.done button
+  width: 80px
+
 .done button,
 #success-notification
-  background: rgba(0, 255, 0, .3) !important
+  background: rgba(0, 155, 0, .3) !important
 
 #offline,
-#noscript,
 .error-notification,
 .btn-cancel
-  background: rgba(255, 0, 0, .2) !important
+  background: rgba(155, 0, 0, .3) !important
 
 button,
 .bottom-content i,
@@ -610,13 +602,19 @@ button,
   &:hover
     background: rgba(255, 255, 255, .2) !important
 
+.hidden-note .details-content
+  filter: blur(5px)
+  user-select: none
+  pointer-events: none
+  padding: 0 7px
+
 .fullscreen
   position: fixed
   z-index: 3
   border-radius: 0
   inset: 0
   background: rgba(0, 0, 0, .05) !important
-  backdrop-filter: blur(20px)
+  backdrop-filter: blur(10px)
 
   .title
     justify-content: center
@@ -663,7 +661,7 @@ dialog
   align-content: center
   overflow-x: hidden
   background: none
-  backdrop-filter: blur(20px)
+  backdrop-filter: blur(10px)
 
   .popup
     margin: auto
@@ -678,6 +676,11 @@ dialog
 
   .popup-small
     max-width: 350px
+
+  .popup-note-header
+    display: flex
+    justify-content: space-between
+    align-items: center
 
 #note-dialog
   .popup
@@ -723,7 +726,7 @@ dialog
     background: rgba(255, 255, 255, .1)
 
   input:checked + span
-    background: rgba(0, 255, 0, .3) !important
+    background: rgba(0, 155, 0, .3) !important
 
   input[type=radio],
   input[type=checkbox]
@@ -789,7 +792,7 @@ dialog
     display: none
 
     &:checked + .toggle-thumb
-      background-color: rgba(0, 255, 0, .3)
+      background-color: rgba(0, 155, 0, .3)
 
     &:checked + .toggle-thumb:before
       transform: translateX(26px)
@@ -827,7 +830,6 @@ dialog
 #license
   font-size: .9rem
 
-#js-disabled,
 #offline
   position: fixed
   z-index: 3
@@ -870,7 +872,7 @@ dialog
 
 #sidebar-indicator
   background: rgba(255, 255, 255, .1)
-  backdrop-filter: blur(20px)
+  backdrop-filter: blur(10px)
 
 #copy-note-link-btn,
 #copy-password-btn,
@@ -1012,11 +1014,13 @@ dialog
     span
       margin-right: 0
 
-.pointer-events-none
-  pointer-events: none
+.welcome
+  display: flex
+  padding: 10px
+  line-height: 2
 
-  a
-    pointer-events: auto
+  .title
+    text-align: center
 
 .txt-red
   color: #ff0000

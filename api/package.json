@@ -1,6 +1,6 @@
 {
   "name": "notida",
-  "version": "25.11.1",
+  "version": "26.1.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,7 +18,7 @@
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.16.0",
+    "mysql2": "^3.16.1",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "redis": "^5.10.0"
