@@ -250,7 +250,7 @@
     <dialog id="note-dialog">
       <div class="popup">
         <div class="content">
-          <div class="popup-header">
+          <div class="popup-note-header">
             <div class="close">
               <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
                 <i class="fa-solid fa-chevron-left"></i>
@@ -260,6 +260,7 @@
               <button type="submit" id="submit-note-btn" :form="isAuthenticated ? 'add-cloud-note' : 'add-local-note'"
                 aria-label="Save note">
                 <i class="fa-solid fa-check"></i>
+                Done
               </button>
             </div>
           </div>
@@ -357,7 +358,7 @@
           </div>
           <div class="error-notification d-none"></div>
           <div id="legal" class="row">
-            <a href="https://leoseguin.fr/mentionslegales/">Legal notice / privacy</a>
+            <a href="https://leoseguin.fr/mentionslegales/" rel="noopener noreferrer">Legal notice / privacy</a>
           </div>
           <div class="row">
             <a href="https://github.com/seguinleo/Notida/wiki/Markdown" id="link-markdown"
@@ -388,7 +389,8 @@
           <div class="row d-flex align-items-center justify-content-between">
             <span>Lock app</span>
             <label class="switch">
-              <input type="checkbox" id="toggle-lock-app" class="checkbox" checked @click="toggleLockApp()">
+              <input v-model="isToggleLockApp" type="checkbox" id="toggle-lock-app" class="checkbox"
+                @click="toggleLockApp()">
               <span class="toggle-thumb">
                 <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
                   <rect x="12" y="6" width="1" height="12" />
@@ -402,7 +404,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v25.11.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.1.1</a>
             </p>
           </div>
         </div>
@@ -618,8 +620,7 @@
           </div>
         </div>
       </dialog>
-      <div v-if="notesJSON.length === 0" data-note-id="welcome" class="note bg-default"
-        @click="toggleFullscreen('welcome')">
+      <div v-if="notesJSON.length === 0" class="welcome">
         <div class="details">
           <h1 class="title">Notida</h1>
           <div class="details-content">
@@ -639,14 +640,19 @@
                 address, only a username and strong password. Public notes can be shared via random URLs.</p>
               <p>This website is a Progressive Web App (PWA) that can be installed as an application. Design is
                 responsive and optimized for all mobile devices or macOS/Windows.</p>
-              <p>The site is accessible to users with disabilities.</p>
+              <p>The site is accessible to users with disabilities through high-contrast colors, ARIA modules, and
+                focusable elements.</p>
               <h2 id="security">Security</h2>
-              <p>The website follows <a href="https://cheatsheetseries.owasp.org/">OWASP security recommendations</a>.
+              <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
+                  security recommendations</a>.
               </p>
-              <p>All notes are sanitized, validated and encrypted with AES-256-GCM. Each user has a cryptographically
-                secure key generated after signing up.</p>
+              <p>All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with
+                AES-256-GCM. Each user has a cryptographically secure key generated after signing up.</p>
               <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent
                 to the server.</p>
+              <h2 id="security">Community</h2>
+              <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
+                to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
             </div>
           </div>
         </div>
@@ -662,6 +668,47 @@ import IroJs from './components/IroJs.vue'
 import markedKatex from 'marked-katex-extension'
 import 'katex/dist/katex.min.css'
 
+const MARKED_CONFIG = {
+  breaks: true,
+  renderer: {
+    link({ href, text }) {
+      return `<a rel="noreferrer noopener" href="${href}">${text}</a>`
+    },
+    image({ href, title, text }) {
+      return `<img src="${encodeURI(href)}" alt="${text}" title="${title}" crossorigin>`
+    },
+    checkbox({ checked }) {
+      return `<label><input type="checkbox" disabled ${checked ? 'checked' : ''}></label>`
+    }
+  }
+}
+
+const PURIFY_CONFIG = {
+  SANITIZE_NAMED_PROPS: true,
+  ALLOW_DATA_ATTR: false,
+  FORBID_TAGS: ['dialog', 'footer', 'form', 'header', 'main', 'nav', 'style'],
+  FORBID_ATTR: ['style', 'class']
+}
+
+const KATEX_CONFIG = {
+  throwOnError: false,
+  nonStandard: true
+}
+
+const COLORS = [
+  'bg-default', 'bg-red', 'bg-orange', 'bg-yellow', 'bg-lime', 'bg-green',
+  'bg-cyan', 'bg-light-blue', 'bg-blue', 'bg-purple', 'bg-pink'
+]
+
+const DATE_OPTIONS = {
+  weekday: 'short',
+  year: '2-digit',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit'
+}
+
 export default {
   data() {
     return {
@@ -674,6 +721,7 @@ export default {
       timeoutNotification: null,
       fingerprintEnabled: true,
       onLine: navigator.onLine,
+      isToggleLockApp: true,
       isLocked: true,
       isLockedResponse: false,
       isAuthenticated: false,
@@ -689,41 +737,13 @@ export default {
       localDbKeyName: 'key',
       localDbKey: null,
       noteLink: '',
-      urlParams: '',
-      markedConfig: {
-        breaks: true,
-        renderer: {
-          link({ href, text }) {
-            return `<a rel="noreferrer noopener" href="${href}">${text}</a>`
-          },
-          image({ href, title, text }) {
-            return `<img src="${encodeURI(href)}" alt="${text}" title="${title}" crossorigin>`
-          },
-          checkbox({ checked }) {
-            if (checked) return '<label><input type="checkbox" disabled checked>'
-            else return '<label><input type="checkbox" disabled>'
-          }
-        }
-      },
-      purifyConfig: {
-        SANITIZE_NAMED_PROPS: true,
-        ALLOW_DATA_ATTR: false,
-        FORBID_TAGS: ['dialog', 'footer', 'form', 'header', 'main', 'nav', 'style'],
-        FORBID_ATTR: ['style', 'class']
-      },
-      katexConfig: {
-        throwOnError: false,
-        nonStandard: true
-      }
+      urlParams: ''
     }
   },
-  components: {
-    IroJs
-  },
+  components: { IroJs },
   watch: {
     async onLine(v) {
       if (v) {
-        document.querySelector('#offline').classList.add('d-none')
         if (this.urlParams.get('link')) {
           await this.showSharedNote()
           return
@@ -734,8 +754,6 @@ export default {
         await this.fetchAccount()
         if (this.isAuthenticated) await this.getCloudNotes()
         else await this.getLocalNotes()
-      } else {
-        document.querySelector('#offline').classList.remove('d-none')
       }
     }
   },
@@ -791,6 +809,10 @@ export default {
     await this.fetchAccount()
     if (this.isAuthenticated) await this.getCloudNotes()
     else await this.getLocalNotes()
+  },
+  beforeUnmount() {
+    window.removeEventListener('online', () => this.onLine = true)
+    window.removeEventListener('offline', () => this.onLine = false)
   },
   methods: {
     arrayBufferToBase64(buffer) {
@@ -871,10 +893,6 @@ export default {
       }
       document.querySelector('#psswd-gen').textContent = password
     },
-    copyPassword() {
-      const psswd = document.querySelector('#psswd-gen').textContent
-      navigator.clipboard.writeText(psswd)
-    },
     getCsrfToken() {
       return localStorage.getItem('csrfToken')
     },
@@ -882,85 +900,70 @@ export default {
       try {
         const res = await fetch('api/get-lock-app/', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          }
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })
-        if (!res.ok) {
-          this.showError(`An error occurred - ${res.status}`)
-          return
-        }
+        if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
         const response = await res.json()
         this.isLockedResponse = true
         if (!response.lockApp) {
           this.fingerprintEnabled = false
           this.isLocked = false
-          document.querySelector('#toggle-lock-app').checked = false
+          this.isToggleLockApp = false
         }
       } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+        this.showError(`An error occurred - ${error.message}`)
       }
     },
     async toggleLockApp() {
       if (this.isLocked) return
+      let success = true
       if (this.fingerprintEnabled) {
-        const res = await this.verifyFingerprint()
-        if (!res) {
-          document.querySelector('#toggle-lock-app').checked = true
+        success = await this.verifyFingerprint()
+        if (!success) {
+          this.isToggleLockApp = true
           return
         }
         this.fingerprintEnabled = false
       } else {
-        const res = await this.createFingerprint()
-        if (!res) {
-          document.querySelector('#toggle-lock-app').checked = false
+        success = await this.createFingerprint()
+        if (!success) {
+          this.isToggleLockApp = false
           return
         }
       }
       try {
         const res = await fetch('api/lock-app/', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })
-        if (!res.ok) {
-          this.showError(`An error occurred - ${res.status}`)
-        }
+        if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
       } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+        this.showError(`An error occurred - ${error.message}`)
       }
     },
     async unlockApp() {
-      await this.verifyFingerprint().then(async (res) => {
-        if (!res) return
-        this.isLocked = false
-        await this.fetchAccount()
-        if (this.isAuthenticated) await this.getCloudNotes()
-        else await this.getLocalNotes()
-      })
+      const success = await this.verifyFingerprint()
+      if (!success) return
+      this.isLocked = false
+      await this.fetchAccount()
+      if (this.isAuthenticated) await this.getCloudNotes()
+      else await this.getLocalNotes()
     },
     async verifyFingerprint() {
+      const challenge = this.generateRandomBytes(32)
+      const publicKeyOptions = {
+        challenge,
+        rp: { name: 'Notida' },
+        allowCredentials: [],
+        userVerification: "preferred",
+        timeout: 60000,
+      }
       try {
-        const challenge = this.generateRandomBytes(32)
-        const publicKeyOptions = {
-          challenge,
-          rp: {
-            name: 'Notida',
-          },
-          allowCredentials: [],
-          userVerification: "preferred",
-          timeout: 60000,
-        }
         const credential = await navigator.credentials.get({ publicKey: publicKeyOptions })
-        if (credential) return 1
-        else {
-          this.showError('An error occurred - No credential')
-          return 0
-        }
+        return !!credential
       } catch (error) {
-        this.showError(`An error occurred - ${error}`)
-        return 0
+        this.showError(`Auth failed - ${error.message}`)
+        return false
       }
     },
     async createFingerprint() {
@@ -1005,7 +1008,7 @@ export default {
         this.isLocked = false
         return 1
       } catch (error) {
-        document.querySelector('#toggle-lock-app').checked = false
+        this.isToggleLockApp = false
         this.showError(`An error occurred - ${error}`)
         return 0
       }
@@ -1291,6 +1294,7 @@ export default {
       document.querySelector('#check-hidden').disabled = false
       document.querySelector('#folders input[name="add-folder"][value=""').checked = true
       document.querySelector('#categories input[name="add-cat"][value=""').checked = true
+      document.querySelector('#date-reminder-input').value = ''
     },
     openFolderDialog() {
       document.querySelector('#folder-dialog').showModal()
@@ -1432,7 +1436,7 @@ export default {
           const noteCategory = this.notesJSON.find((note) => note.id === noteId).category || ''
           const noteLink = this.notesJSON.find((note) => note.id === noteId).link
           const noteHistoric = this.notesJSON.find((note) => note.id === noteId).historic || ''
-          const noteReminder = this.notesJSON.find((note) => note.id === noteId).reminder
+          const noteReminder = this.notesJSON.find((note) => note.id === noteId).reminder || ''
           if (target.classList.contains('edit-note')) this.isAuthenticated ? this.updateCloudNote(
             noteId,
             noteTitle,
@@ -1612,10 +1616,6 @@ export default {
     async getLocalNotes() {
       if (this.isLocked) return
 
-      this.notesJSON = JSON.parse(localStorage.getItem('local_notes')) || []
-
-      if (this.notesJSON.length === 0) return
-
       const sort = localStorage.getItem('sort_notes') || '1'
       document.querySelector(`#sort-dialog input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
       document.querySelector('#list-notes').textContent = ''
@@ -1624,8 +1624,9 @@ export default {
       document.querySelector('#categories .list').textContent = ''
       document.querySelectorAll('.local-note').forEach((e) => e.remove())
 
-      marked.use(this.markedConfig)
-      marked.use(markedKatex(this.katexConfig))
+      this.notesJSON = JSON.parse(localStorage.getItem('local_notes')) || []
+
+      if (this.notesJSON.length === 0) return
 
       try {
         const db = await this.openIndexedDB(this.localDbName, this.localDbKeyName)
@@ -1636,212 +1637,15 @@ export default {
           if (a.pinned === 0 && b.pinned === 1) return 1
 
           switch (sort) {
-            case '1':
-              return b.date.localeCompare(a.date)
-            case '2':
-              return a.date.localeCompare(b.date)
-            case '3':
-              return a.title.localeCompare(b.title)
-            case '4':
-              return b.title.localeCompare(a.title)
-            default:
-              break
+            case '1': return b.date.localeCompare(a.date)
+            case '2': return a.date.localeCompare(b.date)
+            case '3': return a.title.localeCompare(b.title)
+            case '4': return b.title.localeCompare(a.title)
+            default: break
           }
         })
 
-        const fragment = document.createDocumentFragment()
-        const allFolders = new Set()
-        const allCategories = new Set()
-
-        const promises = this.notesJSON.map(async (row) => {
-          const {
-            id, title, content, color, date, hidden, pinned, folder, category, reminder
-          } = row
-          if (!title || !color || !date) return
-          const deTitleString = await this.decryptLocalNotes(this.localDbKey, title)
-          const deContentString = await this.decryptLocalNotes(this.localDbKey, content)
-          const bottomContentElement = document.createElement('div')
-          bottomContentElement.classList.add('bottom-content')
-
-          const paragraph = document.createElement('p')
-          paragraph.classList.add('p-note-list')
-          paragraph.tabIndex = 0
-          paragraph.setAttribute('role', 'button')
-          paragraph.setAttribute('data-note-id', id)
-
-          const noteElement = document.createElement('div')
-          noteElement.classList.add('note', color, 'local-note')
-          noteElement.setAttribute('data-note-id', id)
-
-          const titleElement = document.createElement('h2')
-          titleElement.classList.add('title')
-          titleElement.textContent = deTitleString
-
-          const contentElement = document.createElement('div')
-          contentElement.classList.add('details-content')
-
-          const detailsElement = document.createElement('div')
-          detailsElement.classList.add('details')
-          detailsElement.appendChild(titleElement)
-          detailsElement.appendChild(contentElement)
-
-          const dateElement = document.createElement('div')
-          dateElement.classList.add('date')
-          dateElement.textContent += new Date(date).toLocaleDateString()
-
-          const editIconElement = document.createElement('i')
-          editIconElement.classList.add('fa-solid', 'fa-pen', 'note-action', 'edit-note')
-          editIconElement.tabIndex = 0
-          editIconElement.setAttribute('role', 'button')
-          editIconElement.setAttribute('aria-label', 'Edit note')
-          bottomContentElement.appendChild(editIconElement)
-
-          const pinElement = document.createElement('i')
-          pinElement.classList.add('fa-solid', 'note-action', 'pin-note')
-          pinElement.tabIndex = 0
-          pinElement.setAttribute('role', 'button')
-          pinElement.setAttribute('aria-label', 'Pin note')
-          bottomContentElement.appendChild(pinElement)
-
-          const trashIconElement = document.createElement('i')
-          trashIconElement.classList.add('fa-solid', 'fa-trash-can', 'note-action', 'delete-note')
-          trashIconElement.tabIndex = 0
-          trashIconElement.setAttribute('role', 'button')
-          trashIconElement.setAttribute('aria-label', 'Delete note')
-          bottomContentElement.appendChild(trashIconElement)
-
-          if (pinned) {
-            noteElement.classList.add('pinned')
-            const pinnedElement = document.createElement('span')
-            pinnedElement.classList.add('custom-check')
-            const iconPin = document.createElement('i')
-            iconPin.classList.add('fa-solid', 'fa-thumbtack')
-            pinnedElement.appendChild(iconPin)
-            paragraph.appendChild(pinnedElement)
-            pinElement.classList.add('fa-thumbtack-slash')
-          } else pinElement.classList.add('fa-thumbtack')
-
-          if (reminder) {
-            const reminderElement = document.createElement('span')
-            reminderElement.classList.add('custom-check')
-            const iconReminder = document.createElement('i')
-            iconReminder.classList.add('fa-solid', 'fa-bell')
-            reminderElement.appendChild(iconReminder)
-            paragraph.appendChild(reminderElement)
-
-            const reminderElementTitle = document.createElement('span')
-            reminderElementTitle.classList.add('reminder-date')
-            const reminderIcon = document.createElement('i')
-            reminderIcon.classList.add('fa-solid', 'fa-bell')
-            reminderElementTitle.appendChild(reminderIcon)
-            const reminderSpan = document.createElement('span')
-            reminderSpan.textContent = new Date(reminder).toLocaleDateString(undefined, {
-              weekday: 'short',
-              year: '2-digit',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-            reminderElementTitle.appendChild(reminderSpan)
-            titleElement.appendChild(reminderElementTitle)
-          }
-
-          if (hidden) {
-            const hiddenElement = document.createElement('span')
-            hiddenElement.classList.add('custom-check')
-            const eyeIconElement = document.createElement('i')
-            eyeIconElement.classList.add('fa-solid', 'fa-eye-slash')
-            const iconEye = document.createElement('i')
-            iconEye.classList.add('fa-solid', 'fa-eye-slash')
-            hiddenElement.appendChild(iconEye)
-            paragraph.appendChild(hiddenElement)
-            contentElement.appendChild(eyeIconElement)
-          } else {
-            if (deContentString) {
-              const clipboardIconElement = document.createElement('i')
-              clipboardIconElement.classList.add('fa-solid', 'fa-clipboard', 'note-action', 'copy-note')
-              clipboardIconElement.tabIndex = 0
-              clipboardIconElement.setAttribute('role', 'button')
-              clipboardIconElement.setAttribute('aria-label', 'Copy note content')
-              bottomContentElement.appendChild(clipboardIconElement)
-
-              const downloadIconElement = document.createElement('i')
-              downloadIconElement.classList.add('fa-solid', 'fa-download', 'note-action', 'download-note')
-              downloadIconElement.tabIndex = 0
-              downloadIconElement.setAttribute('role', 'button')
-              downloadIconElement.setAttribute('aria-label', 'Download note')
-              bottomContentElement.appendChild(downloadIconElement)
-
-              const parsedContent = marked.parse(deContentString)
-              contentElement.innerHTML = parsedContent
-            }
-          }
-
-          if (folder) {
-            allFolders.add(folder)
-            paragraph.setAttribute('data-folder', folder)
-          }
-
-          if (category) {
-            allCategories.add(category)
-            paragraph.setAttribute('data-category', category)
-            const categoryElement = document.createElement('span')
-            categoryElement.classList.add('custom-check')
-            categoryElement.textContent = category
-            paragraph.appendChild(categoryElement)
-          }
-
-          noteElement.appendChild(detailsElement)
-          noteElement.appendChild(dateElement)
-          noteElement.appendChild(bottomContentElement)
-
-          const titleSpan = document.createElement('span')
-          titleSpan.classList.add('title-list')
-          titleSpan.textContent = deTitleString
-
-          const dateSpan = document.createElement('span')
-          dateSpan.classList.add('date-list')
-          dateSpan.textContent = new Date(date).toLocaleDateString(undefined, {
-            weekday: 'short',
-            year: '2-digit',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-
-          fragment.appendChild(noteElement)
-          paragraph.appendChild(titleSpan)
-          paragraph.appendChild(dateSpan)
-          if (!folder) document.querySelector('#list-notes').appendChild(paragraph)
-          else {
-            const folderDetails = document.querySelector(`details[data-folder="${encodeURIComponent(folder)}"]`)
-            if (!folderDetails) {
-              const newFolderDetails = document.createElement('details')
-              newFolderDetails.setAttribute('open', 'open')
-              newFolderDetails.setAttribute('data-folder', encodeURIComponent(folder))
-              const summary = document.createElement('summary')
-              const folderIcon = document.createElement('i')
-              folderIcon.classList.add('fa-solid', 'fa-folder')
-              summary.appendChild(folderIcon)
-              const folderSpan = document.createElement('span')
-              folderSpan.textContent = folder
-              summary.appendChild(folderSpan)
-              newFolderDetails.appendChild(summary)
-              newFolderDetails.appendChild(paragraph)
-              document.querySelector('#list-notes').appendChild(newFolderDetails)
-            } else {
-              folderDetails.appendChild(paragraph)
-            }
-          }
-        })
-        await Promise.all(promises)
-
-        this.noteFolderOrCategories(allFolders, allCategories)
-
-        document.querySelector('main').appendChild(fragment)
-        this.noteActions()
+        await this.renderNoteList(this.notesJSON, true)
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
       }
@@ -1861,7 +1665,7 @@ export default {
 
         if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
 
-        const mdContent = DOMPurify.sanitize(content, this.purifyConfig)
+        const mdContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
 
         const dbName = 'notes_db'
         const objectStoreName = 'key'
@@ -1961,11 +1765,243 @@ export default {
     async deleteLocalNote() {
       const noteId = document.querySelector('#id-note-delete').value
       if (!noteId) return
-      this.notesJSON.splice(noteId, 1)
+      const noteIndex = this.notesJSON.findIndex(note => note.id === noteId)
+      if (noteIndex === -1) return
+      this.notesJSON.splice(noteIndex, 1)
       localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
-      document.querySelector(`.note[data-note-id="${noteId}"]`).remove()
+      const noteElement = document.querySelector(`.note[data-note-id="${noteId}"]`)
+      if (noteElement) noteElement.remove()
       await this.getLocalNotes()
       document.querySelector('#delete-note-dialog').close()
+    },
+    async renderNoteList(notes, isLocal = false) {
+      marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG))
+
+      const fragment = document.createDocumentFragment()
+      const allFolders = new Set()
+      const allCategories = new Set()
+      const paragraphs = []
+
+      for (const row of notes) {
+        const { noteElement, paragraph, folder, category } = await this.renderNote(row, isLocal)
+        if (!noteElement) continue
+
+        fragment.appendChild(noteElement)
+        paragraphs.push({ paragraph, folder, category })
+
+        if (folder) allFolders.add(folder)
+        if (category) allCategories.add(category)
+      }
+
+      for (const { paragraph, folder } of paragraphs) {
+        if (!folder) {
+          document.querySelector('#list-notes').appendChild(paragraph)
+        } else {
+          const folderDetails = document.querySelector(`details[data-folder="${encodeURIComponent(folder)}"]`)
+          if (!folderDetails) {
+            const newFolderDetails = document.createElement('details')
+            newFolderDetails.setAttribute('open', 'open')
+            newFolderDetails.setAttribute('data-folder', encodeURIComponent(folder))
+            const summary = document.createElement('summary')
+            const folderSpan = document.createElement('span')
+            folderSpan.textContent = folder
+            summary.appendChild(folderSpan)
+            const folderIcon = document.createElement('i')
+            folderIcon.classList.add('fa-solid', 'fa-chevron-up')
+            summary.appendChild(folderIcon)
+            newFolderDetails.appendChild(summary)
+            newFolderDetails.appendChild(paragraph)
+            document.querySelector('#list-notes').appendChild(newFolderDetails)
+          } else {
+            folderDetails.appendChild(paragraph)
+          }
+        }
+      }
+
+      this.noteFolderOrCategories(allFolders, allCategories)
+      document.querySelector('main').appendChild(fragment)
+      this.noteActions()
+    },
+    async renderNote(row, isLocal = false) {
+      const {
+        id, title, content, historic, color, date, hidden, folder, category, pinned, link, reminder
+      } = row
+
+      if (!id || !title || !color || !date) return null
+
+      let deTitleString = title
+      let deContentString = content
+      if (isLocal) {
+        deTitleString = await this.decryptLocalNotes(this.localDbKey, title)
+        deContentString = content ? await this.decryptLocalNotes(this.localDbKey, content) : null
+      }
+
+      const bottomContentElement = document.createElement('div')
+      bottomContentElement.classList.add('bottom-content')
+
+      const paragraph = document.createElement('p')
+      paragraph.classList.add('p-note-list')
+      paragraph.tabIndex = 0
+      paragraph.setAttribute('role', 'button')
+      paragraph.setAttribute('data-note-id', id)
+
+      const noteElement = document.createElement('div')
+      noteElement.classList.add('note', color,)
+      if (isLocal) noteElement.classList.add('local-note')
+      noteElement.setAttribute('data-note-id', id)
+
+      const titleElement = document.createElement('h2')
+      titleElement.classList.add('title')
+      titleElement.textContent = deTitleString
+
+      const contentElement = document.createElement('div')
+      contentElement.classList.add('details-content')
+
+      const detailsElement = document.createElement('div')
+      detailsElement.classList.add('details')
+      detailsElement.appendChild(titleElement)
+      detailsElement.appendChild(contentElement)
+
+      const dateElement = document.createElement('div')
+      dateElement.classList.add('date')
+      dateElement.textContent = new Date(date).toLocaleDateString()
+
+      const editIconElement = document.createElement('i')
+      editIconElement.classList.add('fa-solid', 'fa-pen', 'note-action', 'edit-note')
+      editIconElement.tabIndex = 0
+      editIconElement.setAttribute('role', 'button')
+      editIconElement.setAttribute('aria-label', 'Edit note')
+      bottomContentElement.appendChild(editIconElement)
+
+      const pinElement = document.createElement('i')
+      pinElement.classList.add('fa-solid', 'note-action', 'pin-note')
+      pinElement.tabIndex = 0
+      pinElement.setAttribute('role', 'button')
+      pinElement.setAttribute('aria-label', 'Pin note')
+      bottomContentElement.appendChild(pinElement)
+
+      if (pinned) {
+        noteElement.classList.add('pinned')
+        const pinnedElement = document.createElement('span')
+        pinnedElement.classList.add('custom-check')
+        const iconPin = document.createElement('i')
+        iconPin.classList.add('fa-solid', 'fa-thumbtack')
+        pinnedElement.appendChild(iconPin)
+        paragraph.appendChild(pinnedElement)
+        pinElement.classList.add('fa-thumbtack-slash')
+      } else {
+        pinElement.classList.add('fa-thumbtack')
+      }
+
+      if (link && !isLocal) {
+        const linkElement = document.createElement('span')
+        linkElement.classList.add('custom-check')
+        const iconLink = document.createElement('i')
+        iconLink.classList.add('fa-solid', 'fa-link')
+        linkElement.appendChild(iconLink)
+        paragraph.appendChild(linkElement)
+      }
+
+      if (isLocal || (!isLocal && !link)) {
+        const trashIconElement = document.createElement('i')
+        trashIconElement.classList.add('fa-solid', 'fa-trash-can', 'note-action', 'delete-note')
+        trashIconElement.tabIndex = 0
+        trashIconElement.setAttribute('role', 'button')
+        trashIconElement.setAttribute('aria-label', 'Delete note')
+        bottomContentElement.appendChild(trashIconElement)
+      }
+
+      if (reminder) {
+        const reminderElement = document.createElement('span')
+        reminderElement.classList.add('custom-check')
+        const iconReminder = document.createElement('i')
+        iconReminder.classList.add('fa-solid', 'fa-bell')
+        reminderElement.appendChild(iconReminder)
+        paragraph.appendChild(reminderElement)
+
+        const reminderElementTitle = document.createElement('span')
+        reminderElementTitle.classList.add('reminder-date')
+        const reminderIcon = document.createElement('i')
+        reminderIcon.classList.add('fa-solid', 'fa-bell')
+        reminderElementTitle.appendChild(reminderIcon)
+        const reminderSpan = document.createElement('span')
+        reminderSpan.textContent = new Date(reminder).toLocaleDateString(undefined, DATE_OPTIONS)
+        reminderElementTitle.appendChild(reminderSpan)
+        titleElement.appendChild(reminderElementTitle)
+      }
+
+      if (hidden) {
+        const hiddenElement = document.createElement('span')
+        hiddenElement.classList.add('custom-check')
+        noteElement.classList.add('hidden-note')
+        contentElement.textContent = 'Hidden note'
+      } else {
+        if (historic && !isLocal) {
+          const historicIconElement = document.createElement('i')
+          historicIconElement.classList.add('fa-solid', 'fa-clock-rotate-left', 'note-action', 'historic-note')
+          historicIconElement.tabIndex = 0
+          historicIconElement.setAttribute('role', 'button')
+          historicIconElement.setAttribute('aria-label', 'View last note historic')
+          bottomContentElement.appendChild(historicIconElement)
+        }
+
+        if (deContentString) {
+          const clipboardIconElement = document.createElement('i')
+          clipboardIconElement.classList.add('fa-solid', 'fa-clipboard', 'note-action', 'copy-note')
+          clipboardIconElement.tabIndex = 0
+          clipboardIconElement.setAttribute('role', 'button')
+          clipboardIconElement.setAttribute('aria-label', 'Copy note content')
+          bottomContentElement.appendChild(clipboardIconElement)
+
+          const downloadIconElement = document.createElement('i')
+          downloadIconElement.classList.add('fa-solid', 'fa-download', 'note-action', 'download-note')
+          downloadIconElement.tabIndex = 0
+          downloadIconElement.setAttribute('role', 'button')
+          downloadIconElement.setAttribute('aria-label', 'Download note')
+          bottomContentElement.appendChild(downloadIconElement)
+
+          if (!isLocal) {
+            const linkIconElement = document.createElement('i')
+            linkIconElement.classList.add('fa-solid', 'fa-link', 'note-action', 'share-note')
+            linkIconElement.tabIndex = 0
+            linkIconElement.setAttribute('role', 'button')
+            linkIconElement.setAttribute('aria-label', 'Share note')
+            bottomContentElement.appendChild(linkIconElement)
+          }
+
+          const cleanContent = DOMPurify.sanitize(deContentString, PURIFY_CONFIG)
+          const parsedContent = marked.parse(cleanContent)
+          contentElement.innerHTML = parsedContent
+        }
+      }
+
+      if (folder) {
+        paragraph.setAttribute('data-folder', folder)
+      }
+
+      if (category) {
+        paragraph.setAttribute('data-category', category)
+        const categoryElement = document.createElement('span')
+        categoryElement.classList.add('custom-check')
+        categoryElement.textContent = category
+        paragraph.appendChild(categoryElement)
+      }
+
+      const titleSpan = document.createElement('span')
+      titleSpan.classList.add('title-list')
+      titleSpan.textContent = deTitleString
+      paragraph.appendChild(titleSpan)
+
+      const dateSpan = document.createElement('span')
+      dateSpan.classList.add('date-list')
+      dateSpan.textContent = new Date(date).toLocaleDateString(undefined, DATE_OPTIONS)
+      paragraph.appendChild(dateSpan)
+
+      noteElement.appendChild(detailsElement)
+      noteElement.appendChild(dateElement)
+      noteElement.appendChild(bottomContentElement)
+
+      return { noteElement, paragraph, folder, category }
     },
     async getCloudNotes() {
       if (this.isLocked) return
@@ -1977,9 +2013,6 @@ export default {
       document.querySelector('#folders .list').textContent = ''
       document.querySelector('#categories .list').textContent = ''
       document.querySelectorAll('.note').forEach((e) => e.remove())
-
-      marked.use(this.markedConfig)
-      marked.use(markedKatex(this.katexConfig))
 
       try {
         const data = new URLSearchParams({ csrfToken: this.getCsrfToken() })
@@ -2001,7 +2034,7 @@ export default {
         this.maxNoteContentLength = response.maxNoteContentLength
         this.notesJSON = response.notes
 
-        document.querySelector('#last-login-date').textContent = `${response.lastLogin}GMT`
+        document.querySelector('#last-login-date').textContent = new Date(response.lastLogin).toLocaleDateString(undefined, DATE_OPTIONS)
 
         if (this.notesJSON.length === 0) return
 
@@ -2010,235 +2043,15 @@ export default {
           if (a.pinned === 0 && b.pinned === 1) return 1
 
           switch (sort) {
-            case '1':
-              return b.date.localeCompare(a.date)
-            case '2':
-              return a.date.localeCompare(b.date)
-            case '3':
-              return a.title.localeCompare(b.title)
-            case '4':
-              return b.title.localeCompare(a.title)
-            default:
-              break
+            case '1': return b.date.localeCompare(a.date)
+            case '2': return a.date.localeCompare(b.date)
+            case '3': return a.title.localeCompare(b.title)
+            case '4': return b.title.localeCompare(a.title)
+            default: break
           }
         })
 
-        const fragment = document.createDocumentFragment()
-        const allFolders = new Set()
-        const allCategories = new Set()
-
-        this.notesJSON.forEach((row) => {
-          const {
-            id, title, content, historic, color, date, hidden, folder, category, pinned, link, reminder
-          } = row
-
-          if (!id || !title || !color || !date) return
-
-          const bottomContentElement = document.createElement('div')
-          bottomContentElement.classList.add('bottom-content')
-
-          const paragraph = document.createElement('p')
-          paragraph.classList.add('p-note-list')
-          paragraph.tabIndex = 0
-          paragraph.setAttribute('role', 'button')
-          paragraph.setAttribute('data-note-id', id)
-
-          const noteElement = document.createElement('div')
-          noteElement.classList.add('note', color)
-          noteElement.setAttribute('data-note-id', id)
-
-          const titleElement = document.createElement('h2')
-          titleElement.classList.add('title')
-          titleElement.textContent = title
-
-          const contentElement = document.createElement('div')
-          contentElement.classList.add('details-content')
-
-          const detailsElement = document.createElement('div')
-          detailsElement.classList.add('details')
-          detailsElement.appendChild(titleElement)
-          detailsElement.appendChild(contentElement)
-
-          const dateElement = document.createElement('div')
-          dateElement.classList.add('date')
-          dateElement.textContent += new Date(date).toLocaleDateString()
-
-          const editIconElement = document.createElement('i')
-          editIconElement.classList.add('fa-solid', 'fa-pen', 'note-action', 'edit-note')
-          editIconElement.tabIndex = 0
-          editIconElement.setAttribute('role', 'button')
-          editIconElement.setAttribute('aria-label', 'Edit note')
-          bottomContentElement.appendChild(editIconElement)
-
-          const pinElement = document.createElement('i')
-          pinElement.classList.add('fa-solid', 'note-action', 'pin-note')
-          pinElement.tabIndex = 0
-          pinElement.setAttribute('role', 'button')
-          pinElement.setAttribute('aria-label', 'Pin note')
-          bottomContentElement.appendChild(pinElement)
-
-          if (pinned) {
-            noteElement.classList.add('pinned')
-            const pinnedElement = document.createElement('span')
-            pinnedElement.classList.add('custom-check')
-            const iconPin = document.createElement('i')
-            iconPin.classList.add('fa-solid', 'fa-thumbtack')
-            pinnedElement.appendChild(iconPin)
-            paragraph.appendChild(pinnedElement)
-            pinElement.classList.add('fa-thumbtack-slash')
-          } else pinElement.classList.add('fa-thumbtack')
-
-          if (link) {
-            const linkElement = document.createElement('span')
-            linkElement.classList.add('custom-check')
-            const iconLink = document.createElement('i')
-            iconLink.classList.add('fa-solid', 'fa-link')
-            linkElement.appendChild(iconLink)
-            paragraph.appendChild(linkElement)
-          } else {
-            const trashIconElement = document.createElement('i')
-            trashIconElement.classList.add('fa-solid', 'fa-trash-can', 'note-action', 'delete-note')
-            trashIconElement.tabIndex = 0
-            trashIconElement.setAttribute('role', 'button')
-            trashIconElement.setAttribute('aria-label', 'Delete note')
-            bottomContentElement.appendChild(trashIconElement)
-          }
-
-          if (reminder) {
-            const reminderElement = document.createElement('span')
-            reminderElement.classList.add('custom-check')
-            const iconReminder = document.createElement('i')
-            iconReminder.classList.add('fa-solid', 'fa-bell')
-            reminderElement.appendChild(iconReminder)
-            paragraph.appendChild(reminderElement)
-
-            const reminderElementTitle = document.createElement('span')
-            reminderElementTitle.classList.add('reminder-date')
-            const reminderIcon = document.createElement('i')
-            reminderIcon.classList.add('fa-solid', 'fa-bell')
-            reminderElementTitle.appendChild(reminderIcon)
-            const reminderSpan = document.createElement('span')
-            reminderSpan.textContent = new Date(reminder).toLocaleDateString(undefined, {
-              weekday: 'short',
-              year: '2-digit',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-            reminderElementTitle.appendChild(reminderSpan)
-            titleElement.appendChild(reminderElementTitle)
-          }
-
-          if (hidden) {
-            const hiddenElement = document.createElement('span')
-            hiddenElement.classList.add('custom-check')
-            const eyeIconElement = document.createElement('i')
-            eyeIconElement.classList.add('fa-solid', 'fa-eye-slash')
-            const iconEye = document.createElement('i')
-            iconEye.classList.add('fa-solid', 'fa-eye-slash')
-            hiddenElement.appendChild(iconEye)
-            paragraph.appendChild(hiddenElement)
-            contentElement.appendChild(eyeIconElement)
-          } else {
-            if (historic) {
-              const historicIconElement = document.createElement('i')
-              historicIconElement.classList.add('fa-solid', 'fa-clock-rotate-left', 'note-action', 'historic-note')
-              historicIconElement.tabIndex = 0
-              historicIconElement.setAttribute('role', 'button')
-              historicIconElement.setAttribute('aria-label', 'View last note historic')
-              bottomContentElement.appendChild(historicIconElement)
-            }
-
-            if (content) {
-              const clipboardIconElement = document.createElement('i')
-              clipboardIconElement.classList.add('fa-solid', 'fa-clipboard', 'note-action', 'copy-note')
-              clipboardIconElement.tabIndex = 0
-              clipboardIconElement.setAttribute('role', 'button')
-              clipboardIconElement.setAttribute('aria-label', 'Copy note content')
-              bottomContentElement.appendChild(clipboardIconElement)
-
-              const downloadIconElement = document.createElement('i')
-              downloadIconElement.classList.add('fa-solid', 'fa-download', 'note-action', 'download-note')
-              downloadIconElement.tabIndex = 0
-              downloadIconElement.setAttribute('role', 'button')
-              downloadIconElement.setAttribute('aria-label', 'Download note')
-              bottomContentElement.appendChild(downloadIconElement)
-
-              const linkIconElement = document.createElement('i')
-              linkIconElement.classList.add('fa-solid', 'fa-link', 'note-action', 'share-note')
-              linkIconElement.tabIndex = 0
-              linkIconElement.setAttribute('role', 'button')
-              linkIconElement.setAttribute('aria-label', 'Share note')
-              bottomContentElement.appendChild(linkIconElement)
-
-              const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
-              const parsedContent = marked.parse(cleanContent)
-              contentElement.innerHTML = parsedContent
-            }
-          }
-
-          if (folder) {
-            allFolders.add(folder)
-            paragraph.setAttribute('data-folder', folder)
-          }
-
-          if (category) {
-            allCategories.add(category)
-            paragraph.setAttribute('data-category', category)
-            const categoryElement = document.createElement('span')
-            categoryElement.classList.add('custom-check')
-            categoryElement.textContent = category
-            paragraph.appendChild(categoryElement)
-          }
-
-          const titleSpan = document.createElement('span')
-          titleSpan.classList.add('title-list')
-          titleSpan.textContent = title
-
-          const dateSpan = document.createElement('span')
-          dateSpan.classList.add('date-list')
-          dateSpan.textContent = new Date(date).toLocaleDateString(undefined, {
-            weekday: 'short',
-            year: '2-digit',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-
-          noteElement.appendChild(detailsElement)
-          noteElement.appendChild(dateElement)
-          noteElement.appendChild(bottomContentElement)
-          fragment.appendChild(noteElement)
-          paragraph.appendChild(titleSpan)
-          paragraph.appendChild(dateSpan)
-
-          if (!folder) document.querySelector('#list-notes').appendChild(paragraph)
-          else {
-            const folderDetails = document.querySelector(`details[data-folder="${encodeURIComponent(folder)}"]`)
-            if (!folderDetails) {
-              const newFolderDetails = document.createElement('details')
-              newFolderDetails.setAttribute('open', 'open')
-              newFolderDetails.setAttribute('data-folder', encodeURIComponent(folder))
-              const summary = document.createElement('summary')
-              const folderSpan = document.createElement('span')
-              folderSpan.textContent = folder
-              summary.appendChild(folderSpan)
-              const folderIcon = document.createElement('i')
-              folderIcon.classList.add('fa-solid', 'fa-chevron-up')
-              summary.appendChild(folderIcon)
-              newFolderDetails.appendChild(summary)
-              newFolderDetails.appendChild(paragraph)
-              document.querySelector('#list-notes').appendChild(newFolderDetails)
-            } else folderDetails.appendChild(paragraph)
-          }
-        })
-
-        this.noteFolderOrCategories(allFolders, allCategories)
-
-        document.querySelector('main').appendChild(fragment)
-        this.noteActions()
+        await this.renderNoteList(this.notesJSON, false)
       } catch (error) {
         this.showError(`An error occurred - ${error}`)
       }
@@ -2259,26 +2072,13 @@ export default {
         const folder = document.querySelector('#folders input[name="add-folder"]:checked').value
         const category = document.querySelector('#categories input[name="add-cat"]:checked').value
         const reminder = document.querySelector('#date-reminder-input').value
-        const allColors = [
-          'bg-default',
-          'bg-red',
-          'bg-orange',
-          'bg-yellow',
-          'bg-lime',
-          'bg-green',
-          'bg-cyan',
-          'bg-light-blue',
-          'bg-blue',
-          'bg-purple',
-          'bg-pink',
-        ]
 
         if (this.isUpdate && !noteId) return
         if (noteId && !/^[a-zA-Z0-9]+$/.test(noteId)) return
         if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
-        if (!allColors.includes(color)) return
+        if (!COLORS.includes(color)) return
         if (reminder && !new Date(reminder).getTime()) return
-        const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
+        const cleanContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
 
         const data = new URLSearchParams({
           title,
@@ -2333,9 +2133,11 @@ export default {
         if (e.classList.contains(color)) e.classList.add('selected')
         else e.classList.remove('selected')
       })
-      document.querySelector('#check-hidden').checked = hidden
-      if (!link) document.querySelector('#check-hidden').disabled = false
-      else document.querySelector('#check-hidden').disabled = true
+      const hiddenCheckbox = document.querySelector('#check-hidden')
+      if (!hiddenCheckbox) return
+      hiddenCheckbox.checked = hidden
+      if (!link) hiddenCheckbox.disabled = false
+      else hiddenCheckbox.disabled = true
       document.querySelector('#note-dialog #content').focus()
     },
     async pinCloudNote(noteId) {
@@ -2442,8 +2244,7 @@ export default {
 
       const note = await res.json()
 
-      marked.use(this.markedConfig)
-      marked.use(markedKatex(this.katexConfig))
+      marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG))
 
       const {
         title, content, date,
@@ -2451,7 +2252,7 @@ export default {
 
       document.title = title
 
-      const cleanContent = DOMPurify.sanitize(content, this.purifyConfig)
+      const cleanContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
 
       const contentHtml = marked.parse(cleanContent)
       const noteElement = document.createElement('div')
@@ -2475,14 +2276,7 @@ export default {
 
       const dateElement = document.createElement('span')
       dateElement.classList.add('date')
-      dateElement.textContent = new Date(date).toLocaleDateString(undefined, {
-        weekday: 'short',
-        year: '2-digit',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+      dateElement.textContent = new Date(date).toLocaleDateString(undefined, DATE_OPTIONS)
       bottomContentElement.appendChild(dateElement)
       noteElement.appendChild(detailsElement)
       noteElement.appendChild(bottomContentElement)
@@ -2517,6 +2311,11 @@ export default {
     },
     copy(content) {
       navigator.clipboard.writeText(content)
+      this.showSuccess('Content copied to clipboard!')
+    },
+    copyPassword() {
+      const psswd = document.querySelector('#psswd-gen').textContent
+      navigator.clipboard.writeText(psswd)
     },
     copyNoteLink() {
       const link = document.querySelector('#copy-note-link').textContent
