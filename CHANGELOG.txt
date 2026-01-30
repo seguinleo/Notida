@@ -1,3 +1,14 @@
+#----v26.2.1----# !! DATABASE CHANGED !!
+-Improve security
+    -Better local note encryption
+    -Better CSRF protection
+    -Improve WebAuthn
+    -Log out from all devices
+    -JWT token stored in Redis
+-Improve code structure
+-UI/UX fixes
+-Accessibility fixes
+
 #----v26.1.1----#
 -Improve performances
 -Improve code structure
@@ -22,9 +33,9 @@
 
 #----v25.9.1----#
 -Improve security
-    - Add CSRF tokens
-    - Add passport.js login
-    - Prevent session fixation
+    -Add CSRF tokens
+    -Add passport.js login
+    -Prevent session fixation
 
 #----v25.7.1----# !! DATABASE AND ENCRYPTION CHANGED !!
 -Refactor client code in Node.js
@@ -33,9 +44,9 @@
     -Better code structure
     -Better dev environnement
 -Improve security
-    - Limit login attempts
-    - Add JWT tokens
-    - Encrypt .env
+    -Limit login attempts
+    -Add JWT tokens
+    -Encrypt .env
 -Improve Docker configuration
 -Move Apache to nginx
 -UI/UX and accessibility fixes

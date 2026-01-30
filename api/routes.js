@@ -1,6 +1,5 @@
 import express from 'express'
 import session from 'express-session'
-import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import { RedisStore } from 'connect-redis'
 import { createClient } from 'redis'
@@ -40,13 +39,13 @@ app.use(session({
     maxAge: 604800000,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Lax'
+    sameSite: 'Strict'
   }
 }))
 
 app.use(cookieParser())
-app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: true }))
+app.use(express.json({ limit: '5mb' }))
+app.use(express.urlencoded({ extended: true }))
 
 const limiter = rateLimit({
   windowMs: 3 * 60 * 1000,
@@ -63,66 +62,95 @@ const loginLimiter = rateLimit({
 app.use(limiter)
 
 /**
- * @function checkJWTToken
+ * @function verifyJWTToken
  * @description Middleware to check if the user is authenticated with a valid JWT token.
  * If the token is missing or invalid, it responds with a 401 status and
  * stops all cloud requests.
  */
-const checkJWTToken = (req, res, next) => {
-  if (!req.cookies) {
-    return res.status(401).json({ response: 0 })
-  }
-  if (!req.session.name) {
-    return res.status(401).json({ response: 0 })
-  }
+const verifyJWTToken = async (req, res, next) => {
+  const token = req.cookies?.jwtToken
+  if (!token) return res.status(403).json({ response: 0 })
 
-  const token = req.cookies.jwtToken
-  if (!token) {
-    return res.status(401).json({ response: 0 })
-  }
+  try {
+    const isBlacklisted = await redisClient.get(`blacklist:${token}`)
+    if (isBlacklisted) return res.status(403).json({ response: 0 })
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ response: 0 })
+    let decoded
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET)
+    } catch {
+      return res.status(403).json({ response: 0 })
     }
-    if (req.session.name !== decoded.id) {
-      return res.status(401).json({ response: 0 })
-    }
+
+    const tokenActive = await redisClient.sIsMember(`user:tokens:${decoded.id}`, token)
+    if (!tokenActive) return res.status(403).json({ response: 0 })
+
+    req.userId = decoded.id
+
     next()
-  })
+  } catch {
+    return res.status(403).json({ response: 0 })
+  }
 }
 
 /**
  * @function verifyCsrfToken
- * @description Middleware to check if the CSRF token is valid.
+ * @description Verify CSRF token.
  */
 const verifyCsrfToken = (req, res, next) => {
-  const cookieToken = req.session.csrfToken
-  const bodyToken = req.body.csrfToken
-  if (!cookieToken || !bodyToken || cookieToken !== bodyToken) {
-    return res.status(403).send('CSRF token invalid')
+  const userToken = req.headers['x-csrf-token']
+  const storedToken = req.cookies?.csrfToken
+
+  if (!userToken || !storedToken) {
+    return res.status(403).json('Invalid CSRF token')
   }
+
+  try {
+    const userBuffer = Buffer.from(userToken, 'utf8')
+    const storedBuffer = Buffer.from(storedToken, 'utf8')
+
+    if (userBuffer.length !== storedBuffer.length ||
+      !crypto.timingSafeEqual(userBuffer, storedBuffer)) {
+      return res.status(403).json('Invalid CSRF token')
+    }
+  } catch {
+    return res.status(403).json('Invalid CSRF token')
+  }
+
   next()
 }
 
 /**
- * @function getKey
- * @async
- * @param {string} name - The username of the user.
- * @param {string} userId - The ID of the user.
- * @description Get the encryption/decryption key for a user. Important: This key has to be store in a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution instead of the mysql database. The key is never sent to the client.
+ * @function blacklistToken
+ * @description Function to blacklist a token to kill a session.
  */
-const getKey = async (name, userId) => {
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return 0
-  if (!userId || !/^[a-zA-Z0-9]+$/.test(userId)) return 0
+const blacklistToken = async (token) => {
+  const decoded = jwt.decode(token)
+  if (!decoded?.exp) return
+
+  const ttl = decoded.exp - Math.floor(Date.now() / 1000)
+  if (ttl > 0) {
+    await redisClient.set(`blacklist:${token}`, '1', { EX: ttl })
+  }
+}
+
+/**
+ * @function getKey
+ * @description Get the encryption/decryption key for a user.
+ * Important: This key has to be store in a secure vault like AWS KMS,
+ * Azure Key Vault or a self-hosted solution instead of the mysql database.
+ * The key is never sent to the client.
+ */
+const getKey = async (userId) => {
+  if (!userId || !/^[a-f0-9]{24}$/i.test(userId)) return 0
 
   try {
-    const connection = await pool.getConnection()
-    const [rows] = await connection.execute("SELECT oneKey FROM users WHERE name = ? AND id = ? LIMIT 1", [name, userId])
-    connection.release()
+    const [rows] = await pool.execute(
+      "SELECT oneKey FROM users WHERE id = ? LIMIT 1",
+      [userId]
+    )
 
     if (rows.length !== 1) return 0
-
     return rows[0].oneKey
   } catch {
     return 0
@@ -131,19 +159,11 @@ const getKey = async (name, userId) => {
 
 /**
  * @function getLastLogin
- * @async
- * @param {string} name - The username of the user.
- * @param {string} userId - The ID of the user.
  * @description Get the last login timestamp for a user.
  */
-const getLastLogin = async (name, userId) => {
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return 0
-  if (!userId || !/^[a-zA-Z0-9]+$/.test(userId)) return 0
-
+const getLastLogin = async (userId) => {
   try {
-    const connection = await pool.getConnection()
-    const [rows] = await connection.execute("SELECT lastLogin FROM users WHERE name = ? AND id = ? LIMIT 1", [name, userId])
-    connection.release()
+    const [rows] = await pool.execute("SELECT lastLogin FROM users WHERE id = ? LIMIT 1", [userId])
 
     if (rows.length !== 1) return 0
     return rows[0].lastLogin
@@ -153,170 +173,331 @@ const getLastLogin = async (name, userId) => {
 }
 
 /**
- * @description Route to check if the user is logged in.
+ * @function getAllUserSessions
+ * @description Get number of active sessions for a user and clean old tokens.
  */
-app.post('/get-user', checkJWTToken, async (req, res) => {
-  res.status(200).json({ isAuthenticated: true })
+const getAllUserSessions = async (userId) => {
+  try {
+    const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
+    if (!tokens || tokens.length === 0) return 0
+
+    const results = await Promise.all(tokens.map(async (token) => {
+      const isBlacklisted = await redisClient.get(`blacklist:${token}`)
+      if (isBlacklisted) {
+        await redisClient.sRem(`user:tokens:${userId}`, token)
+        return 0
+      }
+
+      try {
+        jwt.verify(token, process.env.JWT_SECRET)
+        return 1
+      } catch {
+        await redisClient.sRem(`user:tokens:${userId}`, token)
+        return 0
+      }
+    }))
+
+    return results.reduce((acc, val) => acc + val, 0)
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * @description Route to verify if the user is authenticated.
+ */
+app.post('/whoami', async (req, res) => {
+  const token = req.cookies?.jwtToken
+  if (!token) return res.json({ isAuthenticated: false })
+
+  try {
+    const isBlacklisted = await redisClient.get(`blacklist:${token}`)
+    if (isBlacklisted) return res.json({ isAuthenticated: false })
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+
+    const active = await redisClient.sIsMember(
+      `user:tokens:${decoded.id}`,
+      token
+    )
+    if (!active) return res.json({ isAuthenticated: false })
+
+    return res.json({ isAuthenticated: true })
+  } catch {
+    return res.json({ isAuthenticated: false })
+  }
 })
 
+/**
+ * @description Route to check if app is locked with biometric.
+ */
 app.post('/get-lock-app', (req, res) => {
   const lockApp = req.session.lockApp ? true : false
-  res.status(200).json({ lockApp })
+  return res.status(200).json({ lockApp })
 })
 
+/**
+ * @description Route to lock app with biometric.
+ */
 app.post('/lock-app', (req, res) => {
   const lockApp = req.session.lockApp ? false : true
   req.session.lockApp = lockApp
-  res.status(200).send('App lock status updated')
+  return res.status(200).send('App lock status updated')
 })
 
-app.post('/create-user', async (req, res) => {
+/**
+ * @description Route to create a new user account.
+ * Store encryption key securely in a vault like AWS KMS,
+ * Azure Key Vault or a self-hosted solution instead of the mysql database.
+ */
+app.post('/create-account', async (req, res) => {
   const { nameCreate, psswdCreate } = req.body
 
-  if (!/^[a-zA-ZÀ-ÿ -]+$/.test(nameCreate) || nameCreate.length < 3 || nameCreate.length > 30 || psswdCreate.length < 10 || psswdCreate.length > 64) {
+  if (!/^[\p{L} -]+$/u.test(nameCreate.normalize('NFC'))
+    || nameCreate.length < 3
+    || nameCreate.length > 30
+    || psswdCreate.length < 10
+    || psswdCreate.length > 64
+  ) {
     return res.status(401).send('Account creation failed')
   }
 
   const id = crypto.randomBytes(12).toString('hex')
-  const psswdCreateHash = await bcrypt.hash(psswdCreate, 10)
+  const psswdCreateHash = await bcrypt.hash(psswdCreate, 12)
   const key = crypto.randomBytes(32)
-
-  const binary = []
-  const bytes = new Uint8Array(key)
-  for (let i = 0; i < bytes.byteLength; i += 1) binary.push(String.fromCharCode(bytes[i]))
-  const keyBase64 = btoa(binary.join(''))
+  const keyBase64 = Buffer.from(key).toString('base64')
 
   try {
-    const connection = await pool.getConnection()
-    await connection.execute(
+    await pool.execute(
       "INSERT INTO users (id, name, psswd, oneKey) VALUES (?, ?, ?, ?)",
       [id, nameCreate, psswdCreateHash, keyBase64]
     )
-    connection.release()
-    res.status(200).send('Account created successfully')
+    return res.status(200).send('Account created successfully')
   } catch {
     return res.status(401).send('Account creation failed')
   }
 })
 
-app.post('/login', loginLimiter, (req, res, next) => {
-  passport.authenticate('local', { session: false }, async (err, user) => {
-    if (err) {
-      return res.status(401).send('Wrong username or password.')
-    }
-    if (!user) {
-      return res.status(401).send('Wrong username or password.')
-    }
+/**
+ * @description Route to log in a user. Create and store JWT token in Redis.
+ */
+app.post('/login', loginLimiter, async (req, res, next) => {
+  try {
+    const user = await new Promise((resolve, reject) => {
+      passport.authenticate('local', { session: false }, (err, user) => {
+        if (err) return reject(err)
+        resolve(user)
+      })(req, res, next)
+    })
 
-    req.session.regenerate(async (err) => {
-      if (err) {
-        return res.status(401).send('Wrong username or password.')
-      }
+    if (!user) return res.status(401).send('Wrong username or password.')
 
-      res.cookie('jwtToken', jwt.sign({ id: user.name }, process.env.JWT_SECRET, {
-        expiresIn: 604800,
-      }), {
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: 604800 }
+    )
+
+    await redisClient.sAdd(`user:tokens:${user.id}`, token)
+    await redisClient.expire(`user:tokens:${user.id}`, 604800)
+
+    req.session.regenerate((err) => {
+      if (err) return res.status(401).send('Internal server error')
+
+      req.session.name = user.name
+      req.session.lockApp = false
+
+      res.cookie('jwtToken', token, {
         maxAge: 604800000,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax'
+        sameSite: 'Strict'
       })
 
-      req.session.name = user.name
-      req.session.userId = user.id
-      req.session.lockApp = false
       const csrfToken = crypto.randomBytes(32).toString('hex')
-      req.session.csrfToken = csrfToken
+      res.cookie('csrfToken', csrfToken, {
+        maxAge: 604800000,
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict'
+      })
 
-      try {
-        const connection = await pool.getConnection()
-        await connection.execute("UPDATE users SET lastLogin = NOW() WHERE name = ?", [user.name])
-        connection.release()
-      } catch {
-        return res.status(401).send('Wrong username or password.')
-      }
-      res.status(200).json({ csrfToken })
+      pool.execute(
+        "UPDATE users SET lastLogin = NOW() WHERE id = ?",
+        [user.id]
+      )
+
+      return res.status(200).send('Logged in!')
     })
-  })(req, res, next)
+  } catch {
+    return res.status(401).send('Wrong username or password.')
+  }
 })
 
-app.post('/logout', checkJWTToken, async (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(401).send('Logout failed')
+/**
+ * @description Route to log out only current device. Blacklist current JWT token.
+ */
+app.post('/logout', verifyJWTToken, async (req, res) => {
+  const token = req.cookies?.jwtToken
+  if (!token) return res.status(401).json('Internal server error')
+
+  try {
+    await blacklistToken(token)
+    await redisClient.sRem(`user:tokens:${req.userId}`, token)
+
+    req.session.destroy((err) => {
+      if (err) return res.status(401).json('Internal server error')
+
+      res.clearCookie('connect.sid')
+      res.clearCookie('jwtToken')
+      res.clearCookie('csrfToken')
+      return res.status(200).json('Logged out successfully')
+    })
+  } catch {
+    return res.status(401).json('Internal server error')
+  }
+})
+
+/**
+ * @description Route to log out all devices for a user. Blacklist all JWT tokens associated with the user.
+ */
+app.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+  const userId = req.userId
+
+  try {
+    const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
+
+    if (tokens && tokens.length > 0) {
+      await Promise.all(
+        tokens.map(token => blacklistToken(token))
+      )
+      await redisClient.del(`user:tokens:${userId}`)
     }
-    res.clearCookie('connect.sid')
-    res.clearCookie('jwtToken')
-    res.status(200).send('Logout successful')
-  })
+
+    req.session.destroy((err) => {
+      if (err) return res.status(401).json('Internal server error')
+
+      res.clearCookie('connect.sid')
+      res.clearCookie('jwtToken')
+      res.clearCookie('csrfToken')
+      return res.status(200).json('All devices logged out successfully')
+    })
+  } catch {
+    return res.status(401).json('Internal server error')
+  }
 })
 
-app.post('/update-password', checkJWTToken, verifyCsrfToken, async (req, res) => {
+/**
+ * @description Route to update user password. Log out and blacklist all JWT tokens associated with the user.
+ */
+app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { psswdOld, psswdNew } = req.body
-  const name = req.session.name
-  const userId = req.session.userId
-  if (!name || !userId || !psswdOld) return res.status(401).send('Password update failed')
-  if (!/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Password update failed')
-  if (!/^[a-zA-Z0-9]+$/.test(userId)) return res.status(401).send('Password update failed')
-  if (psswdNew.length < 10 || psswdNew.length > 64) return res.status(401).send('Password update failed')
+  const userId = req.userId
+
+  if (!userId || !psswdOld || !psswdNew || psswdNew.length < 10) {
+    return res.status(401).json('Internal server error')
+  }
 
   try {
-    const connection = await pool.getConnection()
-    const [rows] = await connection.execute("SELECT psswd FROM users WHERE name = ? AND id = ? LIMIT 1", [name, userId])
+    const [rows] = await pool.execute(
+      "SELECT psswd FROM users WHERE id = ? LIMIT 1",
+      [userId]
+    )
     if (rows.length !== 1 || !(await bcrypt.compare(psswdOld, rows[0].psswd))) {
-      return res.status(401).send('Password update failed')
+      return res.status(401).json('Wrong password')
     }
 
-    const psswdNewHash = await bcrypt.hash(psswdNew, 10)
-    await connection.execute("UPDATE users SET psswd = ? WHERE name = ? AND id = ?", [psswdNewHash, name, userId])
-    connection.release()
-    res.status(200).send('Password updated successfully')
+    const psswdNewHash = await bcrypt.hash(psswdNew, 12)
+    await pool.execute(
+      "UPDATE users SET psswd = ? WHERE id = ?",
+      [psswdNewHash, userId]
+    )
+
+    const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
+
+    if (tokens && tokens.length > 0) {
+      await Promise.all(
+        tokens.map(token => blacklistToken(token))
+      )
+      await redisClient.del(`user:tokens:${userId}`)
+    }
+
+    req.session.destroy((err) => {
+      if (err) return res.status(401).json('Internal server error')
+
+      res.clearCookie('connect.sid')
+      res.clearCookie('jwtToken')
+      res.clearCookie('csrfToken')
+      return res.status(200).json('Password updated. All devices logged out. Please login again.')
+    })
   } catch {
-    return res.status(401).send('Password update failed')
+    return res.status(401).json('Internal server error')
   }
 })
 
-app.post('/delete-user', checkJWTToken, verifyCsrfToken, async (req, res) => {
+/**
+ * @description Route to delete an account and all notes ON DELETE CASCADE.
+ * Log out and blacklist all JWT tokens associated with the user.
+ */
+app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { psswd } = req.body
-  const name = req.session.name
-  const userId = req.session.userId
+  const userId = req.userId
 
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Account deletion failed')
-  if (!userId || !/^[a-zA-Z0-9]+$/.test(userId)) return res.status(401).send('Account deletion failed')
-  if (psswd.length < 10 || psswd.length > 64) return res.status(401).send('Account deletion failed')
+  if (!userId || !psswd) {
+    return res.status(401).json('Internal server error')
+  }
 
   try {
-    const connection = await pool.getConnection()
-    const [rows] = await connection.execute("SELECT psswd FROM users WHERE name = ? AND id = ? LIMIT 1", [name, userId])
+    const [rows] = await pool.execute(
+      "SELECT psswd FROM users WHERE id = ? LIMIT 1",
+      [userId]
+    )
     if (rows.length !== 1 || !(await bcrypt.compare(psswd, rows[0].psswd))) {
-      return res.status(401).send('Account deletion failed')
+      return res.status(401).json('Wrong password')
     }
 
-    await connection.execute("DELETE FROM users WHERE name = ? AND id = ?", [name, userId])
-    connection.release()
+    await pool.execute("DELETE FROM users WHERE id = ?", [userId])
 
-    req.session.destroy()
-    res.clearCookie('connect.sid')
-    res.status(200).send('Account deleted successfully')
+    const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
+
+    if (tokens && tokens.length > 0) {
+      await Promise.all(
+        tokens.map(token => blacklistToken(token))
+      )
+      await redisClient.del(`user:tokens:${userId}`)
+    }
+
+    req.session.destroy((err) => {
+      if (err) return res.status(401).json('Internal server error')
+
+      res.clearCookie('connect.sid')
+      res.clearCookie('jwtToken')
+      res.clearCookie('csrfToken')
+      return res.status(200).json('Account deleted successfully. All devices logged out.')
+    })
   } catch {
-    return res.status(401).send('Account deletion failed')
+    return res.status(401).json('Internal server error')
   }
 })
 
-app.post('/get-notes', checkJWTToken, verifyCsrfToken, async (req, res) => {
+/**
+ * @description Route to get all user notes
+ */
+app.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+  const userId = req.userId
   const name = req.session.name
-  const userId = req.session.userId
-  const key = await getKey(name, userId)
-  const lastLogin = await getLastLogin(name, userId)
+  const key = await getKey(userId)
+  const lastLogin = await getLastLogin(userId)
+  const allUserSessions = await getAllUserSessions(userId)
 
   if (!key) return res.status(401).send('Notes retrieval failed')
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Notes retrieval failed')
-  if (!userId || !/^[a-zA-Z0-9]+$/.test(userId)) return res.status(401).send('Notes retrieval failed')
 
   try {
-    const connection = await pool.getConnection()
-    const [rows] = await connection.execute("SELECT id, title, content, historic, color, dateNote, hiddenNote, category, folder, pinnedNote, link, reminder FROM notes WHERE user = ?", [name])
-    connection.release()
+    const [rows] = await pool.execute(`
+        SELECT id, title, content, historic, color, dateNote, hiddenNote, category, folder, pinnedNote, link, reminder
+        FROM notes
+        WHERE user = ?
+      `, [userId])
 
     if (rows.length === 0) {
       return res.status(200).json({ notes: [], name, lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize: 0 })
@@ -347,17 +528,16 @@ app.post('/get-notes', checkJWTToken, verifyCsrfToken, async (req, res) => {
       }
     })
 
-    res.status(200).json({ notes, name, lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize })
+    return res.status(200).json({ notes, name, lastLogin, allUserSessions, maxNoteContentLength, maxDataByteSize, dataByteSize })
   } catch {
     return res.status(401).send('Notes retrieval failed')
   }
 })
 
-app.post('/add-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
+app.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { title, content, color, hidden, folder, category, reminder } = req.body
-  const name = req.session.name
-  const userId = req.session.userId
-  const key = await getKey(name, userId)
+  const userId = req.userId
+  const key = await getKey(userId)
   const allColors = [
     'bg-default',
     'bg-red',
@@ -372,9 +552,15 @@ app.post('/add-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
     'bg-pink',
   ]
 
-  if (!name || !userId || !key || !title) return res.status(401).send('Note creation failed')
-  if (title.length > 30 || content.length > maxNoteContentLength) return res.status(401).send('Note creation failed')
-  if (!allColors.includes(color)) return res.status(401).send('Note creation failed')
+  if (!userId || !key || !title) return res.status(401).send('Note creation failed')
+  if (
+    typeof title !== 'string' ||
+    typeof content !== 'string' ||
+    title.length > 30 ||
+    content.length > maxNoteContentLength
+  ) {
+    return res.status(401).send('Note creation failed')
+  }
   if (!allColors.includes(color)) return res.status(401).send('Note creation failed')
   if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Note creation failed')
 
@@ -382,8 +568,7 @@ app.post('/add-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
   const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
   try {
-    const connection = await pool.getConnection()
-    await connection.execute(
+    await pool.execute(
       "INSERT INTO notes (id, title, content, dateNote, color, hiddenNote, folder, category, reminder, user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         noteId,
@@ -395,21 +580,19 @@ app.post('/add-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
         folder,
         category,
         reminder,
-        name,
+        userId
       ]
     )
-    connection.release()
-    res.status(200).send('Note created successfully')
+    return res.status(200).send('Note created successfully')
   } catch {
     return res.status(401).send('Note creation failed')
   }
 })
 
-app.post('/update-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
+app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId, title, content, color, hidden, folder, category, reminder } = req.body
-  const name = req.session.name
-  const userId = req.session.userId
-  const key = await getKey(name, userId)
+  const userId = req.userId
+  const key = await getKey(userId)
   const allColors = [
     'bg-default',
     'bg-red',
@@ -423,27 +606,32 @@ app.post('/update-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
     'bg-purple',
     'bg-pink',
   ]
-  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Update failed')
-  if (!name || !userId || !key || !title) return res.status(401).send('Update failed')
-  if (title.length > 30 || content.length > maxNoteContentLength) return res.status(401).send('Update failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Update failed')
+  if (!userId || !key || !title) return res.status(401).send('Update failed')
+  if (
+    typeof title !== 'string' ||
+    typeof content !== 'string' ||
+    title.length > 30 ||
+    content.length > maxNoteContentLength
+  ) {
+    return res.status(401).send('Update failed')
+  }
   if (!allColors.includes(color)) return res.status(401).send('Update failed')
   if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Update failed')
 
   const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
-  const connection = await pool.getConnection()
 
   try {
-    const [rows] = await connection.execute(
+    const [rows] = await pool.execute(
       'SELECT content FROM notes WHERE id = ? AND user = ?',
-      [noteId, name]
+      [noteId, userId]
     )
     if (rows.length === 0) {
-      connection.release()
       return res.status(401).send('Update failed')
     }
     const oldContent = rows[0].content
 
-    await connection.execute(`
+    await pool.execute(`
       UPDATE notes
       SET
         title = ?,
@@ -459,7 +647,7 @@ app.post('/update-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
     `, [
       encryption.encryptData(title, key),
       encryption.encryptData(content, key),
-      oldContent, // Stockage de l'ancienne version chiffrée
+      oldContent,
       dateNote,
       color,
       hidden,
@@ -467,87 +655,72 @@ app.post('/update-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
       category,
       reminder,
       noteId,
-      name
+      userId
     ])
-
-    connection.release()
-    res.status(200).send('Note updated successfully')
-  } catch (err) {
-    connection.release()
+    return res.status(200).send('Note updated successfully')
+  } catch {
     return res.status(401).send('Update failed')
   }
 })
 
-app.post('/pin-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
+app.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
-  const name = req.session.name
+  const userId = req.userId
 
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Pin note failed')
-  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Pin note failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Pin note failed')
 
   try {
-    const connection = await pool.getConnection()
-    await connection.execute(`
+    await pool.execute(`
           UPDATE notes
           SET pinnedNote = CASE WHEN pinnedNote = '0' THEN '1' ELSE '0' END
           WHERE id = ? AND user = ?
-      `, [noteId, name])
-    connection.release()
-    res.status(200).send('Note pinned successfully')
+      `, [noteId, userId])
+    return res.status(200).send('Note pinned successfully')
   } catch {
     return res.status(401).send('Pin note failed')
   }
 })
 
-app.post('/delete-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
+app.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
-  const name = req.session.name
+  const userId = req.userId
 
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Note deletion failed')
-  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Note deletion failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note deletion failed')
 
   try {
-    const connection = await pool.getConnection()
-    await connection.execute("DELETE FROM notes WHERE id = ? AND user = ? AND link IS NULL", [noteId, name])
-    connection.release()
-    res.status(200).send('Note deleted successfully')
+    await pool.execute("DELETE FROM notes WHERE id = ? AND user = ? AND link IS NULL", [noteId, userId])
+    return res.status(200).send('Note deleted successfully')
   } catch {
     return res.status(401).send('Note deletion failed')
   }
 })
 
-app.post('/public-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
+app.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
-  const name = req.session.name
+  const userId = req.userId
 
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Note modification failed')
-  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Note modification failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note modification failed')
 
   const noteLink = crypto.randomBytes(16).toString('hex')
 
   try {
-    const connection = await pool.getConnection()
-    await connection.execute("UPDATE notes SET link = ? WHERE id = ? AND user = ? AND link IS NULL AND hiddenNote = 0", [noteLink, noteId, name])
-    connection.release()
-    res.status(200).send('Note link added successfully')
+    await pool.execute("UPDATE notes SET link = ? WHERE id = ? AND user = ? AND link IS NULL AND hiddenNote = 0", [noteLink, noteId, userId])
+    return res.status(200).send('Note link added successfully')
   } catch {
     return res.status(401).send('Note modification failed')
   }
 })
 
-app.post('/private-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
+app.post('/private-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId, noteLink } = req.body
-  const name = req.session.name
+  const userId = req.userId
 
-  if (!name || !/^[a-zA-ZÀ-ÿ -]+$/.test(name)) return res.status(401).send('Note modification failed')
-  if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return res.status(401).send('Note modification failed')
-  if (!noteLink || !/^[a-zA-Z0-9]{32}$/.test(noteLink)) return res.status(401).send('Note modification failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note modification failed')
+  if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) return res.status(401).send('Note modification failed')
 
   try {
-    const connection = await pool.getConnection()
-    await connection.execute("UPDATE notes SET link = NULL WHERE id = ? AND user = ? AND link = ?", [noteId, name, noteLink])
-    connection.release()
-    res.status(200).send('Note link removed successfully')
+    await pool.execute("UPDATE notes SET link = NULL WHERE id = ? AND user = ? AND link = ?", [noteId, userId, noteLink])
+    return res.status(200).send('Note link removed successfully')
   } catch {
     return res.status(401).send('Note modification failed')
   }
@@ -556,39 +729,41 @@ app.post('/private-note', checkJWTToken, verifyCsrfToken, async (req, res) => {
 app.post('/get-shared-note', async (req, res) => {
   const { noteLink } = req.body
 
-  if (!noteLink || !/^[a-zA-Z0-9]{32}$/.test(noteLink)) {
-    return res.status(401).send('Invalid note link')
+  if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) {
+    return res.status(401).json('Invalid note link')
   }
 
   try {
-    const connection = await pool.getConnection()
-    const [rows] = await connection.execute(`
-          SELECT notes.title, notes.content, notes.dateNote, notes.link, users.oneKey
-          FROM notes
-          INNER JOIN users ON notes.user = users.name
-          WHERE notes.link = ?
-          LIMIT 1
-      `, [noteLink])
-    connection.release()
+    const [noteRows] = await pool.execute(`
+      SELECT title, content, dateNote, user
+      FROM notes
+      WHERE link = ?
+      LIMIT 1
+    `, [noteLink])
 
-    if (rows.length !== 1) {
+    if (noteRows.length !== 1) {
       return res.status(404).send('Note not found')
     }
 
+    const { title: encryptedTitle, content: encryptedContent, dateNote, user } = noteRows[0]
+
+    const key = await getKey(user)
+    if (!key) return res.status(401).send('Internal server error')
+
     const note = {
-      title: encryption.decryptData(rows[0].title, rows[0].oneKey),
-      content: encryption.decryptData(rows[0].content, rows[0].oneKey),
-      date: rows[0].dateNote
+      title: encryption.decryptData(encryptedTitle, key),
+      content: encryption.decryptData(encryptedContent, key),
+      date: dateNote
     }
 
-    res.status(200).json(note)
+    return res.status(200).json(note)
   } catch {
-    return res.status(401).send('Invalid note link')
+    return res.status(401).send('Internal server error')
   }
 })
 
 app.get('/health', (req, res) => {
-  res.status(200).send('OK')
+  return res.status(200).send('OK')
 })
 
 export default app
