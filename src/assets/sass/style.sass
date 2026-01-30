@@ -94,7 +94,6 @@ html
     #sidebar #list-notes p .custom-check,
     #sidebar #list-notes p .custom-check span,
     #copy-note-link,
-    #psswd-gen,
     .bg-default,
     .reminder-date,
     .custom-check span,
@@ -112,6 +111,12 @@ html
     .editor-control i
       &:hover
         background: rgba(0, 0, 0, .1) !important
+
+    #success-notification
+      background: #72c472 !important
+
+    .error-notification
+      background: #d57f7f !important
 
 *
   color: inherit
@@ -525,13 +530,18 @@ input
   align-items: center
   bottom: 3.5rem
   right: 3.5rem
-  width: 60px
+  width: fit-content
   height: 60px
+  padding: 0 1rem
   margin: 0
   font-size: 1.6rem
   border-radius: 48px
   z-index: 1
   backdrop-filter: blur(10px)
+
+  span
+    font-size: 1.2rem
+    margin: 0 4px
 
 .note
   display: flex
@@ -539,6 +549,7 @@ input
   border-radius: 1rem
   line-height: 2
   padding: 10px 1rem
+  transition: .2s
 
   .details
     min-height: 100px
@@ -554,7 +565,8 @@ input
   &:not(.fullscreen)
     max-width: calc(50% - 1rem)
 
-  &:hover
+  &:hover,
+  &:focus-within
     .date,
     .bottom-content
       visibility: visible
@@ -586,15 +598,17 @@ input
 
 .done button
   width: 80px
-
-.done button,
-#success-notification
   background: rgba(0, 155, 0, .3) !important
 
 #offline,
-.error-notification,
 .btn-cancel
   background: rgba(155, 0, 0, .3) !important
+
+#success-notification
+  background: #005600 !important
+
+.error-notification
+  background: #700000 !important
 
 button,
 .bottom-content i,
@@ -615,6 +629,7 @@ button,
   inset: 0
   background: rgba(0, 0, 0, .05) !important
   backdrop-filter: blur(10px)
+  transition: .2s
 
   .title
     justify-content: center
@@ -629,6 +644,11 @@ button,
     .details-content
       width: fit-content
       margin: auto
+
+  .date,
+  .bottom-content
+    visibility: visible !important
+    opacity: 1 !important
 
 #colors
   display: flex
@@ -725,12 +745,19 @@ dialog
     border-radius: 24px
     background: rgba(255, 255, 255, .1)
 
-  input:checked + span
-    background: rgba(0, 155, 0, .3) !important
+  input[type="radio"],
+  input[type="checkbox"]
+    position: absolute
+    opacity: 0
+    width: 0
+    height: 0
 
-  input[type=radio],
-  input[type=checkbox]
-    display: none
+  input:checked + span
+    background: rgba(0, 155, 0, .3)
+
+  span:focus
+    outline: 2px solid #009b00
+    outline-offset: 2px
 
 #note-historic-content
   white-space: pre-line
@@ -757,12 +784,41 @@ dialog
   height: 34px
   margin-left: 10px
   position: relative
+  display: inline-block
 
   .off
     fill: #fff
 
   .on
     stroke: #fff
+
+  input[type=checkbox]
+    position: absolute
+    width: 1px
+    height: 1px
+    padding: 0
+    margin: -1px
+    overflow: hidden
+    clip: rect(0 0 0 0)
+    white-space: nowrap
+    border: 0
+
+    &:checked + .toggle-thumb
+      background-color: rgba(0, 155, 0, .3)
+
+    &:checked + .toggle-thumb:before
+      transform: translateX(26px)
+
+    &:disabled + .toggle-thumb
+      cursor: not-allowed
+      opacity: .6
+
+    &:disabled + .toggle-thumb:before
+      background-color: #ccc
+
+    &:focus-visible + .toggle-thumb
+      outline: 3px solid #8ab4f8
+      outline-offset: 3px
 
   .toggle-thumb
     position: absolute
@@ -773,9 +829,11 @@ dialog
     display: flex
     justify-content: space-between
     align-items: center
+    padding: 0 6px
     background-color: rgba(255, 255, 255, .2)
     border-radius: 40px
     cursor: pointer
+    transition: background-color .3s ease
 
     &:before
       content: ""
@@ -786,22 +844,7 @@ dialog
       bottom: 4px
       border-radius: 50%
       background-color: #fff
-      transition: .3s all ease
-
-  input[type=checkbox]
-    display: none
-
-    &:checked + .toggle-thumb
-      background-color: rgba(0, 155, 0, .3)
-
-    &:checked + .toggle-thumb:before
-      transform: translateX(26px)
-
-    &:disabled + .toggle-thumb
-      cursor: not-allowed
-
-    &:disabled + .toggle-thumb:before
-      background-color: #ccc
+      transition: transform .3s ease
 
 .IroSlider
   margin: auto
@@ -853,11 +896,7 @@ dialog
   border-radius: 4px
   z-index: 5
 
-#copy-password-btn
-  margin-right: 4px
-
-#copy-note-link,
-#psswd-gen
+#copy-note-link
   align-content: center
   flex: 1
   height: 36px
@@ -875,11 +914,9 @@ dialog
   backdrop-filter: blur(10px)
 
 #copy-note-link-btn,
-#copy-password-btn,
 #btn-add-folder,
 #btn-add-category,
 #btn-add-reminder,
-#submit-gen-psswd,
 #sidebar button,
 #sidebar-indicator
   display: inline-flex
@@ -969,8 +1006,12 @@ dialog
       left: 0
 
   #btn-add-note
+    width: 60px
     bottom: 1.5rem
     right: 1.5rem
+
+    span
+      display: none
 
   .note
     .date,
@@ -1020,7 +1061,26 @@ dialog
   line-height: 2
 
   .title
+    padding: 2rem 0
     text-align: center
+
+    span
+      position: relative
+      z-index: 1
+      padding: 0 5px
+
+      &:before
+        content: ""
+        position: absolute
+        height: 35%
+        bottom: 0
+        left: 0
+        right: 0
+        background: rgba(150, 150, 150, .2)
+        z-index: -1
+
+  img
+    margin: 4px
 
 .txt-red
   color: #ff0000

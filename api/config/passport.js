@@ -6,30 +6,27 @@ import { pool } from './config.js'
 passport.use(
   new LocalStrategy(
     {
-      usernameField: 'nameConnect',
-      passwordField: 'psswdConnect'
+      usernameField: 'nameLogin',
+      passwordField: 'psswdLogin'
     },
-    async (nameConnect, psswdConnect, done) => {
+    async (nameLogin, psswdLogin, done) => {
       if (
-        !nameConnect ||
-        !psswdConnect ||
-        !/^[a-zA-ZÀ-ÿ -]+$/.test(nameConnect) ||
-        nameConnect.length < 3 ||
-        nameConnect.length > 30 ||
-        psswdConnect.length < 10 ||
-        psswdConnect.length > 64
+        nameLogin.length < 3 ||
+        nameLogin.length > 30 ||
+        psswdLogin.length < 10 ||
+        psswdLogin.length > 64 ||
+        !/^[\p{L} -]+$/u.test(nameLogin.normalize('NFC'))
       ) {
         return done(null, false, {
           message: 'Wrong username or password.',
         })
       }
-
       let connection
       try {
         connection = await pool.getConnection()
         const [rows] = await connection.execute(
           "SELECT id, name, psswd FROM users WHERE name = ? LIMIT 1",
-          [nameConnect]
+          [nameLogin]
         )
 
         if (rows.length !== 1) {
@@ -39,7 +36,7 @@ passport.use(
         }
 
         const user = rows[0]
-        const isMatch = await bcrypt.compare(psswdConnect, user.psswd)
+        const isMatch = await bcrypt.compare(psswdLogin, user.psswd)
         if (!isMatch) {
           return done(null, false, {
             message: 'Wrong username or password.',
@@ -55,28 +52,5 @@ passport.use(
     }
   )
 )
-
-passport.serializeUser((user, done) => {
-  done(null, user.id)
-})
-
-passport.deserializeUser(async (id, done) => {
-  let connection
-  try {
-    connection = await pool.getConnection()
-    const [rows] = await connection.execute(
-      "SELECT id, name FROM users WHERE id = ? LIMIT 1",
-      [id]
-    )
-    if (rows.length === 0) {
-      return done(null, false)
-    }
-    done(null, rows[0])
-  } catch {
-    return done(null, false)
-  } finally {
-    if (connection) connection.release()
-  }
-})
 
 export default passport

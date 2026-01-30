@@ -8,10 +8,7 @@ class Encryption {
    * @returns {ArrayBuffer}
    */
   #base64ToArrayBuffer(base64) {
-    const binaryString = atob(base64)
-    const byteArray = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i += 1) byteArray[i] = binaryString.charCodeAt(i)
-    return byteArray.buffer
+    return Uint8Array.from(Buffer.from(base64, 'base64')).buffer
   }
 
   /**

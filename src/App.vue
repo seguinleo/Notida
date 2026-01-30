@@ -21,11 +21,11 @@
   <div v-if="!isLocked && isLockedResponse" id="sidebar">
     <nav>
       <div v-if="new Date().getMonth() === 11" class="row">
-        <img src="./assets/img/christmas.png" alt="christmas" class="eventImage" loading="lazy">
+        <img src="./assets/img/christmas.png" role="presentation" alt="" class="eventImage" loading="lazy">
       </div>
       <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
         class="row">
-        <img src="./assets/img/halloween.png" alt="halloween" class="eventImage" loading="lazy">
+        <img src="./assets/img/halloween.png" role="presentation" alt="" class="eventImage" loading="lazy">
       </div>
       <div class="row nav-buttons">
         <button v-if="isAuthenticated && !isLocked" id="manage-account" type="button" aria-label="Manage account"
@@ -76,9 +76,10 @@
     <button v-else-if="isLockedResponse" type="button" id="btn-add-note" aria-label="Add a note"
       @click="openAddNoteDialog()">
       <i class="fa-solid fa-plus"></i>
+      <span>Add note</span>
     </button>
-    <div id="success-notification" class="d-none"></div>
-    <dialog id="sort-dialog">
+    <div id="success-notification" aria-live="polite" class="d-none"></div>
+    <dialog id="sort-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
           <div class="close">
@@ -88,30 +89,29 @@
           </div>
           <fieldset>
             <legend>Sort notes</legend>
-            <div class="row">
+            <div class="row" role="radiogroup" aria-label="Sort notes" id="sortNotesGroup">
               <label class="custom-check">
-                <input type="radio" name="sort-notes" value="1" id="sort-notes1" @change="selectSortOption($event)"
-                  checked>
-                <span id="sort-notes1-span" tabindex="0" role="button">Modification date</span>
+                <input type="radio" name="sort-notes" value="1" id="sort-notes1" @change="selectSortOption($event)">
+                <span tabindex="0">Modification date</span>
               </label>
               <label class="custom-check">
                 <input type="radio" name="sort-notes" value="2" id="sort-notes2" @change="selectSortOption($event)">
-                <span id="sort-notes2-span" tabindex="0" role="button">Modification date (Z-A)</span>
+                <span tabindex="0">Modification date (Z-A)</span>
               </label>
               <label class="custom-check">
                 <input type="radio" name="sort-notes" value="3" id="sort-notes3" @change="selectSortOption($event)">
-                <span id="sort-notes3-span" tabindex="0" role="button">Title</span>
+                <span tabindex="0">Title</span>
               </label>
               <label class="custom-check">
                 <input type="radio" name="sort-notes" value="4" id="sort-notes4" @change="selectSortOption($event)">
-                <span id="sort-notes4-span" tabindex="0" role="button">Title (Z-A)</span>
+                <span tabindex="0">Title (Z-A)</span>
               </label>
             </div>
           </fieldset>
         </div>
       </div>
     </dialog>
-    <dialog id="filter-dialog">
+    <dialog id="filter-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
           <div class="close">
@@ -121,12 +121,12 @@
           </div>
           <fieldset>
             <legend>Filter notes by category</legend>
-            <div id="filter-categories" class="row"></div>
+            <div class="row" role="radiogroup" aria-label="Filter notes" id="filterNotesGroup"></div>
           </fieldset>
         </div>
       </div>
     </dialog>
-    <dialog id="delete-note-dialog">
+    <dialog id="delete-note-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
           <div class="close">
@@ -148,7 +148,7 @@
         </div>
       </div>
     </dialog>
-    <dialog id="download-dialog">
+    <dialog id="download-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
           <div class="close">
@@ -159,23 +159,23 @@
           <fieldset>
             <legend>Export type</legend>
             <input id="id-note-download" type="hidden">
-            <div class="row">
+            <div class="row" role="radiogroup" aria-label="Download notes" id="downloadNotesGroup">
               <label class="custom-check">
                 <input type="radio" name="download-notes" value="txt" id="txt-download"
-                  @change="downloadNotes($event.target.value)" checked>
-                <span tabindex="0" role="button">.TXT</span>
+                  @change="downloadNotes($event.target.value)">
+                <span tabindex="0">.TXT</span>
               </label>
               <label class="custom-check">
                 <input type="radio" name="download-notes" value="md" id="md-download"
                   @change="downloadNotes($event.target.value)">
-                <span tabindex="0" role="button">.MD</span>
+                <span tabindex="0">.MD</span>
               </label>
             </div>
           </fieldset>
         </div>
       </div>
     </dialog>
-    <dialog id="folder-dialog">
+    <dialog id="folder-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
           <div class="close">
@@ -185,7 +185,7 @@
           </div>
           <div id="folders">
             <label class="custom-check">
-              <input type="radio" name="add-folder" value="" id="none-folder-add-span" checked>
+              <input type="radio" name="add-folder" value="" id="none-folder-add-span">
               <span tabindex="0" role="button">
                 <i class="fa-solid fa-xmark"></i>
               </span>
@@ -202,7 +202,7 @@
         </div>
       </div>
     </dialog>
-    <dialog id="category-dialog">
+    <dialog id="category-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
           <div class="close">
@@ -212,7 +212,7 @@
           </div>
           <div id="categories">
             <label class="custom-check">
-              <input type="radio" name="add-cat" value="" id="none-cat-add-span" checked>
+              <input type="radio" name="add-cat" value="" id="none-cat-add-span">
               <span tabindex="0" role="button">
                 <i class="fa-solid fa-xmark"></i>
               </span>
@@ -230,7 +230,7 @@
         </div>
       </div>
     </dialog>
-    <dialog id="reminder-dialog">
+    <dialog id="reminder-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
           <div class="close">
@@ -247,7 +247,7 @@
         </div>
       </div>
     </dialog>
-    <dialog id="note-dialog">
+    <dialog id="note-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
           <div class="popup-note-header">
@@ -319,10 +319,12 @@
               </div>
             </div>
             <div class="row d-flex align-items-center">
-              <span>Hide content</span>
+              <label for="check-hidden" class="switch-label">
+                Hide content
+              </label>
               <label class="switch">
-                <input type="checkbox" class="checkbox" id="check-hidden">
-                <span class="toggle-thumb">
+                <input type="checkbox" class="checkbox" id="check-hidden" role="switch" aria-label="Hide content">
+                <span class="toggle-thumb" aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
                     <rect x="12" y="6" width="1" height="12" />
                   </svg>
@@ -336,7 +338,7 @@
         </div>
       </div>
     </dialog>
-    <dialog id="colorpicker-dialog">
+    <dialog id="colorpicker-dialog" aria-modal="true">
       <div class="popup popup-small">
         <div class="content">
           <div class="close">
@@ -344,11 +346,14 @@
               <i class="fa-solid fa-chevron-left"></i>
             </button>
           </div>
+          <div class="row bold">
+            Change overall app color
+          </div>
           <IroJs />
         </div>
       </div>
     </dialog>
-    <dialog id="settings-dialog">
+    <dialog id="settings-dialog" aria-modal="true">
       <div class="popup popup-small">
         <div class="content">
           <div class="close">
@@ -372,11 +377,13 @@
               discussions</a>
           </div>
           <div class="row d-flex align-items-center justify-content-between">
-            <span>Spell check</span>
-            <label id="spellcheck-slider" class="switch">
-              <input v-model="spellcheck" type="checkbox" id="check-spellcheck" class="checkbox" checked
-                @change="toggleSpellcheck()">
-              <span class="toggle-thumb">
+            <label for="check-spellcheck" class="switch-label">
+              Spell check
+            </label>
+            <label class="switch">
+              <input v-model="spellcheck" type="checkbox" id="check-spellcheck" class="checkbox"
+                @change="toggleSpellcheck()" role="switch" aria-label="Spell check">
+              <span class="toggle-thumb" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
                   <rect x="12" y="6" width="1" height="12" />
                 </svg>
@@ -387,11 +394,13 @@
             </label>
           </div>
           <div class="row d-flex align-items-center justify-content-between">
-            <span>Lock app</span>
+            <label for="toggle-lock-app" class="switch-label">
+              Lock app
+            </label>
             <label class="switch">
               <input v-model="isToggleLockApp" type="checkbox" id="toggle-lock-app" class="checkbox"
-                @click="toggleLockApp()">
-              <span class="toggle-thumb">
+                @click="toggleLockApp()" role="switch" aria-label="Lock app">
+              <span class="toggle-thumb" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
                   <rect x="12" y="6" width="1" height="12" />
                 </svg>
@@ -404,14 +413,14 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.1.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.2.1</a>
             </p>
           </div>
         </div>
       </div>
     </dialog>
     <template v-if="(isAuthenticated && isAuthenticatedResponse) && !isLocked">
-      <dialog id="manage-dialog">
+      <dialog id="manage-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="close">
@@ -430,16 +439,22 @@
               <button type="button" id="log-out" @click="fetchLogout()">Log out</button>
             </div>
             <div class="row">
+              <button type="button" id="log-out" @click="fetchLogoutAll()">
+                Log out from all devices
+                ({{ allUserSessions }})
+              </button>
+            </div>
+            <div class="row">
               <span id="storage-usage">{{ (dataByteSize / 1000).toFixed(2) }} kB / {{ maxDataByteSize / 1000000 }}
                 MB</span>
               <progress id="storage" :max="maxDataByteSize" :value="dataByteSize"></progress>
             </div>
             <details id="gen-psswd">
               <summary>
-                Change password
+                Update password
                 <i class="fa-solid fa-chevron-up"></i>
               </summary>
-              <form id="change-psswd" @submit.prevent="changePassword()">
+              <form id="update-psswd" @submit.prevent="updatePassword()">
                 <div class="error-notification d-none"></div>
                 <div class="row">
                   <input id="old-psswd" type="password" minlength="10" maxlength="64" aria-label="Old password"
@@ -453,19 +468,10 @@
                   <input id="new-psswd-valid" type="password" minlength="10" maxlength="64"
                     placeholder="Confirm new password" aria-label="Confirm new password" required>
                 </div>
-                <div class="row d-flex">
-                  <p id="psswd-gen"></p>
-                  <button type="button" id="copy-password-btn" aria-label="Copy password" @click="copyPassword()">
-                    <i class="fa-solid fa-clipboard"></i>
-                  </button>
-                  <button type="button" id="submit-gen-psswd" aria-label="Generate password" @click="getPassword(20)">
-                    <i class="fa-solid fa-arrow-rotate-right"></i>
-                  </button>
-                </div>
-                <button type="submit">Change password</button>
+                <button type="submit">Update password</button>
               </form>
             </details>
-            <details id="delete-user">
+            <details id="delete-account">
               <summary>
                 Delete account
                 <i class="fa-solid fa-chevron-up"></i>
@@ -476,13 +482,17 @@
                   <input id="delete-psswd" type="password" minlength="10" maxlength="64" placeholder="Password"
                     aria-label="Password" required>
                 </div>
+                <div class="row">
+                  <i class="fa-solid fa-circle-info" role="none"></i>
+                  <span>Deletion is permanent! All notes will be deleted.</span>
+                </div>
                 <button type="submit" class="btn-cancel">Delete account</button>
               </form>
             </details>
           </div>
         </div>
       </dialog>
-      <dialog id="private-note-dialog">
+      <dialog id="private-note-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="close">
@@ -503,7 +513,7 @@
           </div>
         </div>
       </dialog>
-      <dialog id="public-note-dialog">
+      <dialog id="public-note-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="close">
@@ -531,7 +541,7 @@
           </div>
         </div>
       </dialog>
-      <dialog id="note-historic-dialog">
+      <dialog id="note-historic-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="close">
@@ -550,7 +560,7 @@
       </dialog>
     </template>
     <template v-else-if="isAuthenticatedResponse && !isLocked">
-      <dialog id="login-dialog">
+      <dialog id="login-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="close">
@@ -558,28 +568,28 @@
                 <i class="fa-solid fa-chevron-left"></i>
               </button>
             </div>
-            <form id="connect-user" autocomplete="off" @submit.prevent="connectUser()">
+            <form id="login-user" autocomplete="off" @submit.prevent="loginUser()">
               <div class="error-notification d-none"></div>
               <div class="row">
-                <input id="name-connect" type="text" minlength="3" maxlength="30" spellcheck="false" placeholder="Name"
+                <input id="name-login" type="text" minlength="3" maxlength="30" spellcheck="false" placeholder="Name"
                   autocapitalize="off" aria-label="Name" required>
               </div>
               <div class="row">
-                <input id="psswd-connect" type="password" minlength="10" maxlength="64" placeholder="Password"
+                <input id="psswd-login" type="password" minlength="10" maxlength="64" placeholder="Password"
                   aria-label="Password" required>
               </div>
               <div class="row">
                 <button type="submit">Log in</button>
               </div>
               <div class="row align-center">
-                <button type="button" id="create-account" @click="openCreateUserDialog()">Don't have an account
+                <button type="button" id="create-account" @click="openCreateAccountDialog()">Don't have an account
                   yet?</button>
               </div>
             </form>
           </div>
         </div>
       </dialog>
-      <dialog id="create-box">
+      <dialog id="create-account-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="close">
@@ -587,7 +597,7 @@
                 <i class="fa-solid fa-chevron-left"></i>
               </button>
             </div>
-            <form autocomplete="off" id="create-user" @submit.prevent="createUser()">
+            <form autocomplete="off" id="create-account" @submit.prevent="createAccount()">
               <div class="error-notification d-none"></div>
               <div class="row">
                 <input id="name-create" type="text" minlength="3" maxlength="30" spellcheck="false" autocapitalize="off"
@@ -601,19 +611,10 @@
                 <input id="psswd-create-valid" type="password" minlength="10" maxlength="64"
                   placeholder="Confirm password" aria-label="Confirm password" required>
               </div>
-              <div class="row d-flex">
-                <p id="psswd-gen"></p>
-                <button type="button" id="copy-password-btn" aria-label="Copy password" @click="copyPassword()">
-                  <i class="fa-solid fa-clipboard"></i>
-                </button>
-                <button type="button" id="submit-gen-psswd" aria-label="Generate password" @click="getPassword(20)">
-                  <i class="fa-solid fa-arrow-rotate-right"></i>
-                </button>
-              </div>
               <div class="row">
                 <i class="fa-solid fa-circle-info" role="none"></i>
                 <span>Your password is stored securely and your notes are encrypted. You will not be able to recover
-                  your password if you forget it.</span>
+                  your password if you forget it. Save your local notes before log in!</span>
               </div>
               <button type="submit">Create my account</button>
             </form>
@@ -622,35 +623,42 @@
       </dialog>
       <div v-if="notesJSON.length === 0" class="welcome">
         <div class="details">
-          <h1 class="title">Notida</h1>
+          <h1 class="title">
+            <span>Welcome to Notida!</span>
+          </h1>
           <div class="details-content">
             <div>
               <p class="align-center">
+                <img alt="App icon" src="/pwa/apple-touch-icon.png" width="64" height="64">
+              </p>
+              <p class="align-center italic">
                 A fast, private and secure web notebook.
               </p>
               <p class="align-center">
-                <img alt="License"
-                  src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8&style=for-the-badge">
+                <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8">
+                <img alt="Open source" src="https://img.shields.io/badge/project-open_source-blue">
               </p>
-              <h2 id="features">Features</h2>
+              <h2 id="features">📝Features</h2>
               <p>Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown
-                and HTML. They can add online images, audio or videos via URL. Notes can be searched, sorted by category
-                or organized into folders.</p>
+                and HTML. They can add images, audio or videos via URL. Notes can be searched, sorted by category or
+                organized into folders.</p>
               <p>Users can sync notes across devices in a secure database after signing in without needing an email
-                address, only a username and strong password. Public notes can be shared via random URLs.</p>
+                address, only a username and strong password. Public notes can be shared via a random URL.</p>
               <p>This website is a Progressive Web App (PWA) that can be installed as an application. Design is
                 responsive and optimized for all mobile devices or macOS/Windows.</p>
               <p>The site is accessible to users with disabilities through high-contrast colors, ARIA modules, and
                 focusable elements.</p>
-              <h2 id="security">Security</h2>
+              <h2 id="security">🔒Security</h2>
               <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
                   security recommendations</a>.
               </p>
               <p>All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with
-                AES-256-GCM. Each user has a cryptographically secure key generated after signing up.</p>
+                AES-256-GCM. Each user has a cryptographically secure key generated after signing up and a rotated JWT
+                token securely stored in Redis.</p>
+              <p>Protection against XSS and CSRF attacks is ensured through a robust CSP, secure cookies or tokens.</p>
               <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent
-                to the server.</p>
-              <h2 id="security">Community</h2>
+                to the server, verification is local and UI/UX only.</p>
+              <h2 id="security">🌐Community</h2>
               <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
                 to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
             </div>
@@ -675,10 +683,16 @@ const MARKED_CONFIG = {
       return `<a rel="noreferrer noopener" href="${href}">${text}</a>`
     },
     image({ href, title, text }) {
-      return `<img src="${encodeURI(href)}" alt="${text}" title="${title}" crossorigin>`
+      try {
+        const url = new URL(href, window.location.origin)
+        if (!['http:', 'https:'].includes(url.protocol)) return ''
+        return `<img crossorigin src="${url.href}" alt="${text}" title="${title || ''}" loading="lazy">`
+      } catch {
+        return ''
+      }
     },
     checkbox({ checked }) {
-      return `<label><input type="checkbox" disabled ${checked ? 'checked' : ''}></label>`
+      return `<label><input type="checkbox" disabled ${checked ? 'checked' : ''}>`
     }
   }
 }
@@ -686,8 +700,9 @@ const MARKED_CONFIG = {
 const PURIFY_CONFIG = {
   SANITIZE_NAMED_PROPS: true,
   ALLOW_DATA_ATTR: false,
-  FORBID_TAGS: ['dialog', 'footer', 'form', 'header', 'main', 'nav', 'style'],
-  FORBID_ATTR: ['style', 'class']
+  ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i,
+  FORBID_TAGS: ['dialog', 'footer', 'form', 'header', 'iframe', 'main', 'nav', 'script', 'style'],
+  FORBID_ATTR: ['style', 'class', 'onclick', 'onload', 'onerror']
 }
 
 const KATEX_CONFIG = {
@@ -720,7 +735,7 @@ export default {
       touchendY: 0,
       timeoutNotification: null,
       fingerprintEnabled: true,
-      onLine: navigator.onLine,
+      onLine: true,
       isToggleLockApp: true,
       isLocked: true,
       isLockedResponse: false,
@@ -729,6 +744,7 @@ export default {
       isUpdate: false,
       dataByteSize: 0,
       noteContentLength: 0,
+      allUserSessions: 0,
       maxNoteContentLength: 20000,
       maxDataByteSize: 0,
       searchValue: '',
@@ -741,30 +757,14 @@ export default {
     }
   },
   components: { IroJs },
-  watch: {
-    async onLine(v) {
-      if (v) {
-        if (this.urlParams.get('link')) {
-          await this.showSharedNote()
-          return
-        }
-        if (document.querySelector('dialog').open) return
-        await this.getLockApp()
-        if (this.isLocked) return
-        await this.fetchAccount()
-        if (this.isAuthenticated) await this.getCloudNotes()
-        else await this.getLocalNotes()
-      }
-    }
-  },
   async mounted() {
-    if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js')
-
     this.urlParams = new URLSearchParams(window.location.search)
-    if (this.urlParams.get('link')) {
+    if (this.urlParams && this.urlParams.get('link')) {
       await this.showSharedNote()
       return
     }
+
+    if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js')
 
     if (localStorage.getItem('spellcheck') === 'false') {
       document.querySelector('#check-spellcheck').checked = false
@@ -801,31 +801,52 @@ export default {
       }
     }, { passive: true })
 
-    window.addEventListener('online', () => this.onLine = true)
-    window.addEventListener('offline', () => this.onLine = false)
+    this.onLine = navigator.onLine
 
-    await this.getLockApp()
-    if (this.isLocked) return
-    await this.fetchAccount()
-    if (this.isAuthenticated) await this.getCloudNotes()
-    else await this.getLocalNotes()
+    this._onlineHandler = () => {
+      this.onLine = true
+      this.handleOnline()
+    }
+
+    this._offlineHandler = () => {
+      this.onLine = false
+    }
+
+    window.addEventListener('online', this._onlineHandler)
+    window.addEventListener('offline', this._offlineHandler)
+
+    if (this.onLine) {
+      await this.handleOnline()
+    }
   },
   beforeUnmount() {
-    window.removeEventListener('online', () => this.onLine = true)
-    window.removeEventListener('offline', () => this.onLine = false)
+    window.removeEventListener('online', this._onlineHandler)
+    window.removeEventListener('offline', this._offlineHandler)
   },
   methods: {
+    async handleOnline() {
+      if (this.urlParams?.get('link')) {
+        await this.showSharedNote()
+        return
+      }
+
+      await this.getLockApp()
+      if (this.isLocked) return
+
+      await this.isUserAuthenticated()
+
+      if (this.isAuthenticated) {
+        await this.getCloudNotes()
+      } else {
+        await this.getLocalNotes()
+      }
+    },
     arrayBufferToBase64(buffer) {
-      const binary = []
-      const bytes = new Uint8Array(buffer)
-      for (let i = 0; i < bytes.byteLength; i += 1) binary.push(String.fromCharCode(bytes[i]))
-      return window.btoa(binary.join(''))
+      return btoa(String.fromCharCode(...new Uint8Array(buffer)))
     },
     base64ToArrayBuffer(base64) {
-      const binaryString = window.atob(base64)
-      const byteArray = new Uint8Array(binaryString.length)
-      for (let i = 0; i < binaryString.length; i += 1) byteArray[i] = binaryString.charCodeAt(i)
-      return byteArray.buffer
+      const binaryString = atob(base64)
+      return Uint8Array.from(binaryString, c => c.charCodeAt(0)).buffer
     },
     openIndexedDB(dbName, objectStoreName) {
       return new Promise((resolve, reject) => {
@@ -856,18 +877,36 @@ export default {
         transaction.onerror = (event) => reject(event.target.error)
       })
     },
-    async decryptLocalNotes(key, data) {
-      const deData = await window.crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: new Uint8Array(12) },
-        key,
-        this.base64ToArrayBuffer(data),
-      )
-      return JSON.parse(new TextDecoder().decode(deData))
+    generateIv() {
+      return crypto.getRandomValues(new Uint8Array(12))
     },
-    generateRandomBytes(length) {
-      const array = new Uint8Array(length)
-      window.crypto.getRandomValues(array)
-      return array
+    async encryptLocalNotes(key, data) {
+      const iv = this.generateIv()
+      const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        new TextEncoder().encode(JSON.stringify(data))
+      )
+      return {
+        iv: this.arrayBufferToBase64(iv),
+        data: this.arrayBufferToBase64(encrypted),
+      }
+    },
+    async decryptLocalNotes(key, payload) {
+      const iv = this.base64ToArrayBuffer(payload.iv)
+      const data = this.base64ToArrayBuffer(payload.data)
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: new Uint8Array(iv) },
+        key,
+        data
+      )
+      return JSON.parse(new TextDecoder().decode(decrypted))
+    },
+    getCookie(name) {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop().split(';').shift()
+      return null
     },
     closeDialog(e) {
       const dialog = e.target.closest('dialog')
@@ -878,29 +917,10 @@ export default {
       document.querySelectorAll('form').forEach((form) => form.reset())
       document.querySelectorAll('input[type="hidden"]').forEach((input) => input.value = '')
     },
-    getPassword(length) {
-      const lowercase = 'abcdefghijklmnopqrstuvwxyz'
-      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-      const digits = '0123456789'
-      const specialChars = '&~"#\'(-_)=^$€*!?,.:/|\\@%+{}[]<>`'
-      const allChars = lowercase + uppercase + digits + specialChars
-      let password = ''
-      const array = new Uint32Array(length)
-      window.crypto.getRandomValues(array)
-      for (let i = 0; i < length; i += 1) {
-        const randomIndex = parseInt(array[i] % allChars.length, 10)
-        password += allChars[randomIndex]
-      }
-      document.querySelector('#psswd-gen').textContent = password
-    },
-    getCsrfToken() {
-      return localStorage.getItem('csrfToken')
-    },
     async getLockApp() {
       try {
         const res = await fetch('api/get-lock-app/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          method: 'POST'
         })
         if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
         const response = await res.json()
@@ -910,8 +930,8 @@ export default {
           this.isLocked = false
           this.isToggleLockApp = false
         }
-      } catch (error) {
-        this.showError(`An error occurred - ${error.message}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async toggleLockApp() {
@@ -933,172 +953,150 @@ export default {
       }
       try {
         const res = await fetch('api/lock-app/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          method: 'POST'
         })
         if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
-      } catch (error) {
-        this.showError(`An error occurred - ${error.message}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async unlockApp() {
       const success = await this.verifyFingerprint()
       if (!success) return
       this.isLocked = false
-      await this.fetchAccount()
+      await this.isUserAuthenticated()
       if (this.isAuthenticated) await this.getCloudNotes()
       else await this.getLocalNotes()
     },
     async verifyFingerprint() {
-      const challenge = this.generateRandomBytes(32)
-      const publicKeyOptions = {
-        challenge,
-        rp: { name: 'Notida' },
-        allowCredentials: [],
-        userVerification: "preferred",
-        timeout: 60000,
-      }
+      const credId = localStorage.getItem('webauth_cred_id')
+      if (!credId) return false
+
       try {
-        const credential = await navigator.credentials.get({ publicKey: publicKeyOptions })
-        return !!credential
-      } catch (error) {
-        this.showError(`Auth failed - ${error.message}`)
+        await navigator.credentials.get({
+          publicKey: {
+            challenge: crypto.getRandomValues(new Uint8Array(32)),
+            allowCredentials: [{
+              id: this.base64ToArrayBuffer(credId),
+              type: 'public-key',
+            }],
+            userVerification: 'required',
+            timeout: 60000,
+          },
+        })
+        return true
+      } catch {
+        this.showError('An error occurred')
         return false
       }
     },
     async createFingerprint() {
       try {
-        const challenge = this.generateRandomBytes(32)
-        const username = document.querySelector('#user-name') ? document.querySelector('#user-name').textContent : 'local'
-        const userId = new TextEncoder().encode(username)
-        await navigator.credentials.create({
+        const challenge = crypto.getRandomValues(new Uint8Array(32))
+        const userId = crypto.getRandomValues(new Uint8Array(16))
+
+        const credential = await navigator.credentials.create({
           publicKey: {
             challenge,
-            rp: {
-              name: 'Notida',
-            },
+            rp: { name: 'Notida' },
             user: {
               id: userId,
-              name: 'Notida',
-              displayName: 'Notida',
+              name: this.username || 'local-user',
+              displayName: this.username || 'Local User',
             },
-            pubKeyCredParams: [
-              {
-                type: 'public-key',
-                alg: -7,
-              },
-              {
-                type: 'public-key',
-                alg: -257,
-              }
-            ],
+            pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
             authenticatorSelection: {
               authenticatorAttachment: 'platform',
-              userVerification: 'preferred',
+              userVerification: 'required',
             },
-            excludeCredentials: [{
-              type: 'public-key',
-              id: userId
-            }],
             timeout: 60000,
             attestation: 'none',
           },
         })
+
+        localStorage.setItem(
+          'webauth_cred_id',
+          this.arrayBufferToBase64(credential.rawId)
+        )
+
         this.fingerprintEnabled = true
         this.isLocked = false
-        return 1
-      } catch (error) {
+        return true
+      } catch {
+        this.showError('An error occurred')
         this.isToggleLockApp = false
-        this.showError(`An error occurred - ${error}`)
-        return 0
+        return false
       }
     },
-    async createUser() {
+    async createAccount() {
       if (this.isLocked) return
-      const e = document.querySelector('#name-create').value.trim()
-      const t = document.querySelector('#psswd-create').value
-      const o = document.querySelector('#psswd-create-valid').value
-      if (!e || !t || !o || e.length < 3 || e.length > 30 || t.length < 10 || t.length > 64) return
-      if (!/^[a-zA-ZÀ-ÿ -]+$/.test(e)) {
+      const name = document.querySelector('#name-create').value.trim()
+      const psswd = document.querySelector('#psswd-create').value
+      const psswdV = document.querySelector('#psswd-create-valid').value
+      if (!name || !psswd || !psswdV || name.length < 3 || name.length > 30 || psswd.length < 10 || psswd.length > 64) return
+      if (!/^[\p{L} -]+$/u.test(name.normalize('NFC'))) {
         this.showError('Name can only contain letters, spaces and accents...')
         return
       }
-      if (/^[0-9]+$/.test(t)) {
-        this.showError('Password too weak (only numbers)...')
-        return
-      }
-      if (/^[a-z]+$/.test(t)) {
-        this.showError('Password too weak (only lowercase letters)...')
-        return
-      }
-      if (/^[A-Z]+$/.test(t)) {
-        this.showError('Password too weak (only uppercase letters)...')
-        return
-      }
-      if (/^[a-zA-Z]+$/.test(t)) {
-        this.showError('Password too weak (only letters)...')
-        return
-      }
-      if (/^[a-zA-Z0-9]+$/.test(t)) {
-        this.showError('Password should contain one special character...')
-        return
-      }
-      if (t !== o) {
+      if (psswd !== psswdV) {
         this.showError('Passwords do not match...')
         return
       }
-      if (e === t) {
+      if (name === psswd) {
         this.showError('Username and password cannot be the same...')
         return
       }
-      const nameCreate = e
-      const psswdCreate = t
+      const nameCreate = name
+      const psswdCreate = psswd
       try {
-        const data = new URLSearchParams({ nameCreate, psswdCreate })
-        const res = await fetch('api/create-user/', {
+        const data = JSON.stringify({ nameCreate, psswdCreate })
+        const res = await fetch('api/create-account/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json'
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           this.showError('Username already taken...')
           document.querySelectorAll('form').forEach((form) => form.reset())
           return
         }
-        document.querySelector('#create-box').close()
+        document.querySelector('#create-account-dialog').close()
         document.querySelectorAll('form').forEach((form) => form.reset())
         this.showSuccess('Account successfully created! You can now log in.')
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
         document.querySelectorAll('form').forEach((form) => form.reset())
       }
     },
-    async connectUser() {
+    async loginUser() {
       if (this.isLocked) return
-      const e = document.querySelector('#name-connect').value.trim()
-      const t = document.querySelector('#psswd-connect').value
-      if (!e || !t || e.length > 30 || t.length > 64) return
-      if (!/^[a-zA-ZÀ-ÿ -]+$/.test(e)) {
+      const nameLogin = document.querySelector('#name-login').value.trim()
+      const psswdLogin = document.querySelector('#psswd-login').value
+      if (
+        nameLogin.length < 3 ||
+        nameLogin.length > 30 ||
+        psswdLogin.length < 10 ||
+        psswdLogin.length > 64
+      ) return
+      if (!/^[\p{L} -]+$/u.test(nameLogin.normalize('NFC'))) {
         this.showError('Name can only contain letters, spaces and accents...')
         return
       }
-      const nameConnect = e
-      const psswdConnect = t
       try {
-        const data = new URLSearchParams({ nameConnect, psswdConnect })
+        const data = JSON.stringify({ nameLogin, psswdLogin })
         const res = await fetch('api/login/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json'
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           document.querySelectorAll('form').forEach((form) => form.reset())
           let time = 10
-          const btn = document.querySelector('#connect-user button[type="submit"]')
+          const btn = document.querySelector('#login-user button[type="submit"]')
           const btnText = btn.textContent
           btn.disabled = true
           const errorMessage = await res.text()
@@ -1114,40 +1112,18 @@ export default {
           }, 10000)
           return
         }
-        const response = await res.json()
-        localStorage.setItem('csrfToken', response.csrfToken)
         window.location.reload()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
         document.querySelectorAll('form').forEach((form) => form.reset())
       }
     },
-    async changePassword() {
+    async updatePassword() {
       if (this.isLocked) return
       const a = document.querySelector('#old-psswd').value
       const e = document.querySelector('#new-psswd').value
       const t = document.querySelector('#new-psswd-valid').value
       if (!a || !e || !t || e.length < 10 || e.length > 64) return
-      if (/^[0-9]+$/.test(t)) {
-        this.showError('Password too weak (only numbers)...')
-        return
-      }
-      if (/^[a-z]+$/.test(t)) {
-        this.showError('Password too weak (only lowercase letters)...')
-        return
-      }
-      if (/^[A-Z]+$/.test(t)) {
-        this.showError('Password too weak (only uppercase letters)...')
-        return
-      }
-      if (/^[a-zA-Z]+$/.test(t)) {
-        this.showError('Password too weak (only letters)...')
-        return
-      }
-      if (/^[a-zA-Z0-9]+$/.test(t)) {
-        this.showError('Password should contain one special character...')
-        return
-      }
       if (e !== t) {
         this.showError('Passwords do not match...')
         return
@@ -1155,24 +1131,24 @@ export default {
       const psswdOld = a
       const psswdNew = e
       try {
-        const data = new URLSearchParams({ psswdOld, psswdNew, csrfToken: this.getCsrfToken() })
+        const data = JSON.stringify({ psswdOld, psswdNew })
+        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/update-password/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
           document.querySelectorAll('form').forEach((form) => form.reset())
           return
         }
-        document.querySelector('#manage-dialog').close()
-        this.showSuccess('Successfully changed password!')
-        document.querySelectorAll('form').forEach((form) => form.reset())
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+        window.location.reload()
+      } catch {
+        this.showError('An error occurred')
         document.querySelectorAll('form').forEach((form) => form.reset())
       }
     },
@@ -1181,13 +1157,15 @@ export default {
       const psswd = document.querySelector('#delete-psswd').value
       if (!psswd || psswd.length < 10 || psswd.length > 64) return
       try {
-        const data = new URLSearchParams({ psswd, csrfToken: this.getCsrfToken() })
-        const res = await fetch('api/delete-user/', {
+        const data = JSON.stringify({ psswd })
+        const csrfToken = this.getCookie('csrfToken')
+        const res = await fetch('api/delete-account/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
@@ -1195,24 +1173,26 @@ export default {
           return
         }
         window.location.reload()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
         document.querySelectorAll('form').forEach((form) => form.reset())
       }
     },
     async privateNote() {
       const noteId = document.querySelector('#id-note-private').value
       const noteLink = document.querySelector('#link-note-private').value
-      if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
-      if (!noteLink || !/^[a-zA-Z0-9]{32}$/.test(noteLink)) return
+      if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return
+      if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) return
       try {
-        const data = new URLSearchParams({ noteId, noteLink, csrfToken: this.getCsrfToken() })
+        const data = JSON.stringify({ noteId, noteLink })
+        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/private-note/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
@@ -1220,21 +1200,23 @@ export default {
         }
         document.querySelector('#public-note-dialog').close()
         await this.getCloudNotes()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async publicNote() {
       const noteId = document.querySelector('#id-note-public').value
-      if (!noteId || !/^[a-zA-Z0-9]+$/.test(noteId)) return
+      if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return
       try {
-        const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
+        const data = JSON.stringify({ noteId })
+        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/public-note/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
@@ -1242,8 +1224,8 @@ export default {
         }
         document.querySelector('#private-note-dialog').close()
         await this.getCloudNotes()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     openSidebar() {
@@ -1253,9 +1235,9 @@ export default {
     closeSidebar() {
       document.querySelector('#sidebar').classList.remove('show')
     },
-    openCreateUserDialog() {
+    openCreateAccountDialog() {
       document.querySelector('#login-dialog').close()
-      document.querySelector('#create-box').showModal()
+      document.querySelector('#create-account-dialog').showModal()
     },
     openDeleteCloudNoteDialog(noteId) {
       document.querySelector('#delete-note-dialog').showModal()
@@ -1345,7 +1327,6 @@ export default {
       const span = document.createElement('span')
       span.textContent = folderName
       span.tabIndex = 0
-      span.role = 'button'
       label.appendChild(input)
       label.appendChild(span)
       folders.appendChild(label)
@@ -1368,7 +1349,6 @@ export default {
       const span = document.createElement('span')
       span.textContent = categoryName
       span.tabIndex = 0
-      span.role = 'button'
       label.appendChild(input)
       label.appendChild(span)
       categories.appendChild(label)
@@ -1475,6 +1455,9 @@ export default {
           if (document.getSelection().toString()) return
           this.toggleFullscreen(event.currentTarget.getAttribute('data-note-id'))
         })
+        e.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') this.toggleFullscreen(event.currentTarget.getAttribute('data-note-id'))
+        })
       })
       document.querySelectorAll('#filter-dialog input[name="filter-notes"]').forEach((e) => {
         e.addEventListener('change', () => {
@@ -1515,7 +1498,6 @@ export default {
         const span = document.createElement('span')
         span.textContent = folder
         span.tabIndex = 0
-        span.role = 'button'
         label.appendChild(input)
         label.appendChild(span)
         folders.appendChild(label)
@@ -1532,12 +1514,11 @@ export default {
         const span = document.createElement('span')
         span.textContent = category
         span.tabIndex = 0
-        span.role = 'button'
         label.appendChild(input)
         label.appendChild(span)
         categories.appendChild(label)
 
-        const sortCategories = document.querySelector('#filter-categories')
+        const sortCategories = document.querySelector('#filterNotesGroup')
         const sortInput = document.createElement('input')
         sortInput.type = 'checkbox'
         sortInput.name = 'filter-notes'
@@ -1547,8 +1528,6 @@ export default {
         sortLabel.classList.add('custom-check')
         const sortSpan = document.createElement('span')
         sortSpan.textContent = category
-        sortSpan.tabIndex = 0
-        sortSpan.role = 'button'
         sortLabel.appendChild(sortInput)
         sortLabel.appendChild(sortSpan)
         sortCategories.appendChild(sortLabel)
@@ -1619,7 +1598,7 @@ export default {
       const sort = localStorage.getItem('sort_notes') || '1'
       document.querySelector(`#sort-dialog input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
       document.querySelector('#list-notes').textContent = ''
-      document.querySelector('#filter-categories').textContent = ''
+      document.querySelector('#filterNotesGroup').textContent = ''
       document.querySelector('#folders .list').textContent = ''
       document.querySelector('#categories .list').textContent = ''
       document.querySelectorAll('.local-note').forEach((e) => e.remove())
@@ -1646,14 +1625,14 @@ export default {
         })
 
         await this.renderNoteList(this.notesJSON, true)
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async addLocalNote() {
       try {
         if (this.isLocked) return
-        const noteId = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
+        const noteId = crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
         const title = document.querySelector('#note-dialog #title').value.trim()
         const content = document.querySelector('#note-dialog #content').value.trim()
         const color = document.querySelector('#colors .selected').classList[0]
@@ -1665,7 +1644,7 @@ export default {
 
         if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
 
-        const mdContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
+        const cleanContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
 
         const dbName = 'notes_db'
         const objectStoreName = 'key'
@@ -1673,30 +1652,21 @@ export default {
         let key = await this.getKeyFromDB(db, objectStoreName)
 
         if (!key) {
-          key = await window.crypto.subtle.generateKey(
+          key = await crypto.subtle.generateKey(
             { name: 'AES-GCM', length: 256 },
-            true,
+            false,
             ['encrypt', 'decrypt'],
           )
           await this.storeKeyInDB(db, objectStoreName, key)
         }
 
-        const enTitle = await window.crypto.subtle.encrypt(
-          { name: 'AES-GCM', iv: new Uint8Array(12) },
-          key,
-          new TextEncoder().encode(JSON.stringify(title)),
-        )
-
-        const enContent = await window.crypto.subtle.encrypt(
-          { name: 'AES-GCM', iv: new Uint8Array(12) },
-          key,
-          new TextEncoder().encode(JSON.stringify(mdContent)),
-        )
+        const encryptedTitle = await this.encryptLocalNotes(key, title)
+        const encryptedContent = await this.encryptLocalNotes(key, cleanContent)
 
         const note = {
           id: noteId,
-          title: this.arrayBufferToBase64(enTitle),
-          content: this.arrayBufferToBase64(enContent),
+          title: encryptedTitle,
+          content: encryptedContent,
           color,
           date,
           hidden,
@@ -1727,8 +1697,8 @@ export default {
         document.querySelector('#note-dialog form').reset()
         this.noteContentLength = 0
         await this.getLocalNotes()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async updateLocalNote(noteId, title, content, color, hidden, folder, category, reminder) {
@@ -1846,7 +1816,9 @@ export default {
       paragraph.setAttribute('data-note-id', id)
 
       const noteElement = document.createElement('div')
-      noteElement.classList.add('note', color,)
+      noteElement.classList.add('note', color)
+      noteElement.tabIndex = 0
+      paragraph.setAttribute('role', 'note')
       if (isLocal) noteElement.classList.add('local-note')
       noteElement.setAttribute('data-note-id', id)
 
@@ -2009,19 +1981,18 @@ export default {
       const sort = localStorage.getItem('sort_notes') || '1'
       document.querySelector(`#sort-dialog input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
       document.querySelector('#list-notes').textContent = ''
-      document.querySelector('#filter-categories').textContent = ''
+      document.querySelector('#filterNotesGroup').textContent = ''
       document.querySelector('#folders .list').textContent = ''
       document.querySelector('#categories .list').textContent = ''
       document.querySelectorAll('.note').forEach((e) => e.remove())
 
       try {
-        const data = new URLSearchParams({ csrfToken: this.getCsrfToken() })
+        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/get-notes/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: data,
+            'X-CSRF-Token': csrfToken
+          }
         })
 
         if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
@@ -2032,6 +2003,7 @@ export default {
         this.dataByteSize = response.dataByteSize
         this.maxDataByteSize = response.maxDataByteSize
         this.maxNoteContentLength = response.maxNoteContentLength
+        this.allUserSessions = response.allUserSessions
         this.notesJSON = response.notes
 
         document.querySelector('#last-login-date').textContent = new Date(response.lastLogin).toLocaleDateString(undefined, DATE_OPTIONS)
@@ -2052,8 +2024,8 @@ export default {
         })
 
         await this.renderNoteList(this.notesJSON, false)
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async addCloudNote() {
@@ -2074,32 +2046,46 @@ export default {
         const reminder = document.querySelector('#date-reminder-input').value
 
         if (this.isUpdate && !noteId) return
-        if (noteId && !/^[a-zA-Z0-9]+$/.test(noteId)) return
+        if (noteId && !/^[a-f0-9]{24}$/i.test(noteId)) return
         if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
         if (!COLORS.includes(color)) return
         if (reminder && !new Date(reminder).getTime()) return
         const cleanContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
 
-        const data = new URLSearchParams({
-          title,
-          content: cleanContent,
-          color,
-          hidden,
-          folder,
-          category,
-          reminder,
-          csrfToken: this.getCsrfToken()
-        })
+        let data = {}
 
-        if (this.isUpdate) data.set('noteId', noteId)
+        if (this.isUpdate) {
+          data = JSON.stringify({
+            noteId,
+            title,
+            content: cleanContent,
+            color,
+            hidden,
+            folder,
+            category,
+            reminder
+          })
+        } else {
+          data = JSON.stringify({
+            title,
+            content: cleanContent,
+            color,
+            hidden,
+            folder,
+            category,
+            reminder
+          })
+        }
 
         const url = this.isUpdate ? 'api/update-note/' : 'api/add-note/'
+        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch(url, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
@@ -2109,8 +2095,8 @@ export default {
         document.querySelector('#note-dialog form').reset()
         this.noteContentLength = 0
         await this.getCloudNotes()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       } finally {
         document.querySelector('#submit-note-btn').disabled = false
       }
@@ -2143,21 +2129,23 @@ export default {
     async pinCloudNote(noteId) {
       if (!noteId) return
       try {
-        const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
+        const data = JSON.stringify({ noteId })
+        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/pin-note/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
           return
         }
         await this.getCloudNotes()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async deleteCloudNote() {
@@ -2166,58 +2154,75 @@ export default {
       await this.fetchDeleteNote(noteId)
       document.querySelector('#delete-note-dialog').close()
     },
-    async fetchAccount() {
+    async isUserAuthenticated() {
       try {
-        const res = await fetch('api/get-user/', {
-          method: 'POST',
-        })
-        const response = await res.json()
+        const res = await fetch('api/whoami', { method: 'POST' })
+        const data = await res.json()
+        this.isAuthenticated = data.isAuthenticated
         this.isAuthenticatedResponse = true
-        this.isAuthenticated = response.isAuthenticated
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async fetchDeleteNote(noteId) {
       if (!noteId) return
       try {
-        const data = new URLSearchParams({ noteId, csrfToken: this.getCsrfToken() })
+        const data = JSON.stringify({ noteId })
+        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/delete-note/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
-          body: data,
+          body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
           return
         }
         await this.getCloudNotes()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async fetchLogout() {
       try {
         const res = await fetch('api/logout/', {
-          method: 'POST',
+          method: 'POST'
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
           return
         }
         window.location.reload()
-      } catch (error) {
-        this.showError(`An error occurred - ${error}`)
+      } catch {
+        this.showError('An error occurred')
+      }
+    },
+    async fetchLogoutAll() {
+      try {
+        const csrfToken = this.getCookie('csrfToken')
+        const res = await fetch('api/logout-all/', {
+          method: 'POST',
+          headers: {
+            'X-CSRF-Token': csrfToken
+          }
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        window.location.reload()
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async showSharedNote() {
-      const urlParams = new URLSearchParams(window.location.search)
-      this.noteLink = urlParams.get('link')
+      this.noteLink = this.urlParams.get('link')
       document.querySelector('main').textContent = ''
       document.querySelector('main').classList.add('shared')
-      if (!this.noteLink || !/^[a-zA-Z0-9]{32}$/.test(this.noteLink)) {
+      if (!this.noteLink || !/^[a-f0-9]{32}$/i.test(this.noteLink)) {
         const notFoundElement = document.createElement('h1')
         notFoundElement.classList.add('align-center')
         notFoundElement.textContent = 'Note not found or expired.'
@@ -2225,13 +2230,13 @@ export default {
         return
       }
 
-      const data = new URLSearchParams({ noteLink: this.noteLink })
+      const data = JSON.stringify({ noteLink: this.noteLink })
       const res = await fetch('api/get-shared-note/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json'
         },
-        body: data,
+        body: data
       })
 
       if (!res.ok) {
@@ -2312,10 +2317,6 @@ export default {
     copy(content) {
       navigator.clipboard.writeText(content)
       this.showSuccess('Content copied to clipboard!')
-    },
-    copyPassword() {
-      const psswd = document.querySelector('#psswd-gen').textContent
-      navigator.clipboard.writeText(psswd)
     },
     copyNoteLink() {
       const link = document.querySelector('#copy-note-link').textContent
