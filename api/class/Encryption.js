@@ -27,6 +27,7 @@ class Encryption {
       return `${enc.toString('base64')},${iv.toString('base64')},${cipher.getAuthTag().toString('base64')}`
     } catch {
       console.error("Encryption failed")
+      throw new Error("Encryption failed")
     }
   }
 
@@ -50,6 +51,7 @@ class Encryption {
       return JSON.parse(decrypted.toString('utf8'))
     } catch {
       console.error("Decryption failed")
+      throw new Error("Decryption failed")
     }
   }
 }

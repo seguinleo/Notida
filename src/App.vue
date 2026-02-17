@@ -413,7 +413,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.2.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.2.2</a>
             </p>
           </div>
         </div>
@@ -654,7 +654,7 @@
               </p>
               <p>All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with
                 AES-256-GCM. Each user has a cryptographically secure key generated after signing up and a rotated JWT
-                token securely stored in Redis.</p>
+                token stored in Redis.</p>
               <p>Protection against XSS and CSRF attacks is ensured through a robust CSP, secure cookies or tokens.</p>
               <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent
                 to the server, verification is local and UI/UX only.</p>
@@ -764,7 +764,10 @@ export default {
       return
     }
 
-    if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js')
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .catch(err => console.warn('PWA registration failed:', err))
+    }
 
     if (localStorage.getItem('spellcheck') === 'false') {
       document.querySelector('#check-spellcheck').checked = false
@@ -917,56 +920,63 @@ export default {
       document.querySelectorAll('form').forEach((form) => form.reset())
       document.querySelectorAll('input[type="hidden"]').forEach((input) => input.value = '')
     },
-    async getLockApp() {
+    getLockApp() {
       try {
-        const res = await fetch('api/get-lock-app/', {
-          method: 'POST'
-        })
-        if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
-        const response = await res.json()
+        const lockApp = localStorage.getItem('lockApp') === 'true'
+
         this.isLockedResponse = true
-        if (!response.lockApp) {
-          this.fingerprintEnabled = false
-          this.isLocked = false
-          this.isToggleLockApp = false
-        }
+        this.isToggleLockApp = lockApp
+        this.fingerprintEnabled = lockApp
+        this.isLocked = lockApp
       } catch {
         this.showError('An error occurred')
       }
     },
     async toggleLockApp() {
       if (this.isLocked) return
+
       let success = true
+
       if (this.fingerprintEnabled) {
         success = await this.verifyFingerprint()
         if (!success) {
           this.isToggleLockApp = true
           return
         }
+
         this.fingerprintEnabled = false
+        this.isToggleLockApp = false
+        localStorage.setItem('lockApp', 'false')
+
       } else {
         success = await this.createFingerprint()
         if (!success) {
           this.isToggleLockApp = false
           return
         }
-      }
-      try {
-        const res = await fetch('api/lock-app/', {
-          method: 'POST'
-        })
-        if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
-      } catch {
-        this.showError('An error occurred')
+
+        this.fingerprintEnabled = true
+        this.isToggleLockApp = true
+        localStorage.setItem('lockApp', 'true')
       }
     },
     async unlockApp() {
       const success = await this.verifyFingerprint()
       if (!success) return
+
       this.isLocked = false
+
+      const lockApp = localStorage.getItem('lockApp') === 'true'
+      this.fingerprintEnabled = lockApp
+      this.isToggleLockApp = lockApp
+
       await this.isUserAuthenticated()
-      if (this.isAuthenticated) await this.getCloudNotes()
-      else await this.getLocalNotes()
+
+      if (this.isAuthenticated) {
+        await this.getCloudNotes()
+      } else {
+        await this.getLocalNotes()
+      }
     },
     async verifyFingerprint() {
       const credId = localStorage.getItem('webauth_cred_id')
