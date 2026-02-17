@@ -34,7 +34,7 @@ The site is accessible to users with disabilities through high-contrast colors, 
 
 The website follows [OWASP security recommendations](https://cheatsheetseries.owasp.org/).
 
-All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with AES-256-GCM. Each user has a cryptographically secure key generated after signing up and a rotated JWT token securely stored in Redis.
+All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with AES-256-GCM. Each user has a cryptographically secure key generated after signing up and a rotated JWT token stored in Redis.
 
 Protection against XSS and CSRF attacks is ensured through a robust CSP, secure cookies or tokens.
 
@@ -65,6 +65,6 @@ The project is configured to start with a single Docker command. A more robust c
 * Edit nginx and Docker configurations
 * Edit **.env** and **docker-compose.yml** files
 * Edit all database tables name
-* To store user encryption keys, I recommend using a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution instead of the database
+* To store user encryption keys, I recommend using a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp instead of the database
 
 Special thanks to [DOMPurify](https://github.com/cure53/DOMPurify), [marked](https://github.com/markedjs/marked) and [Iro](https://github.com/jaames/iro.js)

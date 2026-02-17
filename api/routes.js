@@ -1,7 +1,5 @@
 import express from 'express'
-import session from 'express-session'
 import cookieParser from 'cookie-parser'
-import { RedisStore } from 'connect-redis'
 import { createClient } from 'redis'
 import crypto from 'crypto'
 import bcrypt from 'bcrypt'
@@ -18,30 +16,17 @@ const encryption = new Encryption()
 const redisClient = createClient({
   url: process.env.REDIS_URL,
 })
-redisClient.connect()
-  .then(() => console.log('Redis client connected'))
-  .catch(console.error)
-const redisStore = new RedisStore({
-  client: redisClient,
-  prefix: 'notes:',
-  ttl: 604800,
-})
+
+try {
+  await redisClient.connect()
+  console.log('Redis client connected')
+} catch (err) {
+  console.error(err)
+  process.exit(1)
+}
 
 const maxNoteContentLength = 20000
 const maxDataByteSize = 1000000
-
-app.use(session({
-  store: redisStore,
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 604800000,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict'
-  }
-}))
 
 app.use(cookieParser())
 app.use(express.json({ limit: '5mb' }))
@@ -56,6 +41,12 @@ const limiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 3 * 60 * 1000,
   max: 5,
+  message: 'Too many login attempts, please try again later.',
+})
+
+const sharedNoteLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 25,
   message: 'Too many login attempts, please try again later.',
 })
 
@@ -77,7 +68,9 @@ const verifyJWTToken = async (req, res, next) => {
 
     let decoded
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET)
+      decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        algorithms: ['HS256']
+      })
     } catch {
       return res.status(403).json({ response: 0 })
     }
@@ -85,7 +78,10 @@ const verifyJWTToken = async (req, res, next) => {
     const tokenActive = await redisClient.sIsMember(`user:tokens:${decoded.id}`, token)
     if (!tokenActive) return res.status(403).json({ response: 0 })
 
-    req.userId = decoded.id
+    req.user = {
+      id: decoded.id,
+      name: decoded.name
+    }
 
     next()
   } catch {
@@ -138,7 +134,7 @@ const blacklistToken = async (token) => {
  * @function getKey
  * @description Get the encryption/decryption key for a user.
  * Important: This key has to be store in a secure vault like AWS KMS,
- * Azure Key Vault or a self-hosted solution instead of the mysql database.
+ * Azure Key Vault or a self-hosted solution like Hashicorp instead of the mysql database.
  * The key is never sent to the client.
  */
 const getKey = async (userId) => {
@@ -189,7 +185,9 @@ const getAllUserSessions = async (userId) => {
       }
 
       try {
-        jwt.verify(token, process.env.JWT_SECRET)
+        jwt.verify(token, process.env.JWT_SECRET, {
+          algorithms: ['HS256']
+        })
         return 1
       } catch {
         await redisClient.sRem(`user:tokens:${userId}`, token)
@@ -214,7 +212,9 @@ app.post('/whoami', async (req, res) => {
     const isBlacklisted = await redisClient.get(`blacklist:${token}`)
     if (isBlacklisted) return res.json({ isAuthenticated: false })
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ['HS256']
+    })
 
     const active = await redisClient.sIsMember(
       `user:tokens:${decoded.id}`,
@@ -229,26 +229,7 @@ app.post('/whoami', async (req, res) => {
 })
 
 /**
- * @description Route to check if app is locked with biometric.
- */
-app.post('/get-lock-app', (req, res) => {
-  const lockApp = req.session.lockApp ? true : false
-  return res.status(200).json({ lockApp })
-})
-
-/**
- * @description Route to lock app with biometric.
- */
-app.post('/lock-app', (req, res) => {
-  const lockApp = req.session.lockApp ? false : true
-  req.session.lockApp = lockApp
-  return res.status(200).send('App lock status updated')
-})
-
-/**
  * @description Route to create a new user account.
- * Store encryption key securely in a vault like AWS KMS,
- * Azure Key Vault or a self-hosted solution instead of the mysql database.
  */
 app.post('/create-account', async (req, res) => {
   const { nameCreate, psswdCreate } = req.body
@@ -264,8 +245,7 @@ app.post('/create-account', async (req, res) => {
 
   const id = crypto.randomBytes(12).toString('hex')
   const psswdCreateHash = await bcrypt.hash(psswdCreate, 12)
-  const key = crypto.randomBytes(32)
-  const keyBase64 = Buffer.from(key).toString('base64')
+  const keyBase64 = crypto.randomBytes(32).toString('base64')
 
   try {
     await pool.execute(
@@ -293,42 +273,39 @@ app.post('/login', loginLimiter, async (req, res, next) => {
     if (!user) return res.status(401).send('Wrong username or password.')
 
     const token = jwt.sign(
-      { id: user.id },
+      {
+        id: user.id,
+        name: user.name
+      },
       process.env.JWT_SECRET,
-      { expiresIn: 604800 }
+      { expiresIn: 604800, algorithm: 'HS256' }
     )
 
     await redisClient.sAdd(`user:tokens:${user.id}`, token)
     await redisClient.expire(`user:tokens:${user.id}`, 604800)
 
-    req.session.regenerate((err) => {
-      if (err) return res.status(401).send('Internal server error')
-
-      req.session.name = user.name
-      req.session.lockApp = false
-
-      res.cookie('jwtToken', token, {
-        maxAge: 604800000,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict'
-      })
-
-      const csrfToken = crypto.randomBytes(32).toString('hex')
-      res.cookie('csrfToken', csrfToken, {
-        maxAge: 604800000,
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict'
-      })
-
-      pool.execute(
-        "UPDATE users SET lastLogin = NOW() WHERE id = ?",
-        [user.id]
-      )
-
-      return res.status(200).send('Logged in!')
+    res.cookie('jwtToken', token, {
+      maxAge: 604800000,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict'
     })
+
+    const csrfToken = crypto.randomBytes(32).toString('hex')
+
+    res.cookie('csrfToken', csrfToken, {
+      maxAge: 604800000,
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict'
+    })
+
+    await pool.execute(
+      "UPDATE users SET lastLogin = NOW() WHERE id = ?",
+      [user.id]
+    )
+
+    return res.status(200).send('Logged in!')
   } catch {
     return res.status(401).send('Wrong username or password.')
   }
@@ -343,16 +320,12 @@ app.post('/logout', verifyJWTToken, async (req, res) => {
 
   try {
     await blacklistToken(token)
-    await redisClient.sRem(`user:tokens:${req.userId}`, token)
+    await redisClient.sRem(`user:tokens:${req.user.id}`, token)
 
-    req.session.destroy((err) => {
-      if (err) return res.status(401).json('Internal server error')
+    res.clearCookie('jwtToken')
+    res.clearCookie('csrfToken')
 
-      res.clearCookie('connect.sid')
-      res.clearCookie('jwtToken')
-      res.clearCookie('csrfToken')
-      return res.status(200).json('Logged out successfully')
-    })
+    return res.status(200).json('Logged out successfully')
   } catch {
     return res.status(401).json('Internal server error')
   }
@@ -362,7 +335,7 @@ app.post('/logout', verifyJWTToken, async (req, res) => {
  * @description Route to log out all devices for a user. Blacklist all JWT tokens associated with the user.
  */
 app.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
-  const userId = req.userId
+  const userId = req.user.id
 
   try {
     const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
@@ -374,14 +347,9 @@ app.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
       await redisClient.del(`user:tokens:${userId}`)
     }
 
-    req.session.destroy((err) => {
-      if (err) return res.status(401).json('Internal server error')
-
-      res.clearCookie('connect.sid')
-      res.clearCookie('jwtToken')
-      res.clearCookie('csrfToken')
-      return res.status(200).json('All devices logged out successfully')
-    })
+    res.clearCookie('jwtToken')
+    res.clearCookie('csrfToken')
+    return res.status(200).json('All devices logged out successfully')
   } catch {
     return res.status(401).json('Internal server error')
   }
@@ -392,7 +360,7 @@ app.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
  */
 app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { psswdOld, psswdNew } = req.body
-  const userId = req.userId
+  const userId = req.user.id
 
   if (!userId || !psswdOld || !psswdNew || psswdNew.length < 10) {
     return res.status(401).json('Internal server error')
@@ -422,14 +390,9 @@ app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) =
       await redisClient.del(`user:tokens:${userId}`)
     }
 
-    req.session.destroy((err) => {
-      if (err) return res.status(401).json('Internal server error')
-
-      res.clearCookie('connect.sid')
-      res.clearCookie('jwtToken')
-      res.clearCookie('csrfToken')
-      return res.status(200).json('Password updated. All devices logged out. Please login again.')
-    })
+    res.clearCookie('jwtToken')
+    res.clearCookie('csrfToken')
+    return res.status(200).json('Password updated. All devices logged out. Please login again.')
   } catch {
     return res.status(401).json('Internal server error')
   }
@@ -441,7 +404,7 @@ app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) =
  */
 app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { psswd } = req.body
-  const userId = req.userId
+  const userId = req.user.id
 
   if (!userId || !psswd) {
     return res.status(401).json('Internal server error')
@@ -467,14 +430,9 @@ app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) =>
       await redisClient.del(`user:tokens:${userId}`)
     }
 
-    req.session.destroy((err) => {
-      if (err) return res.status(401).json('Internal server error')
-
-      res.clearCookie('connect.sid')
-      res.clearCookie('jwtToken')
-      res.clearCookie('csrfToken')
-      return res.status(200).json('Account deleted successfully. All devices logged out.')
-    })
+    res.clearCookie('jwtToken')
+    res.clearCookie('csrfToken')
+    return res.status(200).json('Account deleted successfully. All devices logged out.')
   } catch {
     return res.status(401).json('Internal server error')
   }
@@ -484,8 +442,8 @@ app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) =>
  * @description Route to get all user notes
  */
 app.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
-  const userId = req.userId
-  const name = req.session.name
+  const userId = req.user.id
+  const name = req.user.name
   const key = await getKey(userId)
   const lastLogin = await getLastLogin(userId)
   const allUserSessions = await getAllUserSessions(userId)
@@ -536,7 +494,7 @@ app.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
 app.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { title, content, color, hidden, folder, category, reminder } = req.body
-  const userId = req.userId
+  const userId = req.user.id
   const key = await getKey(userId)
   const allColors = [
     'bg-default',
@@ -591,7 +549,7 @@ app.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
 app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId, title, content, color, hidden, folder, category, reminder } = req.body
-  const userId = req.userId
+  const userId = req.user.id
   const key = await getKey(userId)
   const allColors = [
     'bg-default',
@@ -665,7 +623,7 @@ app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
 app.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
-  const userId = req.userId
+  const userId = req.user.id
 
   if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Pin note failed')
 
@@ -683,7 +641,7 @@ app.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
 app.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
-  const userId = req.userId
+  const userId = req.user.id
 
   if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note deletion failed')
 
@@ -697,7 +655,7 @@ app.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
 app.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
-  const userId = req.userId
+  const userId = req.user.id
 
   if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note modification failed')
 
@@ -713,7 +671,7 @@ app.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
 app.post('/private-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId, noteLink } = req.body
-  const userId = req.userId
+  const userId = req.user.id
 
   if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note modification failed')
   if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) return res.status(401).send('Note modification failed')
@@ -726,7 +684,7 @@ app.post('/private-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-app.post('/get-shared-note', async (req, res) => {
+app.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
   const { noteLink } = req.body
 
   if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) {
