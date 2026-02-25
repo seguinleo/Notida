@@ -16,7 +16,7 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.17.2",
+    "mysql2": "^3.18.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "redis": "^5.11.0"

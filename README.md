@@ -50,7 +50,9 @@ If you find [issues](https://github.com/seguinleo/Notida/issues), [vulnerabiliti
 
 ## Self-hosting
 
-The project is configured to start with a single Docker command. A more robust configuration is required for production.
+**Recommended for long-term use.**
+
+The project is configured to start with a single Docker command:
 
 ``docker-compose up --build`` to build the Docker container
 
