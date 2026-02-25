@@ -935,7 +935,7 @@ export default {
     async toggleLockApp() {
       if (this.isLocked) return
 
-      let success = true
+      let success
 
       if (this.fingerprintEnabled) {
         success = await this.verifyFingerprint()
@@ -1562,8 +1562,8 @@ export default {
       }
       if (this.notesJSON.length === 0) return
       const a = document.createElement('a')
-      let filename = ''
-      let allNotesContent = []
+      let filename
+      let allNotesContent
       const allNotes = document.querySelectorAll('.note')
       if (document.querySelector('#id-note-download').value === '') {
         const notesPromises = Array.from(allNotes).map(async (note) => {
