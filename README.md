@@ -40,6 +40,8 @@ Protection against XSS and CSRF attacks is ensured through a robust CSP, secure 
 
 Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server, verification is local and UI/UX only.
 
+User accounts are deleted 1 year after the last login.
+
 ## Todo
 
 * 2FA protection
@@ -56,17 +58,14 @@ The project is configured to start with a single Docker command:
 
 ``docker-compose up --build`` to build the Docker container
 
-> [!IMPORTANT]
-> Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to install a SSL certificate to use note encryption (Web Crypto API requires HTTPs).
-
 ## Production
 
 * Change NODE_ENV to "production" in .env
-* Secure nginx and express with HTTPs
 * Edit all users, passwords and secret keys
-* Edit nginx and Docker configurations
 * Edit **.env** and **docker-compose.yml** files
-* Edit all database tables name
 * To store user encryption keys, I recommend using a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp instead of the database
+
+> [!IMPORTANT]
+> Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to [install a SSL certificate](https://github.com/seguinleo/WebSecurityCheatSheet) to use note encryption (Web Crypto API requires HTTPs).
 
 Special thanks to [DOMPurify](https://github.com/cure53/DOMPurify), [marked](https://github.com/markedjs/marked) and [Iro](https://github.com/jaames/iro.js)

@@ -1,6 +1,6 @@
 import express from 'express'
 import cookieParser from 'cookie-parser'
-import { createClient } from 'redis'
+import { redisClient } from './server.js'
 import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import { Buffer } from 'buffer'
@@ -12,18 +12,6 @@ import passport from './config/passport.js'
 
 const app = express()
 const encryption = new Encryption()
-
-const redisClient = createClient({
-  url: process.env.REDIS_URL,
-})
-
-try {
-  await redisClient.connect()
-  console.log('Redis client connected')
-} catch (err) {
-  console.error(err)
-  process.exit(1)
-}
 
 const maxNoteContentLength = 20000
 const maxDataByteSize = 1000000
