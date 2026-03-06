@@ -9,14 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.52.0",
+    "@dotenvx/dotenvx": "^1.54.1",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "express-rate-limit": "^8.2.1",
+    "express-rate-limit": "^8.3.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.18.2",
+    "mysql2": "^3.19.0",
     "node-cron": "^4.2.1",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
