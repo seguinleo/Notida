@@ -12,10 +12,10 @@
   "dependencies": {
     "@jaames/iro": "^5.5.2",
     "dompurify": "^3.3.3",
-    "katex": "^0.16.43",
+    "katex": "^0.16.44",
     "marked": "^17.0.5",
     "marked-katex-extension": "^5.1.7",
-    "vue": "^3.5.31"
+    "vue": "^3.5.32"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
