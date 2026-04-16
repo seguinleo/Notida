@@ -16,10 +16,10 @@
     "express-rate-limit": "^8.3.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.21.1",
+    "mysql2": "^3.22.0",
     "node-cron": "^4.2.1",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
-    "redis": "^5.11.0"
+    "redis": "^5.12.1"
   }
 }
