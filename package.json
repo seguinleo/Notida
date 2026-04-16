@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@jaames/iro": "^5.5.2",
-    "dompurify": "^3.3.3",
+    "dompurify": "^3.4.0",
     "katex": "^0.16.45",
     "marked": "^18.0.0",
     "marked-katex-extension": "^5.1.8",
