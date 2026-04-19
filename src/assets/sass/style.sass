@@ -71,13 +71,10 @@ html
     input,
     #colors span,
     fieldset
-      border: 2px solid rgba(0, 0, 0, .05)
+      border: 2px solid rgba(0, 0, 0, .05)copysucc
 
     #colors span.selected
       border: 2px solid rgba(0, 0, 0, .5)
-
-    input[type=checkbox]
-      background: rgba(0, 0, 0, .15)
 
     .switch .toggle-thumb
       background-color: rgba(0, 0, 0, .15)
@@ -113,10 +110,10 @@ html
         background: rgba(0, 0, 0, .1) !important
 
     #success-notification
-      background: #72c472 !important
+      background: #72c47280 !important
 
     .error-notification
-      background: #d57f7f !important
+      background: #d57f7f80 !important
 
 *
   color: inherit
@@ -235,11 +232,11 @@ code
 li
   margin-left: -1.2rem
 
-  &:has(input[type=checkbox])
+  &:has(.taskList)
     list-style: none
     margin-left: -2rem
 
-  &:has(input[type=checkbox]:checked)
+  .checkedTask
     text-decoration: line-through
 
 img
@@ -362,34 +359,6 @@ input
   &[type=radio]
     margin-right: 10px
     vertical-align: middle
-
-  &[type=checkbox]
-    display: inline-flex
-    justify-content: center
-    align-items: center
-    -webkit-appearance: none
-    appearance: none
-    margin-right: 10px
-    width: 1rem
-    height: 1rem
-    border-radius: 10px
-    border: none !important
-    background: rgba(255, 255, 255, .1)
-
-    &::before
-      content: ""
-      width: 10px
-      height: 10px
-      transform: scale(0)
-      transform-origin: bottom left
-      clip-path: polygon(14% 44%,0 65%,50% 100%,100% 16%,90% 0%,43% 62%)
-      box-shadow: inset 1em 1em currentColor
-
-    &:checked::before
-      transform: scale(1)
-
-    &:disabled
-      opacity: 1
 
   &:disabled
     cursor: not-allowed
@@ -605,10 +574,10 @@ input
   background: rgba(155, 0, 0, .3) !important
 
 #success-notification
-  background: #005600 !important
+  background: #00560080 !important
 
 .error-notification
-  background: #700000 !important
+  background: #70000080 !important
 
 button,
 .bottom-content i,
@@ -890,10 +859,11 @@ dialog
   top: 2rem
   right: 2rem
   text-align: center
-  font-weight: 700
   max-width: 320px
-  padding: 10px
-  border-radius: 4px
+  font-size: .9rem
+  padding: 10px 1rem
+  border-radius: 1rem
+  backdrop-filter: blur(10px)
   z-index: 5
 
 #copy-note-link

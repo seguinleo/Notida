@@ -82,23 +82,18 @@ const verifyJWTToken = async (req, res, next) => {
  * @description Verify CSRF token.
  */
 const verifyCsrfToken = (req, res, next) => {
-  const userToken = req.headers['x-csrf-token']
-  const storedToken = req.cookies?.csrfToken
+  const cookieToken = req.cookies?.csrfToken
+  const headerToken = req.headers['x-csrf-token']
 
-  if (!userToken || !storedToken) {
-    return res.status(403).json('Invalid CSRF token')
+  if (!cookieToken || !headerToken) {
+    return res.status(403).send('CSRF missing')
   }
 
-  try {
-    const userBuffer = Buffer.from(userToken, 'utf8')
-    const storedBuffer = Buffer.from(storedToken, 'utf8')
+  const a = Buffer.from(cookieToken)
+  const b = Buffer.from(headerToken)
 
-    if (userBuffer.length !== storedBuffer.length ||
-      !crypto.timingSafeEqual(userBuffer, storedBuffer)) {
-      return res.status(403).json('Invalid CSRF token')
-    }
-  } catch {
-    return res.status(403).json('Invalid CSRF token')
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(403).send('Invalid CSRF token')
   }
 
   next()
@@ -109,12 +104,20 @@ const verifyCsrfToken = (req, res, next) => {
  * @description Function to blacklist a token to kill a session.
  */
 const blacklistToken = async (token) => {
-  const decoded = jwt.decode(token)
-  if (!decoded?.exp) return
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ['HS256']
+    })
 
-  const ttl = decoded.exp - Math.floor(Date.now() / 1000)
-  if (ttl > 0) {
-    await redisClient.set(`blacklist:${token}`, '1', { EX: ttl })
+    if (!decoded?.exp) return
+
+    const ttl = decoded.exp - Math.floor(Date.now() / 1000)
+
+    if (ttl > 0) {
+      await redisClient.set(`blacklist:${token}`, '1', { EX: ttl })
+    }
+  } catch {
+    return
   }
 }
 
@@ -192,28 +195,8 @@ const getAllUserSessions = async (userId) => {
 /**
  * @description Route to verify if the user is authenticated.
  */
-app.post('/whoami', async (req, res) => {
-  const token = req.cookies?.jwtToken
-  if (!token) return res.json({ isAuthenticated: false })
-
-  try {
-    const isBlacklisted = await redisClient.get(`blacklist:${token}`)
-    if (isBlacklisted) return res.json({ isAuthenticated: false })
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ['HS256']
-    })
-
-    const active = await redisClient.sIsMember(
-      `user:tokens:${decoded.id}`,
-      token
-    )
-    if (!active) return res.json({ isAuthenticated: false })
-
-    return res.json({ isAuthenticated: true })
-  } catch {
-    return res.json({ isAuthenticated: false })
-  }
+app.post('/whoami', verifyJWTToken, verifyCsrfToken, (req, res) => {
+  return res.json({ isAuthenticated: true })
 })
 
 /**
@@ -228,7 +211,7 @@ app.post('/create-account', async (req, res) => {
     || psswdCreate.length < 10
     || psswdCreate.length > 64
   ) {
-    return res.status(401).send('Account creation failed')
+    return res.status(400).send('Account creation failed')
   }
 
   const id = crypto.randomBytes(12).toString('hex')
@@ -242,7 +225,7 @@ app.post('/create-account', async (req, res) => {
     )
     return res.status(200).send('Account created successfully')
   } catch {
-    return res.status(401).send('Account creation failed')
+    return res.status(400).send('Account creation failed')
   }
 })
 
@@ -258,7 +241,7 @@ app.post('/login', loginLimiter, async (req, res, next) => {
       })(req, res, next)
     })
 
-    if (!user) return res.status(401).send('Wrong username or password.')
+    if (!user) return res.status(400).send('Wrong username or password.')
 
     const token = jwt.sign(
       {
@@ -295,7 +278,7 @@ app.post('/login', loginLimiter, async (req, res, next) => {
 
     return res.status(200).send('Logged in!')
   } catch {
-    return res.status(401).send('Wrong username or password.')
+    return res.status(400).send('Wrong username or password.')
   }
 })
 
@@ -304,7 +287,7 @@ app.post('/login', loginLimiter, async (req, res, next) => {
  */
 app.post('/logout', verifyJWTToken, async (req, res) => {
   const token = req.cookies?.jwtToken
-  if (!token) return res.status(401).json('Internal server error')
+  if (!token) return res.status(400).json('Internal server error')
 
   try {
     await blacklistToken(token)
@@ -315,7 +298,7 @@ app.post('/logout', verifyJWTToken, async (req, res) => {
 
     return res.status(200).json('Logged out successfully')
   } catch {
-    return res.status(401).json('Internal server error')
+    return res.status(400).json('Internal server error')
   }
 })
 
@@ -339,7 +322,7 @@ app.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
     res.clearCookie('csrfToken')
     return res.status(200).json('All devices logged out successfully')
   } catch {
-    return res.status(401).json('Internal server error')
+    return res.status(400).json('Internal server error')
   }
 })
 
@@ -351,7 +334,7 @@ app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) =
   const userId = req.user.id
 
   if (!userId || !psswdOld || !psswdNew || psswdNew.length < 10) {
-    return res.status(401).json('Internal server error')
+    return res.status(400).json('Internal server error')
   }
 
   try {
@@ -360,7 +343,7 @@ app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) =
       [userId]
     )
     if (rows.length !== 1 || !(await bcrypt.compare(psswdOld, rows[0].psswd))) {
-      return res.status(401).json('Wrong password')
+      return res.status(400).json('Wrong password')
     }
 
     const psswdNewHash = await bcrypt.hash(psswdNew, 12)
@@ -382,7 +365,7 @@ app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) =
     res.clearCookie('csrfToken')
     return res.status(200).json('Password updated. All devices logged out. Please login again.')
   } catch {
-    return res.status(401).json('Internal server error')
+    return res.status(400).json('Internal server error')
   }
 })
 
@@ -395,7 +378,7 @@ app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) =>
   const userId = req.user.id
 
   if (!userId || !psswd) {
-    return res.status(401).json('Internal server error')
+    return res.status(400).json('Internal server error')
   }
 
   try {
@@ -404,7 +387,7 @@ app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) =>
       [userId]
     )
     if (rows.length !== 1 || !(await bcrypt.compare(psswd, rows[0].psswd))) {
-      return res.status(401).json('Wrong password')
+      return res.status(400).json('Wrong password')
     }
 
     await pool.execute("DELETE FROM users WHERE id = ?", [userId])
@@ -422,7 +405,7 @@ app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) =>
     res.clearCookie('csrfToken')
     return res.status(200).json('Account deleted successfully. All devices logged out.')
   } catch {
-    return res.status(401).json('Internal server error')
+    return res.status(400).json('Internal server error')
   }
 })
 
@@ -436,7 +419,7 @@ app.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const lastLogin = await getLastLogin(userId)
   const allUserSessions = await getAllUserSessions(userId)
 
-  if (!key) return res.status(401).send('Notes retrieval failed')
+  if (!key) return res.status(400).send('Notes retrieval failed')
 
   try {
     const [rows] = await pool.execute(`
@@ -476,7 +459,7 @@ app.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
     return res.status(200).json({ notes, name, lastLogin, allUserSessions, maxNoteContentLength, maxDataByteSize, dataByteSize })
   } catch {
-    return res.status(401).send('Notes retrieval failed')
+    return res.status(400).send('Notes retrieval failed')
   }
 })
 
@@ -498,17 +481,17 @@ app.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
     'bg-pink',
   ]
 
-  if (!userId || !key || !title) return res.status(401).send('Note creation failed')
+  if (!userId || !key || !title) return res.status(400).send('Note creation failed')
   if (
     typeof title !== 'string' ||
     typeof content !== 'string' ||
     title.length > 30 ||
     content.length > maxNoteContentLength
   ) {
-    return res.status(401).send('Note creation failed')
+    return res.status(400).send('Note creation failed')
   }
-  if (!allColors.includes(color)) return res.status(401).send('Note creation failed')
-  if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Note creation failed')
+  if (!allColors.includes(color)) return res.status(400).send('Note creation failed')
+  if (reminder && !new Date(reminder).getTime()) return res.status(400).send('Note creation failed')
 
   const noteId = crypto.randomBytes(12).toString('hex')
   const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -518,8 +501,8 @@ app.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
       "INSERT INTO notes (id, title, content, dateNote, color, hiddenNote, folder, category, reminder, user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         noteId,
-        encryption.encryptData(title, key),
-        encryption.encryptData(content, key),
+        encryption.encryptData(title.trim(), key),
+        encryption.encryptData(content.trim(), key),
         dateNote,
         color,
         hidden,
@@ -531,7 +514,7 @@ app.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
     )
     return res.status(200).send('Note created successfully')
   } catch {
-    return res.status(401).send('Note creation failed')
+    return res.status(400).send('Note creation failed')
   }
 })
 
@@ -552,18 +535,18 @@ app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
     'bg-purple',
     'bg-pink',
   ]
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Update failed')
-  if (!userId || !key || !title) return res.status(401).send('Update failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Update failed')
+  if (!userId || !key || !title) return res.status(400).send('Update failed')
   if (
     typeof title !== 'string' ||
     typeof content !== 'string' ||
     title.length > 30 ||
     content.length > maxNoteContentLength
   ) {
-    return res.status(401).send('Update failed')
+    return res.status(400).send('Update failed')
   }
-  if (!allColors.includes(color)) return res.status(401).send('Update failed')
-  if (reminder && !new Date(reminder).getTime()) return res.status(401).send('Update failed')
+  if (!allColors.includes(color)) return res.status(400).send('Update failed')
+  if (reminder && !new Date(reminder).getTime()) return res.status(400).send('Update failed')
 
   const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
@@ -573,7 +556,7 @@ app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
       [noteId, userId]
     )
     if (rows.length === 0) {
-      return res.status(401).send('Update failed')
+      return res.status(400).send('Update failed')
     }
     const oldContent = rows[0].content
 
@@ -591,8 +574,8 @@ app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
         reminder = ?
       WHERE id = ? AND user = ?
     `, [
-      encryption.encryptData(title, key),
-      encryption.encryptData(content, key),
+      encryption.encryptData(title.trim(), key),
+      encryption.encryptData(content.trim(), key),
       oldContent,
       dateNote,
       color,
@@ -605,7 +588,7 @@ app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
     ])
     return res.status(200).send('Note updated successfully')
   } catch {
-    return res.status(401).send('Update failed')
+    return res.status(400).send('Update failed')
   }
 })
 
@@ -613,7 +596,7 @@ app.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Pin note failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Pin note failed')
 
   try {
     await pool.execute(`
@@ -623,7 +606,7 @@ app.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
       `, [noteId, userId])
     return res.status(200).send('Note pinned successfully')
   } catch {
-    return res.status(401).send('Pin note failed')
+    return res.status(400).send('Pin note failed')
   }
 })
 
@@ -631,13 +614,13 @@ app.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note deletion failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Note deletion failed')
 
   try {
     await pool.execute("DELETE FROM notes WHERE id = ? AND user = ? AND link IS NULL", [noteId, userId])
     return res.status(200).send('Note deleted successfully')
   } catch {
-    return res.status(401).send('Note deletion failed')
+    return res.status(400).send('Note deletion failed')
   }
 })
 
@@ -645,7 +628,7 @@ app.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note modification failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Note modification failed')
 
   const noteLink = crypto.randomBytes(16).toString('hex')
 
@@ -653,7 +636,7 @@ app.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
     await pool.execute("UPDATE notes SET link = ? WHERE id = ? AND user = ? AND link IS NULL AND hiddenNote = 0", [noteLink, noteId, userId])
     return res.status(200).send('Note link added successfully')
   } catch {
-    return res.status(401).send('Note modification failed')
+    return res.status(400).send('Note modification failed')
   }
 })
 
@@ -661,14 +644,14 @@ app.post('/private-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId, noteLink } = req.body
   const userId = req.user.id
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(401).send('Note modification failed')
-  if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) return res.status(401).send('Note modification failed')
+  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Note modification failed')
+  if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) return res.status(400).send('Note modification failed')
 
   try {
     await pool.execute("UPDATE notes SET link = NULL WHERE id = ? AND user = ? AND link = ?", [noteId, userId, noteLink])
     return res.status(200).send('Note link removed successfully')
   } catch {
-    return res.status(401).send('Note modification failed')
+    return res.status(400).send('Note modification failed')
   }
 })
 
@@ -676,7 +659,7 @@ app.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
   const { noteLink } = req.body
 
   if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) {
-    return res.status(401).json('Invalid note link')
+    return res.status(400).json('Invalid note link')
   }
 
   try {
@@ -694,7 +677,7 @@ app.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
     const { title: encryptedTitle, content: encryptedContent, dateNote, user } = noteRows[0]
 
     const key = await getKey(user)
-    if (!key) return res.status(401).send('Internal server error')
+    if (!key) return res.status(400).send('Internal server error')
 
     const note = {
       title: encryption.decryptData(encryptedTitle, key),
@@ -704,7 +687,7 @@ app.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
 
     return res.status(200).json(note)
   } catch {
-    return res.status(401).send('Internal server error')
+    return res.status(400).send('Internal server error')
   }
 })
 

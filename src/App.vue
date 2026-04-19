@@ -413,7 +413,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.2.2</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.4.1</a>
             </p>
           </div>
         </div>
@@ -655,7 +655,6 @@
               <p>All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with
                 AES-256-GCM. Each user has a cryptographically secure key generated after signing up and a rotated JWT
                 token stored in Redis.</p>
-              <p>Protection against XSS and CSRF attacks is ensured through a robust CSP, secure cookies or tokens.</p>
               <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent
                 to the server, verification is local and UI/UX only.</p>
               <h2 id="security">🌐Community</h2>
@@ -679,20 +678,18 @@ import 'katex/dist/katex.min.css'
 const MARKED_CONFIG = {
   breaks: true,
   renderer: {
-    link({ href, text }) {
-      return `<a rel="noreferrer noopener" href="${href}">${text}</a>`
-    },
     image({ href, title, text }) {
       try {
         const url = new URL(href, window.location.origin)
-        if (!['http:', 'https:'].includes(url.protocol)) return ''
+        if (!['https:'].includes(url.protocol)) return ''
         return `<img crossorigin src="${url.href}" alt="${text}" title="${title || ''}" loading="lazy">`
       } catch {
         return ''
       }
     },
     checkbox({ checked }) {
-      return `<label><input type="checkbox" disabled ${checked ? 'checked' : ''}>`
+      if (checked) return '<span class="taskList checkedTask">✅ '
+      else return '<span class="taskList">⬜ '
     }
   }
 }
@@ -700,9 +697,8 @@ const MARKED_CONFIG = {
 const PURIFY_CONFIG = {
   SANITIZE_NAMED_PROPS: true,
   ALLOW_DATA_ATTR: false,
-  ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i,
   FORBID_TAGS: ['dialog', 'footer', 'form', 'header', 'iframe', 'main', 'nav', 'script', 'style'],
-  FORBID_ATTR: ['style', 'class', 'onclick', 'onload', 'onerror']
+  FORBID_ATTR: ['onclick', 'onload', 'onerror']
 }
 
 const KATEX_CONFIG = {
@@ -723,6 +719,8 @@ const DATE_OPTIONS = {
   hour: '2-digit',
   minute: '2-digit'
 }
+
+marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG))
 
 export default {
   data() {
@@ -906,10 +904,12 @@ export default {
       return JSON.parse(new TextDecoder().decode(decrypted))
     },
     getCookie(name) {
-      const value = `; ${document.cookie}`
-      const parts = value.split(`; ${name}=`)
-      if (parts.length === 2) return parts.pop().split(';').shift()
-      return null
+      const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+        const [key, value] = cookie.split('=')
+        acc[key] = value
+        return acc
+      }, {})
+      return cookies[name] || null
     },
     closeDialog(e) {
       const dialog = e.target.closest('dialog')
@@ -1642,7 +1642,7 @@ export default {
     async addLocalNote() {
       try {
         if (this.isLocked) return
-        const noteId = crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
+        const noteId = crypto.randomUUID()
         const title = document.querySelector('#note-dialog #title').value.trim()
         const content = document.querySelector('#note-dialog #content').value.trim()
         const color = document.querySelector('#colors .selected').classList[0]
@@ -1654,7 +1654,7 @@ export default {
 
         if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
 
-        const cleanContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
+        const safeContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
 
         const dbName = 'notes_db'
         const objectStoreName = 'key'
@@ -1671,7 +1671,7 @@ export default {
         }
 
         const encryptedTitle = await this.encryptLocalNotes(key, title)
-        const encryptedContent = await this.encryptLocalNotes(key, cleanContent)
+        const encryptedContent = await this.encryptLocalNotes(key, safeContent)
 
         const note = {
           id: noteId,
@@ -1755,8 +1755,6 @@ export default {
       document.querySelector('#delete-note-dialog').close()
     },
     async renderNoteList(notes, isLocal = false) {
-      marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG))
-
       const fragment = document.createDocumentFragment()
       const allFolders = new Set()
       const allCategories = new Set()
@@ -1810,10 +1808,17 @@ export default {
       if (!id || !title || !color || !date) return null
 
       let deTitleString = title
-      let deContentString = content
-      if (isLocal) {
+      if (isLocal && title && title.iv && title.data) {
         deTitleString = await this.decryptLocalNotes(this.localDbKey, title)
-        deContentString = content ? await this.decryptLocalNotes(this.localDbKey, content) : null
+      }
+
+      let deContentString = content
+      if (content) {
+        if (isLocal && content.iv && content.data) {
+          deContentString = await this.decryptLocalNotes(this.localDbKey, content)
+        }
+      } else {
+        deContentString = null
       }
 
       const bottomContentElement = document.createElement('div')
@@ -1951,9 +1956,9 @@ export default {
             bottomContentElement.appendChild(linkIconElement)
           }
 
-          const cleanContent = DOMPurify.sanitize(deContentString, PURIFY_CONFIG)
-          const parsedContent = marked.parse(cleanContent)
-          contentElement.innerHTML = parsedContent
+          const rawHtml = marked.parse(deContentString)
+          const safeHtml = DOMPurify.sanitize(rawHtml, PURIFY_CONFIG)
+          contentElement.innerHTML = safeHtml
         }
       }
 
@@ -2060,7 +2065,7 @@ export default {
         if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
         if (!COLORS.includes(color)) return
         if (reminder && !new Date(reminder).getTime()) return
-        const cleanContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
+        const safeContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
 
         let data = {}
 
@@ -2068,7 +2073,7 @@ export default {
           data = JSON.stringify({
             noteId,
             title,
-            content: cleanContent,
+            content: safeContent,
             color,
             hidden,
             folder,
@@ -2078,7 +2083,7 @@ export default {
         } else {
           data = JSON.stringify({
             title,
-            content: cleanContent,
+            content: safeContent,
             color,
             hidden,
             folder,
@@ -2166,7 +2171,13 @@ export default {
     },
     async isUserAuthenticated() {
       try {
-        const res = await fetch('api/whoami', { method: 'POST' })
+        const csrfToken = this.getCookie('csrfToken')
+        const res = await fetch('api/whoami', {
+          method: 'POST',
+          headers: {
+            'X-CSRF-Token': csrfToken
+          }
+        })
         const data = await res.json()
         this.isAuthenticated = data.isAuthenticated
         this.isAuthenticatedResponse = true
@@ -2259,17 +2270,15 @@ export default {
 
       const note = await res.json()
 
-      marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG))
-
       const {
         title, content, date,
       } = note
 
       document.title = title
 
-      const cleanContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
+      const rawHtml = marked.parse(content)
+      const safeHtml = DOMPurify.sanitize(rawHtml, PURIFY_CONFIG)
 
-      const contentHtml = marked.parse(cleanContent)
       const noteElement = document.createElement('div')
       noteElement.classList.add('shared-note')
 
@@ -2281,7 +2290,7 @@ export default {
       titleElement.textContent = title
 
       const contentElement = document.createElement('span')
-      contentElement.innerHTML = contentHtml
+      contentElement.innerHTML = safeHtml
 
       detailsElement.appendChild(titleElement)
       detailsElement.appendChild(contentElement)
@@ -2326,7 +2335,7 @@ export default {
     },
     copy(content) {
       navigator.clipboard.writeText(content)
-      this.showSuccess('Content copied to clipboard!')
+      this.showSuccess('Content copied to clipboard')
     },
     copyNoteLink() {
       const link = document.querySelector('#copy-note-link').textContent
