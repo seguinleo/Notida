@@ -1,3 +1,9 @@
+#----v26.4.1----#
+-Improve Markdown render
+-Improve security
+-UI/UX fixes
+-Bug fixes
+
 #----v26.2.2----#
 -Remove express-session, use stateless JWT
 

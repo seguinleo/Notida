@@ -36,8 +36,6 @@ The website follows [OWASP security recommendations](https://cheatsheetseries.ow
 
 All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with AES-256-GCM. Each user has a cryptographically secure key generated after signing up and a rotated JWT token stored in Redis.
 
-Protection against XSS and CSRF attacks is ensured through a robust CSP, secure cookies or tokens.
-
 Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server, verification is local and UI/UX only.
 
 User accounts are deleted 1 year after the last login.
