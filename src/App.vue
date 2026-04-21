@@ -2209,8 +2209,12 @@ export default {
     },
     async fetchLogout() {
       try {
+        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/logout/', {
-          method: 'POST'
+          method: 'POST',
+          headers: {
+            'X-CSRF-Token': csrfToken
+          }
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
