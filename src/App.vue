@@ -1648,9 +1648,9 @@ export default {
         const color = document.querySelector('#colors .selected').classList[0]
         const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
         const hidden = document.querySelector('#check-hidden').checked ? 1 : 0
-        const folder = document.querySelector('#folders input[name="add-folder"]:checked').value
-        const category = document.querySelector('#categories input[name="add-cat"]:checked').value
-        const reminder = document.querySelector('#date-reminder-input').value
+        const folder = document.querySelector('#folders input[name="add-folder"]:checked').value || null
+        const category = document.querySelector('#categories input[name="add-cat"]:checked').value || null
+        const reminder = document.querySelector('#date-reminder-input').value || null
 
         if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
 
@@ -2056,9 +2056,9 @@ export default {
         const content = document.querySelector('#note-dialog #content').value.trim()
         const color = document.querySelector('#colors .selected').classList[0]
         const hidden = document.querySelector('#check-hidden').checked ? 1 : 0
-        const folder = document.querySelector('#folders input[name="add-folder"]:checked').value
-        const category = document.querySelector('#categories input[name="add-cat"]:checked').value
-        const reminder = document.querySelector('#date-reminder-input').value
+        const folder = document.querySelector('#folders input[name="add-folder"]:checked').value || null
+        const category = document.querySelector('#categories input[name="add-cat"]:checked').value || null
+        const reminder = document.querySelector('#date-reminder-input').value || null
 
         if (this.isUpdate && !noteId) return
         if (noteId && !/^[a-f0-9]{24}$/i.test(noteId)) return

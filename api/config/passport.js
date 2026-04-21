@@ -10,16 +10,8 @@ passport.use(
       passwordField: 'psswdLogin'
     },
     async (nameLogin, psswdLogin, done) => {
-      if (
-        nameLogin.length < 3 ||
-        nameLogin.length > 30 ||
-        psswdLogin.length < 10 ||
-        psswdLogin.length > 64 ||
-        !/^[\p{L} -]+$/u.test(nameLogin.normalize('NFC'))
-      ) {
-        return done(null, false, {
-          message: 'Wrong username or password.',
-        })
+      if (!nameLogin || !psswdLogin) {
+        return done(null, false)
       }
       let connection
       try {
