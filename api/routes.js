@@ -9,16 +9,16 @@ import jwt from 'jsonwebtoken'
 import Encryption from './class/Encryption.js'
 import { pool } from './config/config.js'
 import passport from './config/passport.js'
+import { z } from 'zod'
 
-const app = express()
+const router = express.Router()
 const encryption = new Encryption()
 
 const maxNoteContentLength = 20000
 const maxDataByteSize = 1000000
 
-app.use(cookieParser())
-app.use(express.json({ limit: '5mb' }))
-app.use(express.urlencoded({ extended: true }))
+router.use(cookieParser())
+router.use(express.json({ limit: '50kb' }))
 
 const limiter = rateLimit({
   windowMs: 3 * 60 * 1000,
@@ -38,7 +38,7 @@ const sharedNoteLimiter = rateLimit({
   message: 'Too many login attempts, please try again later.',
 })
 
-app.use(limiter)
+router.use(limiter)
 
 /**
  * @function verifyJWTToken
@@ -195,24 +195,49 @@ const getAllUserSessions = async (userId) => {
 /**
  * @description Route to verify if the user is authenticated.
  */
-app.post('/whoami', verifyJWTToken, verifyCsrfToken, (req, res) => {
+router.post('/whoami', verifyJWTToken, verifyCsrfToken, (req, res) => {
   return res.json({ isAuthenticated: true })
+})
+
+const createAccountSchema = z.object({
+  nameCreate: z
+    .string()
+    .min(3)
+    .max(30)
+    .regex(/^[\p{L} -]+$/u),
+
+  psswdCreate: z.string().min(10).max(64),
+})
+
+const loginSchema = z.object({
+  nameLogin: z
+    .string()
+    .min(3)
+    .max(30)
+    .regex(/^[\p{L} -]+$/u),
+
+  psswdLogin: z.string().min(10).max(64),
+})
+
+const updatePasswordSchema = z.object({
+  psswdOld: z.string().min(10).max(64),
+  psswdNew: z.string().min(10).max(64),
+})
+
+const deleteAccountSchema = z.object({
+  psswd: z.string().min(10).max(64),
 })
 
 /**
  * @description Route to create a new user account.
  */
-app.post('/create-account', async (req, res) => {
-  const { nameCreate, psswdCreate } = req.body
-
-  if (!/^[\p{L} -]+$/u.test(nameCreate.normalize('NFC'))
-    || nameCreate.length < 3
-    || nameCreate.length > 30
-    || psswdCreate.length < 10
-    || psswdCreate.length > 64
-  ) {
+router.post('/create-account', async (req, res) => {
+  const parsed = createAccountSchema.safeParse(req.body)
+  if (!parsed.success) {
     return res.status(400).send('Account creation failed')
   }
+
+  const { nameCreate, psswdCreate } = parsed.data
 
   const id = crypto.randomBytes(12).toString('hex')
   const psswdCreateHash = await bcrypt.hash(psswdCreate, 12)
@@ -232,16 +257,30 @@ app.post('/create-account', async (req, res) => {
 /**
  * @description Route to log in a user. Create and store JWT token in Redis.
  */
-app.post('/login', loginLimiter, async (req, res, next) => {
+router.post('/login', loginLimiter, async (req, res, next) => {
+  const parsed = loginSchema.safeParse(req.body)
+
+  if (!parsed.success) {
+    return res.status(400).send('Wrong username or password.')
+  }
+
+  const { nameLogin, psswdLogin } = parsed.data
+
   try {
     const user = await new Promise((resolve, reject) => {
       passport.authenticate('local', { session: false }, (err, user) => {
         if (err) return reject(err)
         resolve(user)
-      })(req, res, next)
+      })(
+        { body: { nameLogin, psswdLogin } },
+        res,
+        next
+      )
     })
 
-    if (!user) return res.status(400).send('Wrong username or password.')
+    if (!user) {
+      return res.status(400).send('Wrong username or password.')
+    }
 
     const token = jwt.sign(
       {
@@ -285,7 +324,7 @@ app.post('/login', loginLimiter, async (req, res, next) => {
 /**
  * @description Route to log out only current device. Blacklist current JWT token.
  */
-app.post('/logout', verifyJWTToken, async (req, res) => {
+router.post('/logout', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const token = req.cookies?.jwtToken
   if (!token) return res.status(400).json('Internal server error')
 
@@ -305,7 +344,7 @@ app.post('/logout', verifyJWTToken, async (req, res) => {
 /**
  * @description Route to log out all devices for a user. Blacklist all JWT tokens associated with the user.
  */
-app.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const userId = req.user.id
 
   try {
@@ -320,6 +359,7 @@ app.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
     res.clearCookie('jwtToken')
     res.clearCookie('csrfToken')
+
     return res.status(200).json('All devices logged out successfully')
   } catch {
     return res.status(400).json('Internal server error')
@@ -329,13 +369,14 @@ app.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 /**
  * @description Route to update user password. Log out and blacklist all JWT tokens associated with the user.
  */
-app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) => {
-  const { psswdOld, psswdNew } = req.body
+router.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const userId = req.user.id
-
-  if (!userId || !psswdOld || !psswdNew || psswdNew.length < 10) {
+  const parsed = updatePasswordSchema.safeParse(req.body)
+  if (!parsed.success) {
     return res.status(400).json('Internal server error')
   }
+
+  const { psswdOld, psswdNew } = parsed.data
 
   try {
     const [rows] = await pool.execute(
@@ -363,6 +404,7 @@ app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) =
 
     res.clearCookie('jwtToken')
     res.clearCookie('csrfToken')
+
     return res.status(200).json('Password updated. All devices logged out. Please login again.')
   } catch {
     return res.status(400).json('Internal server error')
@@ -373,13 +415,14 @@ app.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) =
  * @description Route to delete an account and all notes ON DELETE CASCADE.
  * Log out and blacklist all JWT tokens associated with the user.
  */
-app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) => {
-  const { psswd } = req.body
+router.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const userId = req.user.id
-
-  if (!userId || !psswd) {
+  const parsed = deleteAccountSchema.safeParse(req.body)
+  if (!parsed.success) {
     return res.status(400).json('Internal server error')
   }
+
+  const { psswd } = parsed.data
 
   try {
     const [rows] = await pool.execute(
@@ -403,16 +446,43 @@ app.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) =>
 
     res.clearCookie('jwtToken')
     res.clearCookie('csrfToken')
+
     return res.status(200).json('Account deleted successfully. All devices logged out.')
   } catch {
     return res.status(400).json('Internal server error')
   }
 })
 
+const noteSchema = z.object({
+  title: z.string().min(1).max(30),
+  content: z.string().max(20000),
+  color: z.enum([
+    "bg-default",
+    "bg-red",
+    "bg-orange",
+    "bg-yellow",
+    "bg-lime",
+    "bg-green",
+    "bg-cyan",
+    "bg-light-blue",
+    "bg-blue",
+    "bg-purple",
+    "bg-pink"
+  ]).default("bg-default"),
+  hidden: z.number().int().min(0).max(1).default(0),
+  folder: z.string().max(63).nullable().optional(),
+  category: z.string().max(63).nullable().optional(),
+  reminder: z.string().max(63).nullable().optional()
+})
+
+const updateNoteSchema = noteSchema.extend({
+  noteId: z.string().regex(/^[a-f0-9]{24}$/i)
+})
+
 /**
  * @description Route to get all user notes
  */
-app.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const userId = req.user.id
   const name = req.user.name
   const key = await getKey(userId)
@@ -463,35 +533,15 @@ app.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-app.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
-  const { title, content, color, hidden, folder, category, reminder } = req.body
+router.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+  const parsed = noteSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).send('Invalid input')
+
+  const { title, content, color, hidden, folder, category, reminder } = parsed.data
   const userId = req.user.id
   const key = await getKey(userId)
-  const allColors = [
-    'bg-default',
-    'bg-red',
-    'bg-orange',
-    'bg-yellow',
-    'bg-lime',
-    'bg-green',
-    'bg-cyan',
-    'bg-light-blue',
-    'bg-blue',
-    'bg-purple',
-    'bg-pink',
-  ]
 
   if (!userId || !key || !title) return res.status(400).send('Note creation failed')
-  if (
-    typeof title !== 'string' ||
-    typeof content !== 'string' ||
-    title.length > 30 ||
-    content.length > maxNoteContentLength
-  ) {
-    return res.status(400).send('Note creation failed')
-  }
-  if (!allColors.includes(color)) return res.status(400).send('Note creation failed')
-  if (reminder && !new Date(reminder).getTime()) return res.status(400).send('Note creation failed')
 
   const noteId = crypto.randomBytes(12).toString('hex')
   const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -518,35 +568,16 @@ app.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
-  const { noteId, title, content, color, hidden, folder, category, reminder } = req.body
+router.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+  const parsed = updateNoteSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).send('Invalid input')
+
+  const { noteId, title, content, color, hidden, folder, category, reminder } = parsed.data
   const userId = req.user.id
   const key = await getKey(userId)
-  const allColors = [
-    'bg-default',
-    'bg-red',
-    'bg-orange',
-    'bg-yellow',
-    'bg-lime',
-    'bg-green',
-    'bg-cyan',
-    'bg-light-blue',
-    'bg-blue',
-    'bg-purple',
-    'bg-pink',
-  ]
+
   if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Update failed')
   if (!userId || !key || !title) return res.status(400).send('Update failed')
-  if (
-    typeof title !== 'string' ||
-    typeof content !== 'string' ||
-    title.length > 30 ||
-    content.length > maxNoteContentLength
-  ) {
-    return res.status(400).send('Update failed')
-  }
-  if (!allColors.includes(color)) return res.status(400).send('Update failed')
-  if (reminder && !new Date(reminder).getTime()) return res.status(400).send('Update failed')
 
   const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
@@ -592,7 +623,7 @@ app.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-app.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
@@ -610,7 +641,7 @@ app.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-app.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
@@ -624,7 +655,7 @@ app.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-app.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
@@ -640,7 +671,7 @@ app.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-app.post('/private-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/private-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   const { noteId, noteLink } = req.body
   const userId = req.user.id
 
@@ -655,7 +686,7 @@ app.post('/private-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-app.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
+router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
   const { noteLink } = req.body
 
   if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) {
@@ -691,8 +722,8 @@ app.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
   }
 })
 
-app.get('/health', (req, res) => {
+router.get('/health', (req, res) => {
   return res.status(200).send('OK')
 })
 
-export default app
+export default router
