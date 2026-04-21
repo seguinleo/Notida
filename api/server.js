@@ -7,10 +7,11 @@ import { deleteInactiveAccounts } from './cron/cronJobs.js'
 
 const app = express()
 
-app.use(helmet())
-app.set('trust proxy', 1)
-app.use('/', routes)
 app.disable('x-powered-by')
+app.set('trust proxy', 1)
+app.use(helmet())
+app.use(express.json({ limit: '50kb' }))
+app.use('/', routes)
 
 const PORT = process.env.PORT || 3000
 

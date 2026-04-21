@@ -18,7 +18,6 @@ const maxNoteContentLength = 20000
 const maxDataByteSize = 1000000
 
 router.use(cookieParser())
-router.use(express.json({ limit: '50kb' }))
 
 const limiter = rateLimit({
   windowMs: 3 * 60 * 1000,
