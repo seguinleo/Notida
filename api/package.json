@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.61.2",
+    "@dotenvx/dotenvx": "^1.62.0",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
-    "express-rate-limit": "^8.3.2",
+    "express-rate-limit": "^8.4.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.22.2",

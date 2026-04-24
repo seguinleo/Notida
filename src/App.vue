@@ -697,7 +697,7 @@ const MARKED_CONFIG = {
 const PURIFY_CONFIG = {
   SANITIZE_NAMED_PROPS: true,
   ALLOW_DATA_ATTR: false,
-  FORBID_TAGS: ['dialog', 'footer', 'form', 'header', 'iframe', 'main', 'nav', 'script', 'style'],
+  FORBID_TAGS: ['button', 'dialog', 'footer', 'form', 'header', 'iframe', 'input', 'main', 'nav', 'script', 'style'],
   FORBID_ATTR: ['onclick', 'onload', 'onerror']
 }
 
