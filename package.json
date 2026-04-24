@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "sass": "sass --watch src/assets/sass/style.sass src/assets/css/style.min.css --style compressed --no-source-map"
+    "scss": "sass --watch src/assets/scss/style.scss src/assets/css/style.min.css --style compressed --no-source-map"
   },
   "dependencies": {
     "@jaames/iro": "^5.5.2",
@@ -15,14 +15,14 @@
     "katex": "^0.16.45",
     "marked": "^18.0.2",
     "marked-katex-extension": "^5.1.8",
-    "vue": "^3.5.32"
+    "vue": "^3.5.33"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vitejs/plugin-vue": "^6.0.6",
     "eslint": "^10.2.1",
-    "eslint-plugin-vue": "^10.8.0",
+    "eslint-plugin-vue": "^10.9.0",
     "globals": "^17.5.0",
-    "vite": "^8.0.9"
+    "vite": "^8.0.10"
   }
 }
