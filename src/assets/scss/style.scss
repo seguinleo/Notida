@@ -18,24 +18,20 @@ html {
   color: #dddddd;
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
-  scrollbar-color: rgba(150, 150, 150, .2) transparent;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: rgba(150, 150, 150, .4) transparent;
   font-family: OpenSans, Helvetica Neue, Helvetica, Arial, sans-serif;
 
   &.light {
     color: #111111;
+    scrollbar-color: rgba(0, 0, 0, .3) transparent;
 
     ::selection {
-      background: rgba(0, 0, 0, .15);
+      background: rgba(0, 0, 0, .2) !important;
     }
 
     \::-webkit-scrollbar-thumb {
-      background: rgba(0, 0, 0, .15);
-    }
-
-    * {
-      &:focus-visible {
-        outline: 2px dashed rgba(0, 0, 0, .2);
-      }
+      background: rgba(0, 0, 0, .3);
     }
 
     .bg-red {
@@ -82,18 +78,10 @@ html {
       border-top: 2px solid rgba(0, 0, 0, .05);
     }
 
-    details {
-      border: 1px solid rgba(0, 0, 0, .05);
-    }
-
     input,
-    #colors span,
+    #colors-section button,
     fieldset {
-      border: 2px solid rgba(0, 0, 0, .05)copysucc;
-    }
-
-    #colors span.selected {
-      border: 2px solid rgba(0, 0, 0, .5);
+      border: 2px solid rgba(0, 0, 0, .05);
     }
 
     .switch .toggle-thumb {
@@ -107,12 +95,11 @@ html {
     \::-webkit-scrollbar-thumb,
     pre,
     button,
-    header #div-search,
+    header #search-section,
     #sidebar,
     #sidebar-indicator,
-    #sidebar #list-notes p .custom-check,
-    #sidebar #list-notes p .custom-check span,
-    #copy-note-link,
+    #sidebar #list-notes button .badge,
+    #public-note-link,
     .bg-default,
     .reminder-date,
     .custom-check span,
@@ -120,7 +107,7 @@ html {
       background: rgba(0, 0, 0, .05);
     }
 
-    .fullscreen {
+    .fullscreen-note {
       background: rgba(255, 255, 255, .1) !important;
     }
 
@@ -128,9 +115,7 @@ html {
       background: #fff;
     }
 
-    button,
-    .bottom-content i,
-    .editor-control i {
+    .bottom-content button {
       &:hover {
         background: rgba(0, 0, 0, .1) !important;
       }
@@ -150,18 +135,19 @@ html {
   color: inherit;
   margin: 0;
   box-sizing: border-box;
+}
 
-  &:focus-visible {
-    outline: 2px dashed rgba(255, 255, 255, .3);
-  }
+:focus-visible {
+  outline: 2px solid #009b00;
+  outline-offset: 2px;
 }
 
 ::selection {
-  background: rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .3) !important;
 }
 
 \::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .4);
 }
 
 \::-webkit-scrollbar {
@@ -170,18 +156,23 @@ html {
 }
 
 h1 {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
 }
 
 h2 {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
 }
 
 h3 {
+  font-size: 1.2rem;
+}
+
+h4 {
   font-size: 1.1rem;
 }
 
 table {
+  font-size: .9rem;
   border-collapse: collapse;
   text-align: center;
   margin: 10px 0;
@@ -230,36 +221,6 @@ blockquote {
   padding-left: 10px;
 }
 
-details {
-  margin: 1rem auto;
-  border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: 24px;
-  padding: 0 10px;
-
-  &[open] summary .fa-chevron-up {
-    rotate: 180deg;
-  }
-
-  summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-radius: 48px;
-    font-weight: 700;
-    cursor: pointer;
-    padding: 10px 0;
-
-    .fa-chevron-up {
-      transition: .2s;
-    }
-
-    &::marker,
-    &::-webkit-details-marker {
-      display: none;
-    }
-  }
-}
-
 progress {
   width: 100%;
   border: none;
@@ -289,19 +250,18 @@ code {
 li {
   margin-left: -1.2rem;
 
-  &:has(.taskList) {
+  &:has(.task-list) {
     list-style: none;
     margin-left: -2rem;
   }
 
-  .checkedTask {
+  .task-checked {
     text-decoration: line-through;
   }
 }
 
 img {
   max-width: 100%;
-  height: auto;
   border-radius: 4px;
 }
 
@@ -324,7 +284,7 @@ header {
     align-items: center;
   }
 
-  #div-search {
+  #search-section {
     flex-grow: 1;
     max-width: 320px;
     height: 36px;
@@ -364,8 +324,9 @@ main {
   gap: 1rem;
   max-height: 100dvh;
   overflow-y: auto;
+  scroll-behavior: smooth !important;
 
-  &.shared {
+  &.shared-main {
     padding: 0;
   }
 }
@@ -388,18 +349,9 @@ select {
   border: none;
 }
 
-textarea {
-  width: 100%;
-  min-height: 200px;
-  max-height: 1000px;
-  resize: vertical;
-  padding: 10px;
-}
-
 button {
   cursor: pointer;
   font-size: 1rem;
-  width: 100%;
   height: 36px;
   border-radius: 20px;
   border: none;
@@ -410,10 +362,6 @@ button {
     opacity: .7;
     cursor: not-allowed;
   }
-}
-
-form {
-  margin: 10px 0;
 }
 
 input {
@@ -469,7 +417,7 @@ input {
       left: -100%;
     }
 
-    .eventImage {
+    .event-image {
       width: 100%;
       max-width: 400px;
     }
@@ -500,52 +448,53 @@ input {
 
     #list-notes {
       overflow-y: auto;
+      overflow-x: hidden;
       overscroll-behavior: contain;
 
-      p {
+      button {
         display: flex;
         align-items: center;
         cursor: pointer;
-        padding: 4px 0;
-        margin: 3px;
+        margin: 4px 0;
         border-radius: 0 1rem 1rem 0;
         font-size: .9rem;
         font-weight: 700;
-        overflow: hidden;
-        transition: .1s;
+        border: none;
+        background: transparent;
+        width: 100%;
+        text-align: left;
         min-height: 36px;
 
-        &:hover .title-list,
-        &:focus .title-list {
+        &:hover .title-list {
           display: none;
         }
 
-        &:hover .date-list,
-        &:focus .date-list {
-          display: flex;
+        &:hover .date-list {
+          display: inline;
         }
+      }
 
-        .custom-check {
-          padding: 4px 8px;
-          border-radius: 24px;
-          background: rgba(255, 255, 255, .1);
-          min-height: 26px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          margin: 0 2px;
-          font-size: .8rem;
-        }
+      .badge {
+        padding: 4px 8px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, .1);
+        min-height: 26px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin: 0 2px;
+        font-size: .8rem;
+      }
 
-        .title-list {
-          white-space: nowrap;
-          margin: 0 4px;
-        }
+      .title-list {
+        white-space: nowrap;
+        margin: 0 4px;
+      }
 
-        .date-list {
-          display: none;
-          margin: 0 4px;
-        }
+      .date-list {
+        display: none;
+        white-space: nowrap;
+        margin: 0 4px;
       }
     }
   }
@@ -565,6 +514,7 @@ input {
     overflow-wrap: break-word;
     word-break: break-word;
     font-size: .9rem;
+    margin-bottom: 10px;
   }
 
   .date {
@@ -576,10 +526,8 @@ input {
     -webkit-user-select: none;
     user-select: none;
     text-align: center;
-    margin-bottom: 10px;
 
-    i {
-      cursor: pointer;
+    button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -636,7 +584,7 @@ input {
     transition: opacity .1s;
   }
 
-  &:not(.fullscreen) {
+  &:not(.fullscreen-note) {
     max-width: calc(50% - 1rem);
   }
 
@@ -672,8 +620,6 @@ input {
 
 .done,
 .close {
-  padding: 10px 0;
-
   button {
     width: 40px;
     height: 30px;
@@ -698,9 +644,7 @@ input {
   background: #70000080 !important;
 }
 
-button,
-.bottom-content i,
-.editor-control i {
+.bottom-content button {
   &:hover {
     background: rgba(255, 255, 255, .2) !important;
   }
@@ -713,7 +657,7 @@ button,
   padding: 0 7px;
 }
 
-.fullscreen {
+.fullscreen-note {
   position: fixed;
   z-index: 3;
   border-radius: 0;
@@ -731,7 +675,7 @@ button,
     max-height: 100dvh;
     width: 100%;
     font-size: 1rem;
-    overscroll-behavior: contain;
+    scroll-behavior: smooth;
 
     .details-content {
       width: fit-content;
@@ -746,23 +690,21 @@ button,
   }
 }
 
-#colors {
+#colors-section {
   display: flex;
   align-items: center;
   min-height: 30px;
+  gap: 8px;
 
-  span {
-    cursor: pointer;
+  .btn-color {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    margin-right: 10px;
-    transition: .1s;
     border: 2px solid rgba(255, 255, 255, .1);
+  }
 
-    &.selected {
-      border: 2px solid rgba(255, 255, 255, .5);
-    }
+  .btn-color.selected {
+    outline: 2px solid #009b00;
   }
 }
 
@@ -800,16 +742,26 @@ dialog {
     max-width: 350px;
   }
 
-  .popup-note-header {
+  .popup-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 10px 0;
   }
 }
 
-#note-dialog {
+#add-note-dialog {
   .popup {
     max-width: 1200px;
+  }
+
+  .btn-small {
+    margin-right: 10px;
+  }
+
+  .btn-clear {
+    background: none;
+    height: auto;
   }
 
   .content {
@@ -823,9 +775,14 @@ dialog {
       outline: none;
     }
 
-    textarea {
-      height: calc(100dvh - 320px);
-      overscroll-behavior: none;
+    .editor {
+      height: calc(100dvh - 280px);
+      margin-bottom: 10px;
+    }
+
+    .cm-editor {
+      height: 100%;
+      font-size: 1rem;
     }
   }
 }
@@ -834,22 +791,16 @@ dialog {
   margin-bottom: 10px;
 }
 
-.editor-control i {
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 4px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  transition: .1s;
-}
-
 .custom-check {
   display: inline-flex;
   font-size: .9rem;
   margin-right: 4px;
+  position: relative;
+
+  input {
+    position: absolute;
+    opacity: 0;
+  }
 
   span {
     cursor: pointer;
@@ -857,37 +808,26 @@ dialog {
     padding: 4px 8px;
     border-radius: 24px;
     background: rgba(255, 255, 255, .1);
-  }
-
-  input[type="radio"],
-  input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
+    display: inline-block;
   }
 
   input:checked+span {
     background: rgba(0, 155, 0, .3);
   }
 
-  span:focus {
+  input:focus+span {
     outline: 2px solid #009b00;
     outline-offset: 2px;
   }
 }
 
 #note-historic-content {
-  white-space: pre-line;
+  white-space: pre-wrap;
   word-break: break-word;
 }
 
 .reminder-date {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   font-size: .8rem;
-  margin-left: 8px;
   padding: 4px 8px;
   border-radius: 24px;
   background: rgba(255, 255, 255, .1);
@@ -945,8 +885,8 @@ dialog {
     }
 
     &:focus-visible+.toggle-thumb {
-      outline: 3px solid #8ab4f8;
-      outline-offset: 3px;
+      outline: 2px solid #009b00;
+      outline-offset: 2px;
     }
   }
 
@@ -979,15 +919,6 @@ dialog {
   }
 }
 
-.IroSlider {
-  margin: auto;
-}
-
-#folders,
-#categories {
-  margin-top: 1rem;
-}
-
 .version {
   text-align: right;
   font-size: .9rem;
@@ -996,13 +927,6 @@ dialog {
 
 .last-login {
   font-size: .9rem;
-}
-
-#language {
-  width: 50px;
-  height: 30px;
-  padding: 0;
-  vertical-align: middle;
 }
 
 #textarea-length {
@@ -1039,7 +963,7 @@ dialog {
   z-index: 5;
 }
 
-#copy-note-link {
+#public-note-link {
   align-content: center;
   flex: 1;
   height: 36px;
@@ -1058,24 +982,13 @@ dialog {
   backdrop-filter: blur(10px);
 }
 
-#copy-note-link-btn,
-#btn-add-folder,
-#btn-add-category,
-#btn-add-reminder,
-#sidebar button,
-#sidebar-indicator {
+.btn-small {
   display: inline-flex;
   justify-content: center;
   align-items: center;
   width: 36px;
   height: 36px;
   border-radius: 48px;
-}
-
-#btn-add-folder,
-#btn-add-category,
-#btn-add-reminder {
-  margin-right: 10px;
 }
 
 #btn-unlock-float {
@@ -1144,7 +1057,7 @@ dialog {
     padding: 10px 1rem;
     gap: 1rem;
 
-    #div-search {
+    #search-section {
       kbd {
         display: none;
       }
@@ -1196,7 +1109,7 @@ dialog {
       overflow: hidden;
     }
 
-    &:not(.fullscreen) {
+    &:not(.fullscreen-note) {
       min-width: 100vw;
       max-width: 100vw;
       border-radius: 0;
@@ -1214,7 +1127,7 @@ dialog {
     }
   }
 
-  .fullscreen {
+  .fullscreen-note {
     inset: 0;
 
     .details {
@@ -1228,12 +1141,8 @@ dialog {
     resize: none;
   }
 
-  #colors {
+  #colors-section {
     justify-content: space-between;
-
-    span {
-      margin-right: 0;
-    }
   }
 }
 
@@ -1327,6 +1236,10 @@ dialog {
 
 .float-right {
   float: right;
+}
+
+.w-100 {
+  width: 100%;
 }
 
 .d-block {

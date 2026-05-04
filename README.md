@@ -22,7 +22,7 @@ A fast, private and secure web notebook.
 
 ## Features
 
-Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown and HTML. They can add images, audio or videos via URL. Notes can be searched, sorted by category or organized into folders.
+Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown and HTML. They can add images, audio or videos via URL. Notes can be searched and sorted by category.
 
 Users can sync notes across devices in a secure database after signing in without needing an email address, only a username and strong password. Public notes can be shared via a random URL.
 
@@ -34,7 +34,7 @@ The site is accessible to users with disabilities through high-contrast colors, 
 
 The website follows [OWASP security recommendations](https://cheatsheetseries.owasp.org/).
 
-All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with AES-256-GCM. Each user has a cryptographically secure key generated after signing up and a rotated JWT token stored in Redis.
+All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with AES-256-GCM. Each user has a cryptographically secure key generated after signing up.
 
 Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server, verification is local and UI/UX only.
 
@@ -58,12 +58,15 @@ The project is configured to start with a single Docker command:
 
 ## Production
 
+The project have security features enabled by default, but for production use, I recommend to:
+
 * Change NODE_ENV to "production" in .env
 * Edit all users, passwords and secret keys
 * Edit **.env** and **docker-compose.yml** files
+* Edit nginx configuration to add SSL
 * To store user encryption keys, I recommend using a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp instead of the database
 
 > [!IMPORTANT]
 > Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to [install a SSL certificate](https://github.com/seguinleo/WebSecurityCheatSheet) to use note encryption (Web Crypto API requires HTTPs).
 
-Special thanks to [DOMPurify](https://github.com/cure53/DOMPurify), [marked](https://github.com/markedjs/marked) and [Iro](https://github.com/jaames/iro.js)
+Special thanks to [CodeMirror](https://code.haverbeke.berlin/codemirror/dev/), [DOMPurify](https://github.com/cure53/DOMPurify), [marked](https://github.com/markedjs/marked) and [Iro](https://github.com/jaames/iro.js)

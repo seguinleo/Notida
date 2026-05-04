@@ -1,3 +1,14 @@
+#----v26.5.1----#
+-Add CodeMirror Markdown editor
+-Add Table of content for heading
+-Improve code structure
+    -Improve note render
+    -Improve performances
+-Improve security
+-Maximum note content from 20000 to 50000
+-UI/UX fixes
+-Bug fixes
+
 #----v26.4.1----#
 -Improve Markdown render
 -Improve security

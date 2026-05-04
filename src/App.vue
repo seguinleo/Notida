@@ -2,8 +2,8 @@
   <div v-if="!onLine" id="offline">
     <p>You are offline</p>
   </div>
-  <header v-if="!isLocked && isLockedResponse">
-    <button type="button" id="sidebar-indicator" aria-label="Open sidebar" @click="openSidebar()">
+  <header v-if="!isLocked">
+    <button type="button" id="sidebar-indicator" class="btn-small" aria-label="Open sidebar" @click="openSidebar()">
       <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"
         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
         class="feather feather-sidebar">
@@ -11,38 +11,37 @@
         <line x1="9" y1="3" x2="9" y2="21"></line>
       </svg>
     </button>
-    <div id="div-search" role="search">
+    <div id="search-section" role="search">
       <i class="fa-solid fa-magnifying-glass" role="none"></i>
-      <input v-model="searchValue" type="search" id="search-input" maxlength="30" aria-label="Search" autocomplete="off"
-        @input="searchNotes()">
+      <input v-model="searchValue" type="search" id="search-input" maxlength="30" aria-label="Search notes"
+        autocomplete="off">
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
   </header>
-  <div v-if="!isLocked && isLockedResponse" id="sidebar">
+  <div v-if="!isLocked" id="sidebar" ref="sidebar">
     <nav>
       <div v-if="new Date().getMonth() === 11" class="row">
-        <img src="./assets/img/christmas.png" role="presentation" alt="" class="eventImage" loading="lazy">
+        <img src="./assets/img/christmas.png" role="presentation" alt="" class="event-image" loading="lazy">
       </div>
       <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
         class="row">
-        <img src="./assets/img/halloween.png" role="presentation" alt="" class="eventImage" loading="lazy">
+        <img src="./assets/img/halloween.png" role="presentation" alt="" class="event-image" loading="lazy">
       </div>
       <div class="row nav-buttons">
-        <button v-if="isAuthenticated && !isLocked" id="manage-account" type="button" aria-label="Manage account"
+        <button v-if="isAuthenticated && !isLocked" type="button" aria-label="Manage account"
           @click="openManageAccountDialog()">
           <i class="fa-solid fa-circle-user"></i>
           <span>Manage account</span>
         </button>
-        <button v-if="!isAuthenticated && !isLocked" id="log-in" type="button" aria-label="Log in"
-          @click="openLoginDialog()">
+        <button v-if="!isAuthenticated && !isLocked" type="button" aria-label="Log in" @click="openLoginDialog()">
           <i class="fa-solid fa-circle-user"></i>
           <span>Log in</span>
         </button>
-        <button type="button" id="btn-colorpicker" aria-label="Change app color" @click="openColorPickerDialog()">
+        <button type="button" aria-label="Change app color" @click="openColorPickerDialog()">
           <i class="fa-solid fa-palette"></i>
           <span>Palette</span>
         </button>
-        <button v-if="!isLocked" type="button" id="btn-settings" aria-label="Settings" @click="openSettingsDialog()">
+        <button v-if="!isLocked" type="button" aria-label="Settings" @click="openSettingsDialog()">
           <i class="fa-solid fa-gear"></i>
           <span>Settings</span>
         </button>
@@ -50,78 +49,56 @@
       <div class="d-flex justify-content-between align-items-center">
         <p class="bold">
           Notes
-          ({{ notesJSON.length }})
+          ({{ filteredNotes.length }})
         </p>
-        <div v-if="notesJSON.length" id="manage-notes">
-          <button v-if="!isLocked" type="button" id="btn-sort" aria-label="Sort notes" @click="openSortDialog()">
+        <div v-if="filteredNotes.length" id="manage-notes">
+          <button v-if="!isLocked" type="button" aria-label="Sort notes" @click="openSortDialog()">
             <i class="fa-solid fa-arrow-up-wide-short"></i>
-          </button>
-          <button v-if="!isLocked" type="button" id="btn-filter" aria-label="Filter notes" @click="openFilterDialog()">
-            <i class="fa-solid fa-filter"></i>
-          </button>
-          <button v-if="!isLocked" type="button" id="btn-download-all" aria-label="Download all notes"
-            @click="downloadAllNotes()">
-            <i class="fa-solid fa-download"></i>
           </button>
         </div>
       </div>
-      <div id="list-notes"></div>
+      <div id="list-notes" ref="listNotes">
+        <button v-for="note in filteredNotes" :key="note.id" type="button" @click="toggleFullscreen(note.id, $event)">
+          <span v-if="note.pinned" class="badge">
+            <i class="fa-solid fa-thumbtack"></i>
+          </span>
+          <span v-if="note.link" class="badge">
+            <i class="fa-solid fa-link"></i>
+          </span>
+          <span v-if="note.category" class="badge">
+            <i class="fa-solid fa-tags"></i>
+            {{ note.category }}
+          </span>
+          <span class="title-list">{{ note.title }}</span>
+          <span class="date-list">
+            {{ formatDate(note.date) }}
+          </span>
+        </button>
+      </div>
     </nav>
   </div>
-  <main>
-    <button v-if="isLocked && isLockedResponse" id="btn-unlock-float" type="button" aria-label="Unlock app"
-      @click="unlockApp()">
-      <i class="fa-solid fa-lock"></i>
-    </button>
-    <button v-else-if="isLockedResponse" type="button" id="btn-add-note" aria-label="Add a note"
-      @click="openAddNoteDialog()">
-      <i class="fa-solid fa-plus"></i>
-      <span>Add note</span>
-    </button>
+  <main :class="noteLinkInUrl ? 'shared-main' : ''">
     <div id="success-notification" aria-live="polite" class="d-none"></div>
     <dialog id="sort-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
+          <div class="popup-header">
+            <div class="close">
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+            </div>
           </div>
           <fieldset>
             <legend>Sort notes</legend>
-            <div class="row" role="radiogroup" aria-label="Sort notes" id="sortNotesGroup">
-              <label class="custom-check">
-                <input type="radio" name="sort-notes" value="1" id="sort-notes1" @change="selectSortOption($event)">
-                <span tabindex="0">Modification date</span>
-              </label>
-              <label class="custom-check">
-                <input type="radio" name="sort-notes" value="2" id="sort-notes2" @change="selectSortOption($event)">
-                <span tabindex="0">Modification date (Z-A)</span>
-              </label>
-              <label class="custom-check">
-                <input type="radio" name="sort-notes" value="3" id="sort-notes3" @change="selectSortOption($event)">
-                <span tabindex="0">Title</span>
-              </label>
-              <label class="custom-check">
-                <input type="radio" name="sort-notes" value="4" id="sort-notes4" @change="selectSortOption($event)">
-                <span tabindex="0">Title (Z-A)</span>
-              </label>
-            </div>
-          </fieldset>
-        </div>
-      </div>
-    </dialog>
-    <dialog id="filter-dialog" aria-modal="true">
-      <div class="popup">
-        <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
-          </div>
-          <fieldset>
-            <legend>Filter notes by category</legend>
-            <div class="row" role="radiogroup" aria-label="Filter notes" id="filterNotesGroup"></div>
+            <label class="custom-check">
+              <input type="radio" name="sort-notes" value="1" v-model="sortOption">
+              <span>Modification date</span>
+            </label>
+            <label class="custom-check">
+              <input type="radio" name="sort-notes" value="2" v-model="sortOption">
+              <span>Modification date (Z-A)</span>
+            </label>
           </fieldset>
         </div>
       </div>
@@ -129,75 +106,21 @@
     <dialog id="delete-note-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
+          <div class="popup-header">
+            <div class="close">
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+            </div>
           </div>
-          <form :id="isAuthenticated ? 'delete-cloud-note' : 'delete-local-note'"
-            @submit.prevent="isAuthenticated ? deleteCloudNote() : deleteLocalNote()">
+          <form @submit.prevent="isAuthenticated ? deleteCloudNote() : deleteLocalNote()">
             <div class="error-notification d-none"></div>
             <div class="row bold">
               Deletion is permanent!
             </div>
-            <input id="id-note-delete" type="hidden">
             <div class="row">
-              <button type="submit" class="btn-cancel">Delete note</button>
+              <button type="submit" class="btn-cancel w-100">Delete note</button>
             </div>
-          </form>
-        </div>
-      </div>
-    </dialog>
-    <dialog id="download-dialog" aria-modal="true">
-      <div class="popup">
-        <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
-          </div>
-          <fieldset>
-            <legend>Export type</legend>
-            <input id="id-note-download" type="hidden">
-            <div class="row" role="radiogroup" aria-label="Download notes" id="downloadNotesGroup">
-              <label class="custom-check">
-                <input type="radio" name="download-notes" value="txt" id="txt-download"
-                  @change="downloadNotes($event.target.value)">
-                <span tabindex="0">.TXT</span>
-              </label>
-              <label class="custom-check">
-                <input type="radio" name="download-notes" value="md" id="md-download"
-                  @change="downloadNotes($event.target.value)">
-                <span tabindex="0">.MD</span>
-              </label>
-            </div>
-          </fieldset>
-        </div>
-      </div>
-    </dialog>
-    <dialog id="folder-dialog" aria-modal="true">
-      <div class="popup">
-        <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
-          </div>
-          <div id="folders">
-            <label class="custom-check">
-              <input type="radio" name="add-folder" value="" id="none-folder-add-span">
-              <span tabindex="0" role="button">
-                <i class="fa-solid fa-xmark"></i>
-              </span>
-            </label>
-            <span class="list"></span>
-          </div>
-          <form id="add-folder" autocomplete="off" @submit.prevent="createFolder()">
-            <div class="error-notification d-none"></div>
-            <div class="row">
-              <input type="text" id="name-folder" placeholder="Folder name" maxlength="18" aria-label="Name" required>
-            </div>
-            <button type="submit">Create folder</button>
           </form>
         </div>
       </div>
@@ -205,125 +128,109 @@
     <dialog id="category-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
+          <div class="popup-header">
+            <div class="close">
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+            </div>
           </div>
-          <div id="categories">
+          <div class="row">
             <label class="custom-check">
-              <input type="radio" name="add-cat" value="" id="none-cat-add-span">
-              <span tabindex="0" role="button">
-                <i class="fa-solid fa-xmark"></i>
+              <input type="radio" name="add-cat" value="" v-model="selectedCategory">
+              <span>
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
               </span>
             </label>
-            <span class="list"></span>
+            <label v-for="category in allCategories" :key="category" class="custom-check">
+              <input type="radio" name="add-cat" :value="category" v-model="selectedCategory">
+              <span>{{ category }}</span>
+            </label>
           </div>
-          <form id="add-category" autocomplete="off" @submit.prevent="createCategory()">
-            <div class="error-notification d-none"></div>
-            <div class="row">
-              <input type="text" id="name-category" placeholder="Category name" maxlength="18" aria-label="Name"
-                required>
-            </div>
-            <button type="submit">Create category</button>
-          </form>
+          <div class="row">
+            <form @submit.prevent="createCategory()">
+              <div class="error-notification d-none"></div>
+              <div class="row">
+                <input type="text" v-model="newCategory" placeholder="Category name" maxlength="18" aria-label="Name"
+                  required>
+              </div>
+              <button type="submit" class="w-100">Create category</button>
+            </form>
+          </div>
         </div>
       </div>
     </dialog>
     <dialog id="reminder-dialog" aria-modal="true">
       <div class="popup">
         <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
-          </div>
-          <div class="row bold">
-            Reminder date
-          </div>
-          <div class="row">
-            <input type="datetime-local" id="date-reminder-input" aria-label="Date">
-          </div>
-        </div>
-      </div>
-    </dialog>
-    <dialog id="note-dialog" aria-modal="true">
-      <div class="popup">
-        <div class="content">
-          <div class="popup-note-header">
+          <div class="popup-header">
             <div class="close">
               <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
                 <i class="fa-solid fa-chevron-left"></i>
               </button>
             </div>
-            <div class="done">
-              <button type="submit" id="submit-note-btn" :form="isAuthenticated ? 'add-cloud-note' : 'add-local-note'"
-                aria-label="Save note">
-                <i class="fa-solid fa-check"></i>
-                Done
-              </button>
-            </div>
           </div>
-          <form autocomplete="off" :id="isAuthenticated ? 'add-cloud-note' : 'add-local-note'"
-            @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
-            <input id="id-note" type="hidden">
+          <div class="row bold">
+            Reminder date
+          </div>
+          <div class="row">
+            <input type="datetime-local" v-model="reminderNote" aria-label="Date">
+          </div>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="add-note-dialog" aria-modal="true" ref="addNoteDialog">
+      <div class="popup">
+        <div class="content">
+          <form @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
+              <div class="done">
+                <button type="submit" id="submit-note-btn" aria-label="Save note" :disabled="isBtnDisabled">
+                  <i class="fa-solid fa-check"></i>
+                  Done
+                </button>
+              </div>
+            </div>
             <div class="error-notification d-none"></div>
-            <input type="text" id="title" maxlength="30" aria-label="Title" placeholder="Title" autofocus required>
-            <textarea id="content" :maxlength="maxNoteContentLength" spellcheck="true"
-              placeholder="Content (Raw text, Markdown or HTML)" aria-label="Content"
-              @input="updateNoteContentLength()"></textarea>
-            <div class="row">
-              <span id="textarea-length">
-                {{ noteContentLength }}/{{ maxNoteContentLength }}
-              </span>
-              <span class="editor-control">
-                <i class="fa-solid fa-broom" tabindex="0" role="button" aria-label="Clear content"
-                  @click="clearNoteContent()"></i>
-              </span>
+            <input type="text" v-model="titleNote" maxlength="30" aria-label="Title" placeholder="Title" autofocus
+              required>
+            <div ref="editor" class="editor"></div>
+            <div class="row d-flex justify-content-between">
+              <div>
+                <button type="button" class="btn-small" aria-label="Add a category" @click="openCatDialog()">
+                  <i class="fa-solid fa-tags"></i>
+                </button>
+                <button type="button" class="btn-small" aria-label="Add a reminder" @click="openReminderDialog()">
+                  <i class="fa-solid fa-bell"></i>
+                </button>
+              </div>
+              <div>
+                <span id="textarea-length">
+                  {{ noteContentLength }}/{{ maxNoteContentLength }}
+                </span>
+                <button type="button" @click="clearNoteContent()" aria-label="Clear all content" class="btn-clear">
+                  <i class="fa-solid fa-broom"></i>
+                </button>
+              </div>
             </div>
             <div class="row">
-              <button type="button" id="btn-add-folder" aria-label="Add a folder" @click="openFolderDialog()">
-                <i class="fa-solid fa-folder"></i>
-              </button>
-              <button type="button" id="btn-add-category" aria-label="Add a category" @click="openCatDialog()">
-                <i class="fa-solid fa-tags"></i>
-              </button>
-              <button type="button" id="btn-add-reminder" aria-label="Add a reminder" @click="openReminderDialog()">
-                <i class="fa-solid fa-bell"></i>
-              </button>
-            </div>
-            <div class="row">
-              <div id="colors">
-                <span class="bg-default" tabindex="0" role="button" aria-label="Default"
-                  @click="selectColor($event)"></span>
-                <span class="bg-red" tabindex="0" role="button" aria-label="Red" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
-                <span class="bg-orange" tabindex="0" role="button" aria-label="Orange" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
-                <span class="bg-yellow" tabindex="0" role="button" aria-label="Yellow" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
-                <span class="bg-lime" tabindex="0" role="button" aria-label="Lime" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
-                <span class="bg-green" tabindex="0" role="button" aria-label="Green" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
-                <span class="bg-cyan" tabindex="0" role="button" aria-label="Cyan" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
-                <span class="bg-light-blue" tabindex="0" role="button" aria-label="Light blue"
-                  @click="selectColor($event)" @keydown.enter="selectColor($event)"></span>
-                <span class="bg-blue" tabindex="0" role="button" aria-label="Blue" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
-                <span class="bg-purple" tabindex="0" role="button" aria-label="Purple" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
-                <span class="bg-pink" tabindex="0" role="button" aria-label="Pink" @click="selectColor($event)"
-                  @keydown.enter="selectColor($event)"></span>
+              <div id="colors-section">
+                <button v-for="color in allColors" :key="color" type="button" class="btn-color"
+                  :class="[color, { selected: selectedColor === color }]" :aria-label="color"
+                  @click="selectColor(color)"></button>
               </div>
             </div>
             <div class="row d-flex align-items-center">
-              <label for="check-hidden" class="switch-label">
+              <label class="switch-label">
                 Hide content
               </label>
               <label class="switch">
-                <input type="checkbox" class="checkbox" id="check-hidden" role="switch" aria-label="Hide content">
+                <input type="checkbox" v-model="hiddenNote" class="checkbox" role="switch" aria-label="Hide content">
                 <span class="toggle-thumb" aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
                     <rect x="12" y="6" width="1" height="12" />
@@ -341,10 +248,12 @@
     <dialog id="colorpicker-dialog" aria-modal="true">
       <div class="popup popup-small">
         <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
+          <div class="popup-header">
+            <div class="close">
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+            </div>
           </div>
           <div class="row bold">
             Change overall app color
@@ -356,50 +265,34 @@
     <dialog id="settings-dialog" aria-modal="true">
       <div class="popup popup-small">
         <div class="content">
-          <div class="close">
-            <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
+          <div class="popup-header">
+            <div class="close">
+              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+            </div>
           </div>
           <div class="error-notification d-none"></div>
-          <div id="legal" class="row">
+          <div class="row">
             <a href="https://leoseguin.fr/mentionslegales/" rel="noopener noreferrer">Legal notice / privacy</a>
           </div>
           <div class="row">
-            <a href="https://github.com/seguinleo/Notida/wiki/Markdown" id="link-markdown"
-              rel="noopener noreferrer">Markdown guide</a>
+            <a href="https://github.com/seguinleo/Notida/wiki/Markdown" rel="noopener noreferrer">Markdown guide</a>
           </div>
           <div class="row">
             <a href="https://github.com/seguinleo/Notida/wiki/Shortcuts" rel="noopener noreferrer">Shortcuts</a>
           </div>
           <div class="row">
-            <a href="https://github.com/seguinleo/Notida/discussions" id="link-help" rel="noopener noreferrer">Help and
+            <a href="https://github.com/seguinleo/Notida/discussions" rel="noopener noreferrer">Help and
               discussions</a>
           </div>
           <div class="row d-flex align-items-center justify-content-between">
-            <label for="check-spellcheck" class="switch-label">
-              Spell check
-            </label>
-            <label class="switch">
-              <input v-model="spellcheck" type="checkbox" id="check-spellcheck" class="checkbox"
-                @change="toggleSpellcheck()" role="switch" aria-label="Spell check">
-              <span class="toggle-thumb" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
-                  <rect x="12" y="6" width="1" height="12" />
-                </svg>
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="on">
-                  <circle cx="12" cy="12" r="5" stroke-width="1" fill="none" />
-                </svg>
-              </span>
-            </label>
-          </div>
-          <div class="row d-flex align-items-center justify-content-between">
-            <label for="toggle-lock-app" class="switch-label">
+            <label class="switch-label">
               Lock app
             </label>
             <label class="switch">
-              <input v-model="isToggleLockApp" type="checkbox" id="toggle-lock-app" class="checkbox"
-                @click="toggleLockApp()" role="switch" aria-label="Lock app">
+              <input v-model="isToggleLockApp" type="checkbox" class="checkbox" @click="toggleLockApp()" role="switch"
+                aria-label="Lock app">
               <span class="toggle-thumb" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
                   <rect x="12" y="6" width="1" height="12" />
@@ -413,7 +306,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.4.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.5.1</a>
             </p>
           </div>
         </div>
@@ -423,38 +316,38 @@
       <dialog id="manage-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
             </div>
-            <div id="user-name" class="row bold">
+            <div class="row bold">
               {{ username }}
             </div>
             <div class="row last-login">
               <span>Last login: </span>
-              <span id="last-login-date"></span>
+              <span>{{ lastLoginDate }}</span>
             </div>
             <div class="row">
-              <button type="button" id="log-out" @click="fetchLogout()">Log out</button>
+              <button type="button" class="w-100" @click="fetchLogout()">Log out</button>
             </div>
             <div class="row">
-              <button type="button" id="log-out" @click="fetchLogoutAll()">
+              <button type="button" class="w-100" @click="fetchLogoutAll()">
                 Log out from all devices
                 ({{ allUserSessions }})
               </button>
             </div>
             <div class="row">
-              <span id="storage-usage">{{ (dataByteSize / 1000).toFixed(2) }} kB / {{ maxDataByteSize / 1000000 }}
-                MB</span>
-              <progress id="storage" :max="maxDataByteSize" :value="dataByteSize"></progress>
+              <span>{{ allUserNotes.length }} / {{ maxNotesPerUser }} notes</span>
+              <progress :max="maxNotesPerUser" :value="allUserNotes.length"></progress>
             </div>
-            <details id="gen-psswd">
-              <summary>
-                Update password
-                <i class="fa-solid fa-chevron-up"></i>
-              </summary>
-              <form id="update-psswd" @submit.prevent="updatePassword()">
+            <div class="row bold">
+              Update password
+            </div>
+            <div class="row">
+              <form @submit.prevent="updatePassword()">
                 <div class="error-notification d-none"></div>
                 <div class="row">
                   <input id="old-psswd" type="password" minlength="10" maxlength="64" aria-label="Old password"
@@ -468,15 +361,14 @@
                   <input id="new-psswd-valid" type="password" minlength="10" maxlength="64"
                     placeholder="Confirm new password" aria-label="Confirm new password" required>
                 </div>
-                <button type="submit">Update password</button>
+                <button type="submit" class="w-100">Update password</button>
               </form>
-            </details>
-            <details id="delete-account">
-              <summary>
-                Delete account
-                <i class="fa-solid fa-chevron-up"></i>
-              </summary>
-              <form id="delete-account" @submit.prevent="deleteAccount()">
+            </div>
+            <div class="row bold">
+              Delete account
+            </div>
+            <div class="row">
+              <form @submit.prevent="deleteAccount()">
                 <div class="error-notification d-none"></div>
                 <div class="row">
                   <input id="delete-psswd" type="password" minlength="10" maxlength="64" placeholder="Password"
@@ -486,28 +378,29 @@
                   <i class="fa-solid fa-circle-info" role="none"></i>
                   <span>Deletion is permanent! All notes will be deleted.</span>
                 </div>
-                <button type="submit" class="btn-cancel">Delete account</button>
+                <button type="submit" class="btn-cancel w-100">Delete account</button>
               </form>
-            </details>
+            </div>
           </div>
         </div>
       </dialog>
       <dialog id="private-note-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
             </div>
-            <form id="public-note" @submit.prevent="publicNote()">
+            <form @submit.prevent="publicNote()">
               <div class="error-notification d-none"></div>
               <div class="row">
                 <span>Do you want to make your note public? A link will be available to share it.</span>
               </div>
-              <input id="id-note-public" type="hidden">
               <div class="row">
-                <button type="submit">Make public</button>
+                <button type="submit" class="w-100">Make public</button>
               </div>
             </form>
           </div>
@@ -516,26 +409,26 @@
       <dialog id="public-note-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
             </div>
             <div class="d-flex">
-              <p id="copy-note-link"></p>
-              <button type="button" id="copy-note-link-btn" aria-label="Copy link" @click="copyNoteLink()">
+              <p id="public-note-link">{{ noteLink }}</p>
+              <button type="button" class="btn-small" aria-label="Copy link" @click="copySharedNoteLink()">
                 <i class="fa-solid fa-clipboard"></i>
               </button>
             </div>
-            <form id="private-note" @submit.prevent="privateNote()">
+            <form @submit.prevent="privateNote()">
               <div class="error-notification d-none"></div>
               <div class="row">
                 <span>Do you want to make your note private? The link will no longer be available.</span>
               </div>
-              <input id="id-note-private" type="hidden">
-              <input id="link-note-private" type="hidden">
               <div class="row">
-                <button type="submit" class="btn-cancel">Make private</button>
+                <button type="submit" class="btn-cancel w-100">Make private</button>
               </div>
             </form>
           </div>
@@ -544,10 +437,12 @@
       <dialog id="note-historic-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
             </div>
             <div class="row bold">
               Last note version
@@ -563,12 +458,14 @@
       <dialog id="login-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
             </div>
-            <form id="login-user" autocomplete="off" @submit.prevent="loginUser()">
+            <form autocomplete="off" @submit.prevent="loginUser()">
               <div class="error-notification d-none"></div>
               <div class="row">
                 <input id="name-login" type="text" minlength="3" maxlength="30" spellcheck="false" placeholder="Name"
@@ -579,11 +476,11 @@
                   aria-label="Password" required>
               </div>
               <div class="row">
-                <button type="submit">Log in</button>
+                <button type="submit" class="w-100" :disabled="isBtnDisabled">Log in</button>
               </div>
               <div class="row align-center">
-                <button type="button" id="create-account" @click="openCreateAccountDialog()">Don't have an account
-                  yet?</button>
+                <button type="button" class="w-100" @click="openCreateAccountDialog()">Don't have an
+                  account yet?</button>
               </div>
             </form>
           </div>
@@ -592,12 +489,14 @@
       <dialog id="create-account-dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
             </div>
-            <form autocomplete="off" id="create-account" @submit.prevent="createAccount()">
+            <form autocomplete="off" @submit.prevent="createAccount()">
               <div class="error-notification d-none"></div>
               <div class="row">
                 <input id="name-create" type="text" minlength="3" maxlength="30" spellcheck="false" autocapitalize="off"
@@ -616,12 +515,14 @@
                 <span>Your password is stored securely and your notes are encrypted. You will not be able to recover
                   your password if you forget it. Save your local notes before log in!</span>
               </div>
-              <button type="submit">Create my account</button>
+              <div class="row">
+                <button type="submit" class="w-100">Create my account</button>
+              </div>
             </form>
           </div>
         </div>
       </dialog>
-      <div v-if="notesJSON.length === 0" class="welcome">
+      <div v-if="allUserNotes.length === 0" class="welcome">
         <div class="details">
           <h1 class="title">
             <span>Welcome to Notida!</span>
@@ -638,30 +539,110 @@
                 <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8">
                 <img alt="Open source" src="https://img.shields.io/badge/project-open_source-blue">
               </p>
-              <h2 id="features">📝Features</h2>
+              <h2>📝Features</h2>
               <p>Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown
-                and HTML. They can add images, audio or videos via URL. Notes can be searched, sorted by category or
-                organized into folders.</p>
+                and HTML. They can add images, audio or videos via URL. Notes can be searched and sorted by category.
+              </p>
               <p>Users can sync notes across devices in a secure database after signing in without needing an email
                 address, only a username and strong password. Public notes can be shared via a random URL.</p>
               <p>This website is a Progressive Web App (PWA) that can be installed as an application. Design is
                 responsive and optimized for all mobile devices or macOS/Windows.</p>
               <p>The site is accessible to users with disabilities through high-contrast colors, ARIA modules, and
                 focusable elements.</p>
-              <h2 id="security">🔒Security</h2>
+              <h2>🔒Security</h2>
               <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
                   security recommendations</a>.
               </p>
               <p>All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with
-                AES-256-GCM. Each user has a cryptographically secure key generated after signing up and a rotated JWT
-                token stored in Redis.</p>
+                AES-256-GCM. Each user has a cryptographically secure key generated after signing up.</p>
               <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent
                 to the server, verification is local and UI/UX only.</p>
-              <h2 id="security">🌐Community</h2>
+              <h2>🌐Community</h2>
               <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
                 to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
             </div>
           </div>
+        </div>
+      </div>
+    </template>
+    <template v-if="noteLinkInUrl">
+      <h1 v-if="sharedNote === null">Note not found or expired.</h1>
+      <div v-else class="shared-note">
+        <div class="details">
+          <h2 class="title">
+            {{ sharedNote.title }}
+          </h2>
+          <div v-if="sharedNote.reminder" class="row align-center">
+            <span class="reminder-date">
+              <i class="fa-solid fa-bell"></i>
+              {{ formatDate(sharedNote.reminder) }}
+            </span>
+          </div>
+          <div class="details-content">
+            <div v-html="sharedNote.contentHtml"></div>
+          </div>
+        </div>
+        <div class="bottom-content">
+          {{ formatDate(sharedNote.date) }}
+        </div>
+      </div>
+    </template>
+    <template v-else>
+      <button v-if="isLocked" id="btn-unlock-float" type="button" aria-label="Unlock app" @click="unlockApp()">
+        <i class="fa-solid fa-lock"></i>
+      </button>
+      <button v-else type="button" id="btn-add-note" aria-label="Add a note" @click="openAddNoteDialog()">
+        <i class="fa-solid fa-plus"></i>
+        <span>Add note</span>
+      </button>
+      <div v-for="note in filteredNotes" :key="note.id" class="note" :class="[
+        note.color,
+        { 'hidden-note': note.hidden },
+        { 'fullscreen-note': fullscreenNoteId === note.id }
+      ]" @click="toggleFullscreen(note.id, $event)">
+        <div class="details">
+          <h2 class="title">
+            {{ note.title }}
+          </h2>
+          <div v-if="note.reminder" class="row align-center">
+            <span class="reminder-date">
+              <i class="fa-solid fa-bell"></i>
+              {{ formatDate(note.reminder) }}
+            </span>
+          </div>
+          <div class="details-content">
+            <div v-if="note.hidden">Hidden note</div>
+            <div v-else v-html="note.contentHtml"></div>
+          </div>
+        </div>
+        <div class="date">
+          {{ formatDate(note.date) }}
+        </div>
+        <div class="bottom-content">
+          <button type="button" @click.stop="noteActions(note, 'edit-note')" aria-label="Edit note">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          <button v-if="note.pinned" type="button" @click.stop="noteActions(note, 'pin-note')" aria-label="Unpin note">
+            <i class="fa-solid fa-thumbtack-slash"></i>
+          </button>
+          <button v-else type="button" @click.stop="noteActions(note, 'pin-note')" aria-label="Pin note">
+            <i class="fa-solid fa-thumbtack"></i>
+          </button>
+          <button v-if="note.content" type="button" @click.stop="noteActions(note, 'copy-note')" aria-label="Copy note">
+            <i class="fa-solid fa-clipboard"></i>
+          </button>
+          <button v-if="!note.link" type="button" @click.stop="noteActions(note, 'delete-note')"
+            aria-label="Delete note">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+          <button v-if="isAuthenticated && note.content" type="button" @click.stop="noteActions(note, 'share-note')"
+            aria-label="Share note">
+            <i class="fa-solid fa-link"></i>
+          </button>
+          <button v-if="isAuthenticated && note.historic" type="button" @click.stop="noteActions(note, 'historic-note')"
+            aria-label="Show note historic">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </button>
         </div>
       </div>
     </template>
@@ -674,42 +655,32 @@ import { marked } from 'marked'
 import IroJs from './components/IroJs.vue'
 import markedKatex from 'marked-katex-extension'
 import 'katex/dist/katex.min.css'
+import { EditorState } from '@codemirror/state'
+import { EditorView, keymap, placeholder } from '@codemirror/view'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
+import { markdown } from '@codemirror/lang-markdown'
+import { oneDark } from '@codemirror/theme-one-dark'
+import { gfmHeadingId } from 'marked-gfm-heading-id'
 
 const MARKED_CONFIG = {
   breaks: true,
   renderer: {
-    image({ href, title, text }) {
-      try {
-        const url = new URL(href, window.location.origin)
-        if (!['https:'].includes(url.protocol)) return ''
-        return `<img crossorigin src="${url.href}" alt="${text}" title="${title || ''}" loading="lazy">`
-      } catch {
-        return ''
-      }
-    },
     checkbox({ checked }) {
-      if (checked) return '<span class="taskList checkedTask">✅ '
-      else return '<span class="taskList">⬜ '
+      if (checked) return '<span class="task-list task-checked">✅ '
+      else return '<span class="task-list">⬜ '
     }
   }
 }
 
 const PURIFY_CONFIG = {
   SANITIZE_NAMED_PROPS: true,
-  ALLOW_DATA_ATTR: false,
   FORBID_TAGS: ['button', 'dialog', 'footer', 'form', 'header', 'iframe', 'input', 'main', 'nav', 'script', 'style'],
-  FORBID_ATTR: ['onclick', 'onload', 'onerror']
 }
 
 const KATEX_CONFIG = {
-  throwOnError: false,
-  nonStandard: true
+  throwOnError: false
 }
-
-const COLORS = [
-  'bg-default', 'bg-red', 'bg-orange', 'bg-yellow', 'bg-lime', 'bg-green',
-  'bg-cyan', 'bg-light-blue', 'bg-blue', 'bg-purple', 'bg-pink'
-]
 
 const DATE_OPTIONS = {
   weekday: 'short',
@@ -720,13 +691,12 @@ const DATE_OPTIONS = {
   minute: '2-digit'
 }
 
-marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG))
+marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG), gfmHeadingId())
 
 export default {
   data() {
     return {
       username: '',
-      spellcheck: true,
       touchstartX: 0,
       touchendX: 0,
       touchstartY: 0,
@@ -736,40 +706,78 @@ export default {
       onLine: true,
       isToggleLockApp: true,
       isLocked: true,
-      isLockedResponse: false,
       isAuthenticated: false,
       isAuthenticatedResponse: false,
-      isUpdate: false,
-      dataByteSize: 0,
+      isNoteUpdate: false,
+      maxNotesPerUser: 0,
+      maxNoteContentLength: 50000,
       noteContentLength: 0,
+      allUserNotes: [],
       allUserSessions: 0,
-      maxNoteContentLength: 20000,
-      maxDataByteSize: 0,
+      allCategories: [],
+      newCategory: '',
+      allColors: [
+        'bg-default', 'bg-red', 'bg-orange', 'bg-yellow', 'bg-lime', 'bg-green',
+        'bg-cyan', 'bg-light-blue', 'bg-blue', 'bg-purple', 'bg-pink'
+      ],
+      isBtnDisabled: false,
+      sortOption: '1',
+      lastLoginDate: '',
+      titleNote: '',
+      currentNoteId: null,
+      fullscreenNoteId: null,
+      selectedCategory: '',
+      selectedColor: 'bg-default',
+      hiddenNote: false,
+      reminderNote: '',
       searchValue: '',
-      notesJSON: [],
       localDbName: 'notes_db',
       localDbKeyName: 'key',
       localDbKey: null,
+      csrfToken: null,
+      urlParams: '',
       noteLink: '',
-      urlParams: ''
+      noteLinkInUrl: '',
+      sharedNote: null,
     }
   },
   components: { IroJs },
+  watch: {
+    async sortOption() {
+      if (!['1', '2'].includes(this.sortOption)) return
+      if (this.sortOption === '1') localStorage.removeItem('sort_notes')
+      else localStorage.setItem('sort_notes', this.sortOption)
+      if (this.isAuthenticated) await this.getCloudNotes()
+      else await this.getLocalNotes()
+    }
+  },
+  computed: {
+    filteredNotes() {
+      const search = this.searchValue.trim().toLowerCase()
+
+      if (!search) return this.allUserNotes
+
+      return this.allUserNotes.filter(note => {
+        const title = (note.title || '').toLowerCase()
+        const content = (note.content || '').toLowerCase()
+
+        return (
+          title.includes(search) ||
+          content.includes(search)
+        )
+      })
+    }
+  },
   async mounted() {
     this.urlParams = new URLSearchParams(window.location.search)
     if (this.urlParams && this.urlParams.get('link')) {
-      await this.showSharedNote()
+      await this.renderSharedNote()
       return
     }
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .catch(err => console.warn('PWA registration failed:', err))
-    }
-
-    if (localStorage.getItem('spellcheck') === 'false') {
-      document.querySelector('#check-spellcheck').checked = false
-      document.querySelector('#content').setAttribute('spellcheck', 'false')
     }
 
     document.addEventListener('keydown', (e) => {
@@ -779,9 +787,6 @@ export default {
       } else if (e.altKey && e.shiftKey && e.key.toUpperCase() === 'N') {
         e.preventDefault()
         document.querySelector('#btn-add-note').click()
-      } else if (e.altKey && e.shiftKey && e.key.toUpperCase() === 'S') {
-        e.preventDefault()
-        document.querySelector('#btn-settings').click()
       }
     })
 
@@ -792,6 +797,7 @@ export default {
 
     document.addEventListener('touchend', (e) => {
       if (this.isLocked) return
+      if (window.getSelection().toString()) return
       this.touchendX = e.changedTouches[0].screenX
       this.touchendY = e.changedTouches[0].screenY
       if (this.touchstartY - this.touchendY > 50 || this.touchendY - this.touchstartY > 50) return
@@ -801,6 +807,8 @@ export default {
         this.closeSidebar()
       }
     }, { passive: true })
+
+    this.initEditor()
 
     this.onLine = navigator.onLine
 
@@ -825,9 +833,42 @@ export default {
     window.removeEventListener('offline', this._offlineHandler)
   },
   methods: {
+    initEditor() {
+      const updateListener = EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          const value = update.state.doc.toString()
+          this.noteContentLength = value.length
+          this.editor.dom.style.transform = 'translateZ(0)'
+          this.editor.dom.offsetHeight
+          this.editor.dom.style.transform = ''
+        }
+      })
+      const state = EditorState.create({
+        doc: '',
+        extensions: [
+          placeholder('Content (Raw text, Markdown or HTML)'),
+          history(),
+          markdown(),
+          oneDark,
+          EditorView.lineWrapping,
+          highlightSelectionMatches(),
+          keymap.of([
+            indentWithTab,
+            ...defaultKeymap,
+            ...historyKeymap,
+            ...searchKeymap
+          ]),
+          updateListener
+        ]
+      })
+      this.editor = new EditorView({
+        state,
+        parent: this.$refs.editor
+      })
+    },
     async handleOnline() {
       if (this.urlParams?.get('link')) {
-        await this.showSharedNote()
+        await this.renderSharedNote()
         return
       }
 
@@ -894,37 +935,52 @@ export default {
       }
     },
     async decryptLocalNotes(key, payload) {
-      const iv = this.base64ToArrayBuffer(payload.iv)
-      const data = this.base64ToArrayBuffer(payload.data)
-      const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: new Uint8Array(iv) },
-        key,
-        data
-      )
-      return JSON.parse(new TextDecoder().decode(decrypted))
+      try {
+        const iv = this.base64ToArrayBuffer(payload.iv)
+        const data = this.base64ToArrayBuffer(payload.data)
+        const decrypted = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: new Uint8Array(iv) },
+          key,
+          data
+        )
+        return JSON.parse(new TextDecoder().decode(decrypted))
+      } catch {
+        this.showError('An error occurred while decrypting the notes')
+        return null
+      }
     },
-    getCookie(name) {
-      const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
-        const [key, value] = cookie.split('=')
-        acc[key] = value
-        return acc
-      }, {})
-      return cookies[name] || null
+    getNoteById(id) {
+      return this.allUserNotes.find(n => n.id === id)
+    },
+    formatDate(date) {
+      return new Date(date).toLocaleString(undefined, DATE_OPTIONS)
     },
     closeDialog(e) {
       const dialog = e.target.closest('dialog')
+      if (['category-dialog', 'reminder-dialog'].includes(dialog.id)) {
+        dialog.close()
+        return
+      }
+      this.editor.dispatch({
+        changes: {
+          from: 0,
+          to: this.editor.state.doc.length,
+          insert: ''
+        },
+        selection: { anchor: 0 }
+      })
+      this.isNoteUpdate = false
+      this.currentNoteId = null
+      this.titleNote = ''
+      this.hiddenNote = false
+      this.selectedColor = 'bg-default'
+      this.selectedCategory = ''
+      this.reminderNote = ''
       dialog.close()
-      if (dialog.id === 'folder-dialog') return
-      if (dialog.id === 'category-dialog') return
-      if (dialog.id === 'reminder-dialog') return
-      document.querySelectorAll('form').forEach((form) => form.reset())
-      document.querySelectorAll('input[type="hidden"]').forEach((input) => input.value = '')
     },
-    getLockApp() {
+    async getLockApp() {
       try {
         const lockApp = localStorage.getItem('lockApp') === 'true'
-
-        this.isLockedResponse = true
         this.isToggleLockApp = lockApp
         this.fingerprintEnabled = lockApp
         this.isLocked = lockApp
@@ -1069,15 +1125,15 @@ export default {
         })
         if (!res.ok) {
           this.showError('Username already taken...')
-          document.querySelectorAll('form').forEach((form) => form.reset())
           return
         }
         document.querySelector('#create-account-dialog').close()
-        document.querySelectorAll('form').forEach((form) => form.reset())
         this.showSuccess('Account successfully created! You can now log in.')
       } catch {
         this.showError('An error occurred')
-        document.querySelectorAll('form').forEach((form) => form.reset())
+      } finally {
+        document.querySelector('#psswd-create').value = ''
+        document.querySelector('#psswd-create-valid').value = ''
       }
     },
     async loginUser() {
@@ -1104,28 +1160,52 @@ export default {
           body: data
         })
         if (!res.ok) {
-          document.querySelectorAll('form').forEach((form) => form.reset())
-          let time = 10
-          const btn = document.querySelector('#login-user button[type="submit"]')
-          const btnText = btn.textContent
-          btn.disabled = true
+          this.isBtnDisabled = true
+          document.querySelector('#psswd-login').value = ''
           const errorMessage = await res.text()
           this.showError(errorMessage)
-          const interval = setInterval(() => {
-            time -= 1
-            btn.textContent = time
-          }, 1000)
           setTimeout(() => {
-            clearInterval(interval)
-            btn.disabled = false
-            btn.textContent = btnText
-          }, 10000)
+            this.isBtnDisabled = false
+          }, 7000)
           return
         }
         window.location.reload()
       } catch {
         this.showError('An error occurred')
-        document.querySelectorAll('form').forEach((form) => form.reset())
+      }
+    },
+    async fetchLogout() {
+      try {
+        const res = await fetch('api/logout/', {
+          method: 'POST',
+          headers: {
+            'x-csrf-token': this.csrfToken
+          }
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        window.location.reload()
+      } catch {
+        this.showError('An error occurred')
+      }
+    },
+    async fetchLogoutAll() {
+      try {
+        const res = await fetch('api/logout-all/', {
+          method: 'POST',
+          headers: {
+            'x-csrf-token': this.csrfToken
+          }
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        window.location.reload()
+      } catch {
+        this.showError('An error occurred')
       }
     },
     async updatePassword() {
@@ -1142,24 +1222,25 @@ export default {
       const psswdNew = e
       try {
         const data = JSON.stringify({ psswdOld, psswdNew })
-        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/update-password/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
+            'x-csrf-token': this.csrfToken
           },
           body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
-          document.querySelectorAll('form').forEach((form) => form.reset())
           return
         }
         window.location.reload()
       } catch {
         this.showError('An error occurred')
-        document.querySelectorAll('form').forEach((form) => form.reset())
+      } finally {
+        document.querySelector('#old-psswd').value = ''
+        document.querySelector('#new-psswd').value = ''
+        document.querySelector('#new-psswd-valid').value = ''
       }
     },
     async deleteAccount() {
@@ -1168,39 +1249,390 @@ export default {
       if (!psswd || psswd.length < 10 || psswd.length > 64) return
       try {
         const data = JSON.stringify({ psswd })
-        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/delete-account/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
+            'x-csrf-token': this.csrfToken
           },
           body: data
         })
         if (!res.ok) {
           this.showError(`An error occurred - ${res.status}`)
-          document.querySelectorAll('form').forEach((form) => form.reset())
           return
         }
         window.location.reload()
       } catch {
         this.showError('An error occurred')
-        document.querySelectorAll('form').forEach((form) => form.reset())
+      } finally {
+        document.querySelector('#delete-psswd').value = ''
       }
     },
-    async privateNote() {
-      const noteId = document.querySelector('#id-note-private').value
-      const noteLink = document.querySelector('#link-note-private').value
-      if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return
-      if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) return
+    async isUserAuthenticated() {
       try {
-        const data = JSON.stringify({ noteId, noteLink })
-        const csrfToken = this.getCookie('csrfToken')
+        const res = await fetch('api/whoami', {
+          method: 'POST'
+        })
+        const data = await res.json()
+        this.isAuthenticated = data.isAuthenticated
+        this.isAuthenticatedResponse = true
+      } catch {
+        this.showError('An error occurred')
+      }
+    },
+    async noteActions(note, action) {
+      if (action === 'edit-note') {
+        return this.openUpdateNoteDialog(
+          note.id,
+          note.title,
+          note.content,
+          note.color,
+          note.hidden,
+          note.category ?? '',
+          note.reminder ?? ''
+        )
+      }
+
+      if (action === 'pin-note') {
+        return this.isAuthenticated
+          ? this.pinCloudNote(note.id)
+          : this.pinLocalNote(note.id)
+      }
+
+      if (action === 'copy-note') return this.copy(note.content)
+
+      if (action === 'delete-note') return this.openDeleteNoteDialog(note.id)
+
+      if (action === 'share-note') return this.shareNote(note.id, note.link)
+
+      if (action === 'historic-note') return this.openNoteHistoricDialog(note.id, note.historic)
+    },
+    async normalizeNote(row) {
+      const {
+        id, title, content, color, date,
+        hidden, category, pinned, link, reminder, historic
+      } = row
+
+      if (!id || !title || !color || !date) return null
+
+      let deTitle = title
+      let deContent = content
+
+      if (!this.isAuthenticated && title?.iv) {
+        deTitle = await this.decryptLocalNotes(this.localDbKey, title)
+      }
+
+      if (content && !this.isAuthenticated && content?.iv) {
+        deContent = await this.decryptLocalNotes(this.localDbKey, content)
+      }
+
+      const contentHtml = !hidden && deContent
+        ? DOMPurify.sanitize(marked.parse(deContent), PURIFY_CONFIG)
+        : null
+
+      return {
+        id,
+        title: deTitle,
+        contentHtml,
+        content: deContent,
+        color,
+        date,
+        hidden,
+        category,
+        pinned,
+        link,
+        reminder,
+        historic
+      }
+    },
+    async getLocalNotes() {
+      if (this.isLocked) return
+
+      this.currentNoteId = null
+      this.sortOption = localStorage.getItem('sort_notes') || '1'
+
+      const localNotes = JSON.parse(localStorage.getItem('local_notes')) || []
+
+      if (localNotes.length === 0) return
+
+      this.allCategories = new Set(localNotes.map(n => n.category).filter(Boolean))
+
+      try {
+        const db = await this.openIndexedDB(this.localDbName, this.localDbKeyName)
+        this.localDbKey = await this.getKeyFromDB(db, this.localDbKeyName)
+
+        localNotes.sort((a, b) => {
+          if (a.pinned === 1 && b.pinned === 0) return -1
+          if (a.pinned === 0 && b.pinned === 1) return 1
+
+          switch (this.sortOption) {
+            case '1': return b.date.localeCompare(a.date)
+            case '2': return a.date.localeCompare(b.date)
+            default: break
+          }
+        })
+
+        const normalized = await Promise.all(
+          localNotes.map(n => this.normalizeNote(n))
+        )
+
+        this.allUserNotes = normalized.filter(Boolean)
+      } catch {
+        this.showError('An error occurred')
+      }
+    },
+    async addLocalNote() {
+      try {
+        if (this.isLocked) return
+        const noteId = crypto.randomUUID()
+        const title = this.titleNote.trim()
+        const content = this.editor.state.doc.toString().trim()
+        const color = this.selectedColor || 'bg-default'
+        const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
+        const hidden = this.hiddenNote ? 1 : 0
+        const category = this.selectedCategory || null
+        const reminder = this.reminderNote || null
+
+        if (this.isNoteUpdate && !noteId) return
+        if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
+        if (!this.allColors.includes(color)) return
+        if (reminder && !new Date(reminder).getTime()) return
+
+        const dbName = 'notes_db'
+        const objectStoreName = 'key'
+        const db = await this.openIndexedDB(dbName, objectStoreName)
+        let key = await this.getKeyFromDB(db, objectStoreName)
+
+        if (!key) {
+          key = await crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt'],
+          )
+          await this.storeKeyInDB(db, objectStoreName, key)
+        }
+
+        const encryptedTitle = await this.encryptLocalNotes(key, title)
+        const encryptedContent = await this.encryptLocalNotes(key, content)
+
+        const note = {
+          id: noteId,
+          title: encryptedTitle,
+          content: encryptedContent,
+          color,
+          date,
+          hidden,
+          category,
+          reminder,
+          pinned: 0,
+        }
+
+        if (this.isNoteUpdate) {
+          const noteIdToUpdate = this.currentNoteId
+          const noteToUpdate = this.getNoteById(noteIdToUpdate)
+
+          if (!noteToUpdate) return
+          Object.assign(noteToUpdate, {
+            title: note.title,
+            content: note.content,
+            color: note.color,
+            date: note.date,
+            hidden: note.hidden,
+            category: note.category,
+            reminder: note.reminder,
+            pinned: note.pinned
+          })
+        } else this.allUserNotes.push(note)
+
+        localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
+        this.$refs.addNoteDialog.close()
+        await this.getLocalNotes()
+      } catch {
+        this.showError('An error occurred')
+      }
+    },
+    async pinLocalNote(noteId) {
+      if (!noteId) return
+      const pinned = this.getNoteById(noteId).pinned
+      const noteIndex = this.allUserNotes.findIndex(note => note.id === noteId)
+      if (noteIndex === -1) return
+      this.allUserNotes[noteIndex].pinned = pinned ? 0 : 1
+      localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
+      await this.getLocalNotes()
+    },
+    async deleteLocalNote() {
+      const noteId = this.currentNoteId
+      if (!noteId) return
+      const noteIndex = this.allUserNotes.findIndex(note => note.id === noteId)
+      if (noteIndex === -1) return
+      this.allUserNotes.splice(noteIndex, 1)
+      localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
+      await this.getLocalNotes()
+      document.querySelector('#delete-note-dialog').close()
+    },
+    async getCloudNotes() {
+      if (this.isLocked) return
+
+      this.currentNoteId = null
+      this.sortOption = localStorage.getItem('sort_notes') || '1'
+
+      try {
+        const csrfRes = await fetch('api/csrf-token/', {
+          method: 'GET'
+        })
+
+        if (!csrfRes.ok) throw new Error(`An error occurred - ${csrfRes.status}`)
+
+        const csrfResponse = await csrfRes.json()
+
+        this.csrfToken = csrfResponse.csrfToken
+
+        const res = await fetch('api/get-notes/', {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/json",
+            'x-csrf-token': this.csrfToken
+          },
+        })
+
+        if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
+
+        const response = await res.json()
+
+        this.username = response.name
+        this.maxNotesPerUser = response.maxNotesPerUser
+        this.maxNoteContentLength = response.maxNoteContentLength
+        this.allUserSessions = response.allUserSessions
+        this.allUserNotes = response.notes
+        this.lastLoginDate = this.formatDate(response.lastLogin)
+
+        if (this.allUserNotes.length === 0) return
+
+        this.allCategories = new Set(this.allUserNotes.map(n => n.category).filter(Boolean))
+
+        this.allUserNotes.sort((a, b) => {
+          if (a.pinned === 1 && b.pinned === 0) return -1
+          if (a.pinned === 0 && b.pinned === 1) return 1
+
+          switch (this.sortOption) {
+            case '1': return b.date.localeCompare(a.date)
+            case '2': return a.date.localeCompare(b.date)
+            default: break
+          }
+        })
+
+        const normalized = await Promise.all(
+          this.allUserNotes.map(n => this.normalizeNote(n))
+        )
+
+        this.allUserNotes = normalized.filter(Boolean)
+      } catch {
+        this.showError('An error occurred')
+      }
+    },
+    async addCloudNote() {
+      try {
+        if (this.allUserNotes.length > this.maxNotesPerUser) {
+          this.showError('You have reached the maximum storage capacity...')
+          return
+        }
+        if (this.isLocked) return
+        this.isBtnDisabled = true
+        const noteId = this.currentNoteId
+        const title = this.titleNote.trim()
+        const content = this.editor.state.doc.toString().trim()
+        const color = this.selectedColor || 'bg-default'
+        const hidden = this.hiddenNote ? 1 : 0
+        const category = this.selectedCategory || null
+        const reminder = this.reminderNote || null
+
+        if (this.isNoteUpdate && !noteId) return
+        if (noteId && !/^[a-f0-9]{24}$/i.test(noteId)) return
+        if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
+        if (!this.allColors.includes(color)) return
+        if (reminder && !new Date(reminder).getTime()) return
+
+        let data = {}
+
+        if (this.isNoteUpdate) {
+          data = JSON.stringify({
+            noteId,
+            title,
+            content,
+            color,
+            hidden,
+            category,
+            reminder
+          })
+        } else {
+          data = JSON.stringify({
+            title,
+            content,
+            color,
+            hidden,
+            category,
+            reminder
+          })
+        }
+
+        const url = this.isNoteUpdate ? 'api/update-note/' : 'api/add-note/'
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': this.csrfToken
+          },
+          body: data
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        this.$refs.addNoteDialog.close()
+        await this.getCloudNotes()
+      } catch {
+        this.showError('An error occurred')
+      } finally {
+        this.isBtnDisabled = false
+      }
+    },
+    async pinCloudNote(noteId) {
+      if (!noteId) return
+      try {
+        const data = JSON.stringify({ noteId })
+        const res = await fetch('api/pin-note/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': this.csrfToken
+          },
+          body: data
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        await this.getCloudNotes()
+      } catch {
+        this.showError('An error occurred')
+      }
+    },
+    async deleteCloudNote() {
+      const noteId = this.currentNoteId
+      if (!noteId) return
+      await this.fetchDeleteNote(noteId)
+      document.querySelector('#delete-note-dialog').close()
+    },
+    async privateNote() {
+      const noteId = this.currentNoteId
+      if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return
+      try {
+        const data = JSON.stringify({ noteId })
         const res = await fetch('api/private-note/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
+            'x-csrf-token': this.csrfToken
           },
           body: data
         })
@@ -1215,16 +1647,15 @@ export default {
       }
     },
     async publicNote() {
-      const noteId = document.querySelector('#id-note-public').value
+      const noteId = this.currentNoteId
       if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return
       try {
         const data = JSON.stringify({ noteId })
-        const csrfToken = this.getCookie('csrfToken')
         const res = await fetch('api/public-note/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
+            'x-csrf-token': this.csrfToken
           },
           body: data
         })
@@ -1234,28 +1665,92 @@ export default {
         }
         document.querySelector('#private-note-dialog').close()
         await this.getCloudNotes()
+        this.noteLink = this.getNoteById(noteId)?.link || ''
+        document.querySelector('#public-note-dialog').showModal()
       } catch {
         this.showError('An error occurred')
       }
     },
+    async fetchDeleteNote(noteId) {
+      if (!noteId) return
+      try {
+        const data = JSON.stringify({ noteId })
+        const res = await fetch('api/delete-note/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': this.csrfToken
+          },
+          body: data
+        })
+        if (!res.ok) {
+          this.showError(`An error occurred - ${res.status}`)
+          return
+        }
+        await this.getCloudNotes()
+      } catch {
+        this.showError('An error occurred')
+      }
+    },
+    async renderSharedNote() {
+      this.noteLinkInUrl = this.urlParams.get('link')
+
+      if (!this.noteLinkInUrl || !/^[a-f0-9]{32}$/i.test(this.noteLinkInUrl)) {
+        return
+      }
+
+      const data = JSON.stringify({ noteLink: this.noteLinkInUrl })
+      const res = await fetch('api/get-shared-note/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: data
+      })
+
+      if (!res.ok) {
+        return
+      }
+
+      const response = await res.json()
+
+      const { title, date, reminder } = response
+      const contentHtml = DOMPurify.sanitize(marked.parse(response.content), PURIFY_CONFIG)
+
+      this.sharedNote = {
+        title,
+        contentHtml,
+        date,
+        reminder
+      }
+
+      document.title = this.sharedNote.title
+    },
+    shareNote(noteId, link) {
+      if (!noteId) return
+      if (link) {
+        document.querySelector('#public-note-dialog').showModal()
+        this.currentNoteId = noteId
+        this.noteLink = link
+      } else {
+        document.querySelector('#private-note-dialog').showModal()
+        this.currentNoteId = noteId
+      }
+    },
     openSidebar() {
       if (this.isLocked) return
-      document.querySelector('#sidebar').classList.add('show')
+      this.$refs.sidebar.classList.add('show')
     },
     closeSidebar() {
-      document.querySelector('#sidebar').classList.remove('show')
+      this.$refs.sidebar.classList.remove('show')
     },
     openCreateAccountDialog() {
       document.querySelector('#login-dialog').close()
       document.querySelector('#create-account-dialog').showModal()
     },
-    openDeleteCloudNoteDialog(noteId) {
+    openDeleteNoteDialog(noteId) {
       document.querySelector('#delete-note-dialog').showModal()
-      document.querySelector('#id-note-delete').value = noteId
-    },
-    openDeleteLocalNoteDialog(noteId) {
-      document.querySelector('#delete-note-dialog').showModal()
-      document.querySelector('#id-note-delete').value = noteId
+      this.currentNoteId = noteId
     },
     openManageAccountDialog() {
       document.querySelector('#manage-dialog').showModal()
@@ -1269,124 +1764,85 @@ export default {
     openSortDialog() {
       document.querySelector('#sort-dialog').showModal()
     },
-    openFilterDialog() {
-      document.querySelector('#filter-dialog').showModal()
-    },
     openColorPickerDialog() {
       document.querySelector('#settings-dialog').close()
       document.querySelector('#colorpicker-dialog').showModal()
     },
     openAddNoteDialog() {
-      this.isUpdate = false
-      document.querySelector('#note-dialog').showModal()
-      document.querySelectorAll('#colors span').forEach((e) => {
-        e.classList.remove('selected')
+      const dialog = this.$refs.addNoteDialog
+      dialog.showModal()
+      this.isNoteUpdate = false
+      this.editor.dispatch({
+        changes: {
+          from: 0,
+          to: this.editor.state.doc.length,
+          insert: ''
+        },
+        selection: { anchor: 0 }
       })
-      document.querySelector('#colors span').classList.add('selected')
-      document.querySelector('#check-hidden').disabled = false
-      document.querySelector('#folders input[name="add-folder"][value=""').checked = true
-      document.querySelector('#categories input[name="add-cat"][value=""').checked = true
-      document.querySelector('#date-reminder-input').value = ''
-    },
-    openFolderDialog() {
-      document.querySelector('#folder-dialog').showModal()
+      this.titleNote = ''
+      this.selectedColor = 'bg-default'
+      this.hiddenNote = false
+      this.selectedCategory = ''
+      this.reminderNote = ''
     },
     openCatDialog() {
       document.querySelector('#category-dialog').showModal()
     },
-    openDownloadNoteDialog(noteId) {
-      if (!noteId) return
-      document.querySelector('#id-note-download').value = noteId
-      document.querySelectorAll('#download-dialog input[name="download-notes"]').forEach((e) => {
-        e.checked = false
-      })
-      document.querySelector('#download-dialog').showModal()
-    },
     openReminderDialog() {
       document.querySelector('#reminder-dialog').showModal()
     },
-    searchNotes() {
-      const searchValue = this.searchValue.trim().toLowerCase()
-      if (!this.notesJSON.length) return
-      document.querySelectorAll('.note').forEach(async (note) => {
-        const noteId = note.getAttribute('data-note-id')
-        const noteTitle = this.isAuthenticated
-          ? this.notesJSON.find((note) => note.id === noteId).title
-          : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).title)
-        const noteContent = this.isAuthenticated
-          ? this.notesJSON.find((note) => note.id === noteId).content
-          : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).content)
-        if (noteTitle.toLowerCase().includes(searchValue) || noteContent.toLowerCase().includes(searchValue)) {
-          note.classList.remove('d-none')
-        } else note.classList.add('d-none')
-      })
+    openNoteHistoricDialog(noteId, historic) {
+      if (!noteId || !historic) return
+      document.querySelector('#note-historic-dialog').showModal()
+      document.querySelector('#note-historic-content').textContent = historic
     },
-    createFolder() {
-      const folderName = document.querySelector('#name-folder').value.trim()
-      const folders = document.querySelector('#folders .list')
-      if (!folderName || folderName.length > 18) return
-      if (Array.from(folders.children).some((e) => e.querySelector('span').textContent === folderName)) return
-      const input = document.createElement('input')
-      input.type = 'radio'
-      input.name = 'add-folder'
-      input.value = folderName
-      input.id = `${folderName}-folder-add-span`
-      input.checked = true
-      const label = document.createElement('label')
-      label.classList.add('custom-check')
-      const span = document.createElement('span')
-      span.textContent = folderName
-      span.tabIndex = 0
-      label.appendChild(input)
-      label.appendChild(span)
-      folders.appendChild(label)
-      document.querySelector('#name-folder').value = ''
-      document.querySelector('#folder-dialog').close()
+    async openUpdateNoteDialog(noteId, title, content, color, hidden, category, reminder) {
+      if (hidden && this.fingerprintEnabled) {
+        const res = await this.verifyFingerprint()
+        if (!res) return
+      }
+
+      this.isNoteUpdate = true
+
+      const dialog = this.$refs.addNoteDialog
+      dialog.showModal()
+
+      if (!this.editor) return
+      this.editor.dispatch({
+        changes: {
+          from: 0,
+          to: this.editor.state.doc.length,
+          insert: content ?? ''
+        },
+        selection: { anchor: 0 },
+        scrollIntoView: true
+      })
+      requestAnimationFrame(() => {
+        this.editor.focus()
+      })
+
+      this.currentNoteId = noteId
+      this.titleNote = title
+      this.hiddenNote = Boolean(Number(hidden))
+      this.selectedColor = color || 'bg-default'
+      this.selectedCategory = category || ''
+      this.reminderNote = reminder
     },
     createCategory() {
-      const categoryName = document.querySelector('#name-category').value.trim()
-      const categories = document.querySelector('#categories .list')
-      if (!categoryName || categoryName.length > 18) return
-      if (Array.from(categories.children).some((e) => e.querySelector('span').textContent === categoryName)) return
-      const input = document.createElement('input')
-      input.type = 'radio'
-      input.name = 'add-cat'
-      input.value = categoryName
-      input.id = `${categoryName}-cat-add-span`
-      input.checked = true
-      const label = document.createElement('label')
-      label.classList.add('custom-check')
-      const span = document.createElement('span')
-      span.textContent = categoryName
-      span.tabIndex = 0
-      label.appendChild(input)
-      label.appendChild(span)
-      categories.appendChild(label)
-      document.querySelector('#name-category').value = ''
-      document.querySelector('#category-dialog').close()
-    },
-    downloadAllNotes() {
-      document.querySelectorAll('#download-dialog input[name="download-notes"]').forEach((e) => {
-        e.checked = false
-      })
-      document.querySelector('#download-dialog').showModal()
-    },
-    toggleSpellcheck() {
-      if (this.spellcheck) {
-        localStorage.removeItem('spellcheck')
-        document.querySelector('#note-dialog #content').setAttribute('spellcheck', 'true')
-      } else {
-        localStorage.setItem('spellcheck', 'false')
-        document.querySelector('#note-dialog #content').setAttribute('spellcheck', 'false')
-      }
+      const categoryName = this.newCategory.trim()
+      this.allCategories.add(categoryName)
+      this.newCategory = ''
     },
     clearNoteContent() {
-      document.querySelector('#note-dialog #content').value = ''
-      this.noteContentLength = 0
-    },
-    updateNoteContentLength() {
-      const content = document.querySelector('#note-dialog #content').value
-      this.noteContentLength = content.length
+      this.editor.dispatch({
+        changes: {
+          from: 0,
+          to: this.editor.state.doc.length,
+          insert: ''
+        },
+        selection: { anchor: 0 }
+      })
     },
     showSuccess(message) {
       if (this.timeoutNotification) clearTimeout(this.timeoutNotification)
@@ -1408,941 +1864,31 @@ export default {
         }, 5000)
       })
     },
-    noteActions() {
-      document.querySelectorAll('.bottom-content i').forEach((e) => {
-        e.addEventListener('click', async (event) => {
-          const { target } = event
-          const noteId = target.closest('.note').getAttribute('data-note-id')
-          if (!noteId) return
-          const noteTitle = this.isAuthenticated
-            ? this.notesJSON.find((note) => note.id === noteId).title
-            : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).title)
-          const noteContent = this.isAuthenticated
-            ? this.notesJSON.find((note) => note.id === noteId).content
-            : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).content)
-          const noteColor = this.notesJSON.find((note) => note.id === noteId).color
-          const noteHidden = this.notesJSON.find((note) => note.id === noteId).hidden
-          const noteFolder = this.notesJSON.find((note) => note.id === noteId).folder || ''
-          const noteCategory = this.notesJSON.find((note) => note.id === noteId).category || ''
-          const noteLink = this.notesJSON.find((note) => note.id === noteId).link
-          const noteHistoric = this.notesJSON.find((note) => note.id === noteId).historic || ''
-          const noteReminder = this.notesJSON.find((note) => note.id === noteId).reminder || ''
-          if (target.classList.contains('edit-note')) this.isAuthenticated ? this.updateCloudNote(
-            noteId,
-            noteTitle,
-            noteContent,
-            noteColor,
-            noteHidden,
-            noteFolder,
-            noteCategory,
-            noteLink,
-            noteReminder
-          ) : this.updateLocalNote(
-            noteId,
-            noteTitle,
-            noteContent,
-            noteColor,
-            noteHidden,
-            noteFolder,
-            noteCategory,
-            noteReminder
-          )
-          else if (target.classList.contains('pin-note')) this.isAuthenticated ? this.pinCloudNote(noteId) : this.pinLocalNote(noteId)
-          else if (target.classList.contains('copy-note')) this.copy(noteContent)
-          else if (target.classList.contains('delete-note')) this.isAuthenticated ? this.openDeleteCloudNoteDialog(noteId) : this.openDeleteLocalNoteDialog(noteId)
-          else if (target.classList.contains('download-note')) this.openDownloadNoteDialog(noteId)
-          else if (target.classList.contains('share-note')) this.shareNote(noteId, noteLink, noteTitle, noteContent)
-          else if (target.classList.contains('historic-note')) this.showNoteHistoric(noteId, noteHistoric)
-        })
-        e.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') e.click()
-        })
-      })
-      document.querySelectorAll('.note').forEach((e) => {
-        e.addEventListener('click', (event) => {
-          if (event.target.parentElement.classList.contains('bottom-content') || event.target.classList.contains('bottom-content')) return
-          if (event.target.tabIndex > -1) return
-          if (document.getSelection().toString()) return
-          this.toggleFullscreen(event.currentTarget.getAttribute('data-note-id'))
-        })
-        e.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') this.toggleFullscreen(event.currentTarget.getAttribute('data-note-id'))
-        })
-      })
-      document.querySelectorAll('#filter-dialog input[name="filter-notes"]').forEach((e) => {
-        e.addEventListener('change', () => {
-          const selectedCategories = []
-          const checkedCategories = document.querySelectorAll('#filter-dialog input[name="filter-notes"]:checked')
-          if (checkedCategories.length === 0) {
-            document.querySelectorAll('.note').forEach((note) => note.classList.remove('d-none'))
-            return
-          }
-          checkedCategories.forEach((category) => selectedCategories.push(category.value))
-          document.querySelectorAll('.note').forEach((note) => {
-            const noteId = note.getAttribute('data-note-id')
-            const noteCategory = this.notesJSON.find((note) => note.id === noteId).category || ''
-            if (selectedCategories.includes(noteCategory)) note.classList.remove('d-none')
-            else note.classList.add('d-none')
-          })
-        })
-      })
-      document.querySelectorAll('.p-note-list').forEach((e) => {
-        e.addEventListener('click', (event) => {
-          this.toggleFullscreen(event.currentTarget.getAttribute('data-note-id'))
-        })
-        e.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') e.click()
-        })
-      })
+    selectColor(color) {
+      this.selectedColor = color
     },
-    noteFolderOrCategories(allFolders, allCategories) {
-      for (const folder of allFolders) {
-        const folders = document.querySelector('#folders .list')
-        const input = document.createElement('input')
-        input.type = 'radio'
-        input.name = 'add-folder'
-        input.value = folder
-        input.id = `${folder}-folder-add-span`
-        const label = document.createElement('label')
-        label.classList.add('custom-check')
-        const span = document.createElement('span')
-        span.textContent = folder
-        span.tabIndex = 0
-        label.appendChild(input)
-        label.appendChild(span)
-        folders.appendChild(label)
-      }
-      for (const category of allCategories) {
-        const categories = document.querySelector('#categories .list')
-        const input = document.createElement('input')
-        input.type = 'radio'
-        input.name = 'add-cat'
-        input.value = category
-        input.id = `${category}-cat-add-span`
-        const label = document.createElement('label')
-        label.classList.add('custom-check')
-        const span = document.createElement('span')
-        span.textContent = category
-        span.tabIndex = 0
-        label.appendChild(input)
-        label.appendChild(span)
-        categories.appendChild(label)
+    toggleFullscreen(noteId, event) {
+      if (!noteId) return
 
-        const sortCategories = document.querySelector('#filterNotesGroup')
-        const sortInput = document.createElement('input')
-        sortInput.type = 'checkbox'
-        sortInput.name = 'filter-notes'
-        sortInput.value = category
-        sortInput.id = `${category}-filter-span`
-        const sortLabel = document.createElement('label')
-        sortLabel.classList.add('custom-check')
-        const sortSpan = document.createElement('span')
-        sortSpan.textContent = category
-        sortLabel.appendChild(sortInput)
-        sortLabel.appendChild(sortSpan)
-        sortCategories.appendChild(sortLabel)
-      }
-    },
-    selectColor(element) {
-      document.querySelectorAll('#colors span').forEach((e) => e.classList.remove('selected'))
-      element.target.classList.add('selected')
-    },
-    async selectSortOption(e) {
-      const option = e.target.value
-      if (!['1', '2', '3', '4'].includes(option)) return
-      if (option === '1') localStorage.removeItem('sort_notes')
-      else localStorage.setItem('sort_notes', option)
-      if (this.isAuthenticated) await this.getCloudNotes()
-      else await this.getLocalNotes()
-    },
-    async downloadNotes(type) {
-      if (this.fingerprintEnabled) {
-        const res = await this.verifyFingerprint()
-        if (!res) return
-      }
-      if (this.notesJSON.length === 0) return
-      const a = document.createElement('a')
-      let filename
-      let allNotesContent
-      const allNotes = document.querySelectorAll('.note')
-      if (document.querySelector('#id-note-download').value === '') {
-        const notesPromises = Array.from(allNotes).map(async (note) => {
-          const noteId = note.getAttribute('data-note-id')
-          const noteData = this.notesJSON.find((note) => note.id === noteId)
-          const title = this.isAuthenticated
-            ? noteData.title
-            : await this.decryptLocalNotes(this.localDbKey, noteData.title)
-          const content = this.isAuthenticated
-            ? noteData.content
-            : await this.decryptLocalNotes(this.localDbKey, noteData.content)
-          return `# ${title}\n${content}`
-        })
-        allNotesContent = await Promise.all(notesPromises)
-        filename = type === 'txt' ? 'notes.txt' : 'notes.md'
+      if (
+        event.target.closest('a, details') ||
+        window.getSelection().toString()
+      ) return
+
+      if (this.fullscreenNoteId === noteId) {
+        this.fullscreenNoteId = null
       } else {
-        const note = document.querySelector(`.note[data-note-id="${document.querySelector('#id-note-download').value}"]`)
-        const noteId = note.getAttribute('data-note-id')
-        const title = this.isAuthenticated
-          ? this.notesJSON.find((note) => note.id === noteId).title
-          : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).title)
-        const content = this.isAuthenticated
-          ? this.notesJSON.find((note) => note.id === noteId).content
-          : await this.decryptLocalNotes(this.localDbKey, this.notesJSON.find((note) => note.id === noteId).content)
-        allNotesContent = [`# ${title}\n${content}`]
-        filename = type === 'txt' ? `${title}.txt` : `${title}.md`
-      }
-      const blob = new Blob([allNotesContent.join('\n\n')], { type: 'text/plaincharset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      a.href = url
-      a.download = filename
-      a.style.display = 'none'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      document.querySelector('#download-dialog').close()
-    },
-    async getLocalNotes() {
-      if (this.isLocked) return
-
-      const sort = localStorage.getItem('sort_notes') || '1'
-      document.querySelector(`#sort-dialog input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
-      document.querySelector('#list-notes').textContent = ''
-      document.querySelector('#filterNotesGroup').textContent = ''
-      document.querySelector('#folders .list').textContent = ''
-      document.querySelector('#categories .list').textContent = ''
-      document.querySelectorAll('.local-note').forEach((e) => e.remove())
-
-      this.notesJSON = JSON.parse(localStorage.getItem('local_notes')) || []
-
-      if (this.notesJSON.length === 0) return
-
-      try {
-        const db = await this.openIndexedDB(this.localDbName, this.localDbKeyName)
-        this.localDbKey = await this.getKeyFromDB(db, this.localDbKeyName)
-
-        this.notesJSON.sort((a, b) => {
-          if (a.pinned === 1 && b.pinned === 0) return -1
-          if (a.pinned === 0 && b.pinned === 1) return 1
-
-          switch (sort) {
-            case '1': return b.date.localeCompare(a.date)
-            case '2': return a.date.localeCompare(b.date)
-            case '3': return a.title.localeCompare(b.title)
-            case '4': return b.title.localeCompare(a.title)
-            default: break
-          }
-        })
-
-        await this.renderNoteList(this.notesJSON, true)
-      } catch {
-        this.showError('An error occurred')
-      }
-    },
-    async addLocalNote() {
-      try {
-        if (this.isLocked) return
-        const noteId = crypto.randomUUID()
-        const title = document.querySelector('#note-dialog #title').value.trim()
-        const content = document.querySelector('#note-dialog #content').value.trim()
-        const color = document.querySelector('#colors .selected').classList[0]
-        const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
-        const hidden = document.querySelector('#check-hidden').checked ? 1 : 0
-        const folder = document.querySelector('#folders input[name="add-folder"]:checked').value || null
-        const category = document.querySelector('#categories input[name="add-cat"]:checked').value || null
-        const reminder = document.querySelector('#date-reminder-input').value || null
-
-        if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
-
-        const safeContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
-
-        const dbName = 'notes_db'
-        const objectStoreName = 'key'
-        const db = await this.openIndexedDB(dbName, objectStoreName)
-        let key = await this.getKeyFromDB(db, objectStoreName)
-
-        if (!key) {
-          key = await crypto.subtle.generateKey(
-            { name: 'AES-GCM', length: 256 },
-            false,
-            ['encrypt', 'decrypt'],
-          )
-          await this.storeKeyInDB(db, objectStoreName, key)
-        }
-
-        const encryptedTitle = await this.encryptLocalNotes(key, title)
-        const encryptedContent = await this.encryptLocalNotes(key, safeContent)
-
-        const note = {
-          id: noteId,
-          title: encryptedTitle,
-          content: encryptedContent,
-          color,
-          date,
-          hidden,
-          folder,
-          category,
-          reminder,
-          pinned: 0,
-        }
-
-        if (this.isUpdate) {
-          const noteIdToUpdate = document.querySelector('#id-note').value
-          const noteToUpdate = this.notesJSON.find((note) => note.id === noteIdToUpdate)
-
-          if (!noteToUpdate) return
-          noteToUpdate.title = note.title
-          noteToUpdate.content = note.content
-          noteToUpdate.color = note.color
-          noteToUpdate.date = note.date
-          noteToUpdate.hidden = note.hidden
-          noteToUpdate.folder = note.folder
-          noteToUpdate.category = note.category
-          noteToUpdate.reminder = note.reminder
-          noteToUpdate.pinned = note.pinned
-        } else this.notesJSON.push(note)
-
-        localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
-        document.querySelector('#note-dialog').close()
-        document.querySelector('#note-dialog form').reset()
-        this.noteContentLength = 0
-        await this.getLocalNotes()
-      } catch {
-        this.showError('An error occurred')
-      }
-    },
-    async updateLocalNote(noteId, title, content, color, hidden, folder, category, reminder) {
-      if (hidden && this.fingerprintEnabled) {
-        const res = await this.verifyFingerprint()
-        if (!res) return
-      }
-      this.isUpdate = true
-      this.noteContentLength = content.length
-      document.querySelector('#note-dialog').showModal()
-      document.querySelector('#id-note').value = noteId
-      document.querySelector('#note-dialog #title').value = title
-      document.querySelector('#note-dialog #content').value = content
-      document.querySelector(`#folders input[name="add-folder"][value="${folder}"]`).checked = true
-      document.querySelector(`#categories input[name="add-cat"][value="${category}"]`).checked = true
-      document.querySelector('#date-reminder-input').value = reminder
-      document.querySelectorAll('#colors span').forEach((e) => {
-        if (e.classList.contains(color)) e.classList.add('selected')
-        else e.classList.remove('selected')
-      })
-      document.querySelector('#check-hidden').checked = hidden
-      document.querySelector('#note-dialog #content').focus()
-    },
-    async pinLocalNote(noteId) {
-      if (!noteId) return
-      const note = document.querySelector(`.note[data-note-id="${noteId}"]`)
-      const pinned = note.classList.contains('pinned')
-      if (pinned) note.classList.add('pinned')
-      else note.classList.remove('pinned')
-      this.notesJSON.find((note) => note.id === noteId).pinned = pinned ? 0 : 1
-      localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
-      await this.getLocalNotes()
-    },
-    async deleteLocalNote() {
-      const noteId = document.querySelector('#id-note-delete').value
-      if (!noteId) return
-      const noteIndex = this.notesJSON.findIndex(note => note.id === noteId)
-      if (noteIndex === -1) return
-      this.notesJSON.splice(noteIndex, 1)
-      localStorage.setItem('local_notes', JSON.stringify(this.notesJSON))
-      const noteElement = document.querySelector(`.note[data-note-id="${noteId}"]`)
-      if (noteElement) noteElement.remove()
-      await this.getLocalNotes()
-      document.querySelector('#delete-note-dialog').close()
-    },
-    async renderNoteList(notes, isLocal = false) {
-      const fragment = document.createDocumentFragment()
-      const allFolders = new Set()
-      const allCategories = new Set()
-      const paragraphs = []
-
-      for (const row of notes) {
-        const { noteElement, paragraph, folder, category } = await this.renderNote(row, isLocal)
-        if (!noteElement) continue
-
-        fragment.appendChild(noteElement)
-        paragraphs.push({ paragraph, folder, category })
-
-        if (folder) allFolders.add(folder)
-        if (category) allCategories.add(category)
+        this.fullscreenNoteId = noteId
       }
 
-      for (const { paragraph, folder } of paragraphs) {
-        if (!folder) {
-          document.querySelector('#list-notes').appendChild(paragraph)
-        } else {
-          const folderDetails = document.querySelector(`details[data-folder="${encodeURIComponent(folder)}"]`)
-          if (!folderDetails) {
-            const newFolderDetails = document.createElement('details')
-            newFolderDetails.setAttribute('open', 'open')
-            newFolderDetails.setAttribute('data-folder', encodeURIComponent(folder))
-            const summary = document.createElement('summary')
-            const folderSpan = document.createElement('span')
-            folderSpan.textContent = folder
-            summary.appendChild(folderSpan)
-            const folderIcon = document.createElement('i')
-            folderIcon.classList.add('fa-solid', 'fa-chevron-up')
-            summary.appendChild(folderIcon)
-            newFolderDetails.appendChild(summary)
-            newFolderDetails.appendChild(paragraph)
-            document.querySelector('#list-notes').appendChild(newFolderDetails)
-          } else {
-            folderDetails.appendChild(paragraph)
-          }
-        }
-      }
-
-      this.noteFolderOrCategories(allFolders, allCategories)
-      document.querySelector('main').appendChild(fragment)
-      this.noteActions()
-    },
-    async renderNote(row, isLocal = false) {
-      const {
-        id, title, content, historic, color, date, hidden, folder, category, pinned, link, reminder
-      } = row
-
-      if (!id || !title || !color || !date) return null
-
-      let deTitleString = title
-      if (isLocal && title && title.iv && title.data) {
-        deTitleString = await this.decryptLocalNotes(this.localDbKey, title)
-      }
-
-      let deContentString = content
-      if (content) {
-        if (isLocal && content.iv && content.data) {
-          deContentString = await this.decryptLocalNotes(this.localDbKey, content)
-        }
-      } else {
-        deContentString = null
-      }
-
-      const bottomContentElement = document.createElement('div')
-      bottomContentElement.classList.add('bottom-content')
-
-      const paragraph = document.createElement('p')
-      paragraph.classList.add('p-note-list')
-      paragraph.tabIndex = 0
-      paragraph.setAttribute('role', 'button')
-      paragraph.setAttribute('data-note-id', id)
-
-      const noteElement = document.createElement('div')
-      noteElement.classList.add('note', color)
-      noteElement.tabIndex = 0
-      paragraph.setAttribute('role', 'note')
-      if (isLocal) noteElement.classList.add('local-note')
-      noteElement.setAttribute('data-note-id', id)
-
-      const titleElement = document.createElement('h2')
-      titleElement.classList.add('title')
-      titleElement.textContent = deTitleString
-
-      const contentElement = document.createElement('div')
-      contentElement.classList.add('details-content')
-
-      const detailsElement = document.createElement('div')
-      detailsElement.classList.add('details')
-      detailsElement.appendChild(titleElement)
-      detailsElement.appendChild(contentElement)
-
-      const dateElement = document.createElement('div')
-      dateElement.classList.add('date')
-      dateElement.textContent = new Date(date).toLocaleDateString()
-
-      const editIconElement = document.createElement('i')
-      editIconElement.classList.add('fa-solid', 'fa-pen', 'note-action', 'edit-note')
-      editIconElement.tabIndex = 0
-      editIconElement.setAttribute('role', 'button')
-      editIconElement.setAttribute('aria-label', 'Edit note')
-      bottomContentElement.appendChild(editIconElement)
-
-      const pinElement = document.createElement('i')
-      pinElement.classList.add('fa-solid', 'note-action', 'pin-note')
-      pinElement.tabIndex = 0
-      pinElement.setAttribute('role', 'button')
-      pinElement.setAttribute('aria-label', 'Pin note')
-      bottomContentElement.appendChild(pinElement)
-
-      if (pinned) {
-        noteElement.classList.add('pinned')
-        const pinnedElement = document.createElement('span')
-        pinnedElement.classList.add('custom-check')
-        const iconPin = document.createElement('i')
-        iconPin.classList.add('fa-solid', 'fa-thumbtack')
-        pinnedElement.appendChild(iconPin)
-        paragraph.appendChild(pinnedElement)
-        pinElement.classList.add('fa-thumbtack-slash')
-      } else {
-        pinElement.classList.add('fa-thumbtack')
-      }
-
-      if (link && !isLocal) {
-        const linkElement = document.createElement('span')
-        linkElement.classList.add('custom-check')
-        const iconLink = document.createElement('i')
-        iconLink.classList.add('fa-solid', 'fa-link')
-        linkElement.appendChild(iconLink)
-        paragraph.appendChild(linkElement)
-      }
-
-      if (isLocal || (!isLocal && !link)) {
-        const trashIconElement = document.createElement('i')
-        trashIconElement.classList.add('fa-solid', 'fa-trash-can', 'note-action', 'delete-note')
-        trashIconElement.tabIndex = 0
-        trashIconElement.setAttribute('role', 'button')
-        trashIconElement.setAttribute('aria-label', 'Delete note')
-        bottomContentElement.appendChild(trashIconElement)
-      }
-
-      if (reminder) {
-        const reminderElement = document.createElement('span')
-        reminderElement.classList.add('custom-check')
-        const iconReminder = document.createElement('i')
-        iconReminder.classList.add('fa-solid', 'fa-bell')
-        reminderElement.appendChild(iconReminder)
-        paragraph.appendChild(reminderElement)
-
-        const reminderElementTitle = document.createElement('span')
-        reminderElementTitle.classList.add('reminder-date')
-        const reminderIcon = document.createElement('i')
-        reminderIcon.classList.add('fa-solid', 'fa-bell')
-        reminderElementTitle.appendChild(reminderIcon)
-        const reminderSpan = document.createElement('span')
-        reminderSpan.textContent = new Date(reminder).toLocaleDateString(undefined, DATE_OPTIONS)
-        reminderElementTitle.appendChild(reminderSpan)
-        titleElement.appendChild(reminderElementTitle)
-      }
-
-      if (hidden) {
-        const hiddenElement = document.createElement('span')
-        hiddenElement.classList.add('custom-check')
-        noteElement.classList.add('hidden-note')
-        contentElement.textContent = 'Hidden note'
-      } else {
-        if (historic && !isLocal) {
-          const historicIconElement = document.createElement('i')
-          historicIconElement.classList.add('fa-solid', 'fa-clock-rotate-left', 'note-action', 'historic-note')
-          historicIconElement.tabIndex = 0
-          historicIconElement.setAttribute('role', 'button')
-          historicIconElement.setAttribute('aria-label', 'View last note historic')
-          bottomContentElement.appendChild(historicIconElement)
-        }
-
-        if (deContentString) {
-          const clipboardIconElement = document.createElement('i')
-          clipboardIconElement.classList.add('fa-solid', 'fa-clipboard', 'note-action', 'copy-note')
-          clipboardIconElement.tabIndex = 0
-          clipboardIconElement.setAttribute('role', 'button')
-          clipboardIconElement.setAttribute('aria-label', 'Copy note content')
-          bottomContentElement.appendChild(clipboardIconElement)
-
-          const downloadIconElement = document.createElement('i')
-          downloadIconElement.classList.add('fa-solid', 'fa-download', 'note-action', 'download-note')
-          downloadIconElement.tabIndex = 0
-          downloadIconElement.setAttribute('role', 'button')
-          downloadIconElement.setAttribute('aria-label', 'Download note')
-          bottomContentElement.appendChild(downloadIconElement)
-
-          if (!isLocal) {
-            const linkIconElement = document.createElement('i')
-            linkIconElement.classList.add('fa-solid', 'fa-link', 'note-action', 'share-note')
-            linkIconElement.tabIndex = 0
-            linkIconElement.setAttribute('role', 'button')
-            linkIconElement.setAttribute('aria-label', 'Share note')
-            bottomContentElement.appendChild(linkIconElement)
-          }
-
-          const rawHtml = marked.parse(deContentString)
-          const safeHtml = DOMPurify.sanitize(rawHtml, PURIFY_CONFIG)
-          contentElement.innerHTML = safeHtml
-        }
-      }
-
-      if (folder) {
-        paragraph.setAttribute('data-folder', folder)
-      }
-
-      if (category) {
-        paragraph.setAttribute('data-category', category)
-        const categoryElement = document.createElement('span')
-        categoryElement.classList.add('custom-check')
-        categoryElement.textContent = category
-        paragraph.appendChild(categoryElement)
-      }
-
-      const titleSpan = document.createElement('span')
-      titleSpan.classList.add('title-list')
-      titleSpan.textContent = deTitleString
-      paragraph.appendChild(titleSpan)
-
-      const dateSpan = document.createElement('span')
-      dateSpan.classList.add('date-list')
-      dateSpan.textContent = new Date(date).toLocaleDateString(undefined, DATE_OPTIONS)
-      paragraph.appendChild(dateSpan)
-
-      noteElement.appendChild(detailsElement)
-      noteElement.appendChild(dateElement)
-      noteElement.appendChild(bottomContentElement)
-
-      return { noteElement, paragraph, folder, category }
-    },
-    async getCloudNotes() {
-      if (this.isLocked) return
-
-      const sort = localStorage.getItem('sort_notes') || '1'
-      document.querySelector(`#sort-dialog input[name="sort-notes"][value="${encodeURIComponent(sort)}"]`).checked = true
-      document.querySelector('#list-notes').textContent = ''
-      document.querySelector('#filterNotesGroup').textContent = ''
-      document.querySelector('#folders .list').textContent = ''
-      document.querySelector('#categories .list').textContent = ''
-      document.querySelectorAll('.note').forEach((e) => e.remove())
-
-      try {
-        const csrfToken = this.getCookie('csrfToken')
-        const res = await fetch('api/get-notes/', {
-          method: 'POST',
-          headers: {
-            'X-CSRF-Token': csrfToken
-          }
-        })
-
-        if (!res.ok) throw new Error(`An error occurred - ${res.status}`)
-
-        const response = await res.json()
-
-        this.username = response.name
-        this.dataByteSize = response.dataByteSize
-        this.maxDataByteSize = response.maxDataByteSize
-        this.maxNoteContentLength = response.maxNoteContentLength
-        this.allUserSessions = response.allUserSessions
-        this.notesJSON = response.notes
-
-        document.querySelector('#last-login-date').textContent = new Date(response.lastLogin).toLocaleDateString(undefined, DATE_OPTIONS)
-
-        if (this.notesJSON.length === 0) return
-
-        this.notesJSON.sort((a, b) => {
-          if (a.pinned === 1 && b.pinned === 0) return -1
-          if (a.pinned === 0 && b.pinned === 1) return 1
-
-          switch (sort) {
-            case '1': return b.date.localeCompare(a.date)
-            case '2': return a.date.localeCompare(b.date)
-            case '3': return a.title.localeCompare(b.title)
-            case '4': return b.title.localeCompare(a.title)
-            default: break
-          }
-        })
-
-        await this.renderNoteList(this.notesJSON, false)
-      } catch {
-        this.showError('An error occurred')
-      }
-    },
-    async addCloudNote() {
-      try {
-        if (this.dataByteSize > this.maxDataByteSize) {
-          this.showError('You have reached the maximum storage capacity...')
-          return
-        }
-        if (this.isLocked) return
-        document.querySelector('#submit-note-btn').disabled = true
-        const noteId = document.querySelector('#id-note').value
-        const title = document.querySelector('#note-dialog #title').value.trim()
-        const content = document.querySelector('#note-dialog #content').value.trim()
-        const color = document.querySelector('#colors .selected').classList[0]
-        const hidden = document.querySelector('#check-hidden').checked ? 1 : 0
-        const folder = document.querySelector('#folders input[name="add-folder"]:checked').value || null
-        const category = document.querySelector('#categories input[name="add-cat"]:checked').value || null
-        const reminder = document.querySelector('#date-reminder-input').value || null
-
-        if (this.isUpdate && !noteId) return
-        if (noteId && !/^[a-f0-9]{24}$/i.test(noteId)) return
-        if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
-        if (!COLORS.includes(color)) return
-        if (reminder && !new Date(reminder).getTime()) return
-        const safeContent = DOMPurify.sanitize(content, PURIFY_CONFIG)
-
-        let data = {}
-
-        if (this.isUpdate) {
-          data = JSON.stringify({
-            noteId,
-            title,
-            content: safeContent,
-            color,
-            hidden,
-            folder,
-            category,
-            reminder
-          })
-        } else {
-          data = JSON.stringify({
-            title,
-            content: safeContent,
-            color,
-            hidden,
-            folder,
-            category,
-            reminder
-          })
-        }
-
-        const url = this.isUpdate ? 'api/update-note/' : 'api/add-note/'
-        const csrfToken = this.getCookie('csrfToken')
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-          },
-          body: data
-        })
-        if (!res.ok) {
-          this.showError(`An error occurred - ${res.status}`)
-          return
-        }
-        document.querySelector('#note-dialog').close()
-        document.querySelector('#note-dialog form').reset()
-        this.noteContentLength = 0
-        await this.getCloudNotes()
-      } catch {
-        this.showError('An error occurred')
-      } finally {
-        document.querySelector('#submit-note-btn').disabled = false
-      }
-    },
-    async updateCloudNote(noteId, title, content, color, hidden, folder, category, link, reminder) {
-      if (hidden && this.fingerprintEnabled) {
-        const res = await this.verifyFingerprint()
-        if (!res) return
-      }
-      this.isUpdate = true
-      this.noteContentLength = content.length
-      document.querySelector('#note-dialog').showModal()
-      document.querySelector('#id-note').value = noteId
-      document.querySelector('#note-dialog #title').value = title
-      document.querySelector('#note-dialog #content').value = content
-      document.querySelector(`#folders input[name="add-folder"][value="${folder}"]`).checked = true
-      document.querySelector(`#categories input[name="add-cat"][value="${category}"]`).checked = true
-      document.querySelector('#date-reminder-input').value = reminder
-      document.querySelectorAll('#colors span').forEach((e) => {
-        if (e.classList.contains(color)) e.classList.add('selected')
-        else e.classList.remove('selected')
-      })
-      const hiddenCheckbox = document.querySelector('#check-hidden')
-      if (!hiddenCheckbox) return
-      hiddenCheckbox.checked = hidden
-      if (!link) hiddenCheckbox.disabled = false
-      else hiddenCheckbox.disabled = true
-      document.querySelector('#note-dialog #content').focus()
-    },
-    async pinCloudNote(noteId) {
-      if (!noteId) return
-      try {
-        const data = JSON.stringify({ noteId })
-        const csrfToken = this.getCookie('csrfToken')
-        const res = await fetch('api/pin-note/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-          },
-          body: data
-        })
-        if (!res.ok) {
-          this.showError(`An error occurred - ${res.status}`)
-          return
-        }
-        await this.getCloudNotes()
-      } catch {
-        this.showError('An error occurred')
-      }
-    },
-    async deleteCloudNote() {
-      const noteId = document.querySelector('#id-note-delete').value
-      if (!noteId) return
-      await this.fetchDeleteNote(noteId)
-      document.querySelector('#delete-note-dialog').close()
-    },
-    async isUserAuthenticated() {
-      try {
-        const csrfToken = this.getCookie('csrfToken')
-        const res = await fetch('api/whoami', {
-          method: 'POST',
-          headers: {
-            'X-CSRF-Token': csrfToken
-          }
-        })
-        const data = await res.json()
-        this.isAuthenticated = data.isAuthenticated
-        this.isAuthenticatedResponse = true
-      } catch {
-        this.showError('An error occurred')
-      }
-    },
-    async fetchDeleteNote(noteId) {
-      if (!noteId) return
-      try {
-        const data = JSON.stringify({ noteId })
-        const csrfToken = this.getCookie('csrfToken')
-        const res = await fetch('api/delete-note/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-          },
-          body: data
-        })
-        if (!res.ok) {
-          this.showError(`An error occurred - ${res.status}`)
-          return
-        }
-        await this.getCloudNotes()
-      } catch {
-        this.showError('An error occurred')
-      }
-    },
-    async fetchLogout() {
-      try {
-        const csrfToken = this.getCookie('csrfToken')
-        const res = await fetch('api/logout/', {
-          method: 'POST',
-          headers: {
-            'X-CSRF-Token': csrfToken
-          }
-        })
-        if (!res.ok) {
-          this.showError(`An error occurred - ${res.status}`)
-          return
-        }
-        window.location.reload()
-      } catch {
-        this.showError('An error occurred')
-      }
-    },
-    async fetchLogoutAll() {
-      try {
-        const csrfToken = this.getCookie('csrfToken')
-        const res = await fetch('api/logout-all/', {
-          method: 'POST',
-          headers: {
-            'X-CSRF-Token': csrfToken
-          }
-        })
-        if (!res.ok) {
-          this.showError(`An error occurred - ${res.status}`)
-          return
-        }
-        window.location.reload()
-      } catch {
-        this.showError('An error occurred')
-      }
-    },
-    async showSharedNote() {
-      this.noteLink = this.urlParams.get('link')
-      document.querySelector('main').textContent = ''
-      document.querySelector('main').classList.add('shared')
-      if (!this.noteLink || !/^[a-f0-9]{32}$/i.test(this.noteLink)) {
-        const notFoundElement = document.createElement('h1')
-        notFoundElement.classList.add('align-center')
-        notFoundElement.textContent = 'Note not found or expired.'
-        document.querySelector('main').appendChild(notFoundElement)
-        return
-      }
-
-      const data = JSON.stringify({ noteLink: this.noteLink })
-      const res = await fetch('api/get-shared-note/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: data
-      })
-
-      if (!res.ok) {
-        const notFoundElement = document.createElement('h1')
-        notFoundElement.classList.add('align-center')
-        notFoundElement.textContent = 'Note not found or expired.'
-        document.querySelector('main').appendChild(notFoundElement)
-        return
-      }
-
-      const note = await res.json()
-
-      const {
-        title, content, date,
-      } = note
-
-      document.title = title
-
-      const rawHtml = marked.parse(content)
-      const safeHtml = DOMPurify.sanitize(rawHtml, PURIFY_CONFIG)
-
-      const noteElement = document.createElement('div')
-      noteElement.classList.add('shared-note')
-
-      const detailsElement = document.createElement('div')
-      detailsElement.classList.add('details')
-
-      const titleElement = document.createElement('h2')
-      titleElement.classList.add('title')
-      titleElement.textContent = title
-
-      const contentElement = document.createElement('span')
-      contentElement.innerHTML = safeHtml
-
-      detailsElement.appendChild(titleElement)
-      detailsElement.appendChild(contentElement)
-
-      const bottomContentElement = document.createElement('div')
-      bottomContentElement.classList.add('bottom-content')
-
-      const dateElement = document.createElement('span')
-      dateElement.classList.add('date')
-      dateElement.textContent = new Date(date).toLocaleDateString(undefined, DATE_OPTIONS)
-      bottomContentElement.appendChild(dateElement)
-      noteElement.appendChild(detailsElement)
-      noteElement.appendChild(bottomContentElement)
-      document.querySelector('main').appendChild(noteElement)
-    },
-    shareNote(noteId, link) {
-      if (!noteId) return
-      if (link) {
-        document.querySelector('#public-note-dialog').showModal()
-        document.querySelector('#id-note-private').value = noteId
-        document.querySelector('#link-note-private').value = link
-        document.querySelector('#copy-note-link').textContent = link
-      } else {
-        document.querySelector('#private-note-dialog').showModal()
-        document.querySelector('#id-note-public').value = noteId
-      }
-    },
-    showNoteHistoric(noteId, historic) {
-      if (!noteId || !historic) return
-      document.querySelector('#note-historic-dialog').showModal()
-      document.querySelector('#note-historic-content').textContent = historic
-    },
-    toggleFullscreen(noteId) {
-      if (!noteId) return
-      document.querySelectorAll('.note').forEach((note) => {
-        if (note.getAttribute('data-note-id') !== noteId) note.classList.remove('fullscreen')
-      })
       this.closeSidebar()
-      const note = document.querySelector(`.note[data-note-id="${noteId}"]`)
-      note.querySelector('.details').scrollTop = 0
-      note.classList.toggle('fullscreen')
     },
     copy(content) {
       navigator.clipboard.writeText(content)
       this.showSuccess('Content copied to clipboard')
     },
-    copyNoteLink() {
-      const link = document.querySelector('#copy-note-link').textContent
+    copySharedNoteLink() {
+      const link = this.noteLink
       const url = new URL(`./?link=${encodeURIComponent(link)}`, window.location.href)
       navigator.clipboard.writeText(url.href)
     }
