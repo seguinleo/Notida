@@ -3,9 +3,8 @@ import cookieParser from 'cookie-parser'
 import { redisClient } from './server.js'
 import crypto from 'crypto'
 import bcrypt from 'bcrypt'
-import { Buffer } from 'buffer'
+import { doubleCsrf } from 'csrf-csrf'
 import rateLimit from 'express-rate-limit'
-import jwt from 'jsonwebtoken'
 import Encryption from './class/Encryption.js'
 import { pool } from './config/config.js'
 import passport from './config/passport.js'
@@ -14,8 +13,23 @@ import { z } from 'zod'
 const router = express.Router()
 const encryption = new Encryption()
 
-const maxNoteContentLength = 20000
-const maxDataByteSize = 1000000
+const maxNoteContentLength = 50000
+const maxNotesPerUser = 100
+
+const {
+  generateCsrfToken,
+  doubleCsrfProtection
+} = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET,
+  getSessionIdentifier: (req) => req.session?.id || req.ip,
+  cookieName: 'csrfToken',
+  cookieOptions: {
+    httpOnly: true,
+    sameSite: 'Strict',
+    secure: process.env.NODE_ENV === 'production'
+  },
+  size: 64
+})
 
 router.use(cookieParser())
 
@@ -28,96 +42,27 @@ const limiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 3 * 60 * 1000,
   max: 5,
-  message: 'Too many login attempts, please try again later.',
+  message: 'Too many requests, please try again later.',
 })
 
 const sharedNoteLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 25,
-  message: 'Too many login attempts, please try again later.',
+  message: 'Too many requests, please try again later.',
 })
 
 router.use(limiter)
 
 /**
- * @function verifyJWTToken
- * @description Middleware to check if the user is authenticated with a valid JWT token.
- * If the token is missing or invalid, it responds with a 401 status and
- * stops all cloud requests.
+ * @function verifySession
  */
-const verifyJWTToken = async (req, res, next) => {
-  const token = req.cookies?.jwtToken
-  if (!token) return res.status(403).json({ response: 0 })
-
-  try {
-    const isBlacklisted = await redisClient.get(`blacklist:${token}`)
-    if (isBlacklisted) return res.status(403).json({ response: 0 })
-
-    let decoded
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET, {
-        algorithms: ['HS256']
-      })
-    } catch {
-      return res.status(403).json({ response: 0 })
-    }
-
-    const tokenActive = await redisClient.sIsMember(`user:tokens:${decoded.id}`, token)
-    if (!tokenActive) return res.status(403).json({ response: 0 })
-
-    req.user = {
-      id: decoded.id,
-      name: decoded.name
-    }
-
-    next()
-  } catch {
+const verifySession = (req, res, next) => {
+  if (!req.session?.user) {
     return res.status(403).json({ response: 0 })
   }
-}
 
-/**
- * @function verifyCsrfToken
- * @description Verify CSRF token.
- */
-const verifyCsrfToken = (req, res, next) => {
-  const cookieToken = req.cookies?.csrfToken
-  const headerToken = req.headers['x-csrf-token']
-
-  if (!cookieToken || !headerToken) {
-    return res.status(403).send('CSRF missing')
-  }
-
-  const a = Buffer.from(cookieToken)
-  const b = Buffer.from(headerToken)
-
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-    return res.status(403).send('Invalid CSRF token')
-  }
-
+  req.user = req.session.user
   next()
-}
-
-/**
- * @function blacklistToken
- * @description Function to blacklist a token to kill a session.
- */
-const blacklistToken = async (token) => {
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ['HS256']
-    })
-
-    if (!decoded?.exp) return
-
-    const ttl = decoded.exp - Math.floor(Date.now() / 1000)
-
-    if (ttl > 0) {
-      await redisClient.set(`blacklist:${token}`, '1', { EX: ttl })
-    }
-  } catch {
-    return
-  }
 }
 
 /**
@@ -160,32 +105,26 @@ const getLastLogin = async (userId) => {
 
 /**
  * @function getAllUserSessions
- * @description Get number of active sessions for a user and clean old tokens.
+ * @description Get number of active sessions for a user and clean old sessions.
  */
 const getAllUserSessions = async (userId) => {
   try {
-    const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
-    if (!tokens || tokens.length === 0) return 0
+    const sessions = await redisClient.sMembers(`user:sessions:${userId}`)
 
-    const results = await Promise.all(tokens.map(async (token) => {
-      const isBlacklisted = await redisClient.get(`blacklist:${token}`)
-      if (isBlacklisted) {
-        await redisClient.sRem(`user:tokens:${userId}`, token)
-        return 0
-      }
+    if (!sessions.length) return 0
 
-      try {
-        jwt.verify(token, process.env.JWT_SECRET, {
-          algorithms: ['HS256']
-        })
-        return 1
-      } catch {
-        await redisClient.sRem(`user:tokens:${userId}`, token)
-        return 0
-      }
-    }))
+    const valid = await Promise.all(
+      sessions.map(async (sid) => {
+        const exists = await redisClient.exists(`notes:${sid}`)
+        if (!exists) {
+          await redisClient.sRem(`user:sessions:${userId}`, sid)
+          return false
+        }
+        return true
+      })
+    )
 
-    return results.reduce((acc, val) => acc + val, 0)
+    return valid.filter(Boolean).length
   } catch {
     return 0
   }
@@ -194,8 +133,16 @@ const getAllUserSessions = async (userId) => {
 /**
  * @description Route to verify if the user is authenticated.
  */
-router.post('/whoami', verifyJWTToken, verifyCsrfToken, (req, res) => {
+router.post('/whoami', verifySession, (req, res) => {
   return res.json({ isAuthenticated: true })
+})
+
+/**
+ * @description Route to send CSRF token to client.
+ */
+router.get("/csrf-token", (req, res) => {
+  const token = generateCsrfToken(req, res)
+  res.json({ csrfToken: token })
 })
 
 const createAccountSchema = z.object({
@@ -254,123 +201,115 @@ router.post('/create-account', async (req, res) => {
 })
 
 /**
- * @description Route to log in a user. Create and store JWT token in Redis.
+ * @description Route to log in a user.
  */
 router.post('/login', loginLimiter, async (req, res, next) => {
   const parsed = loginSchema.safeParse(req.body)
 
   if (!parsed.success) {
-    return res.status(400).send('Wrong username or password.')
+    return res.status(401).send('Wrong username or password.')
   }
-
-  const { nameLogin, psswdLogin } = parsed.data
 
   try {
     const user = await new Promise((resolve, reject) => {
       passport.authenticate('local', { session: false }, (err, user) => {
         if (err) return reject(err)
         resolve(user)
-      })(
-        { body: { nameLogin, psswdLogin } },
-        res,
-        next
-      )
+      })(req, res, next)
     })
 
     if (!user) {
-      return res.status(400).send('Wrong username or password.')
+      return res.status(401).send('Wrong username or password.')
     }
 
-    const token = jwt.sign(
-      {
+    req.session.regenerate((err) => {
+      if (err) return res.status(401).send('Wrong username or password.')
+
+      req.session.user = {
         id: user.id,
-        name: user.name
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: 604800, algorithm: 'HS256' }
-    )
+        name: user.name,
+      }
 
-    await redisClient.sAdd(`user:tokens:${user.id}`, token)
-    await redisClient.expire(`user:tokens:${user.id}`, 604800)
+      req.session.save(async (err) => {
+        if (err) return res.status(401).send('Wrong username or password.')
 
-    res.cookie('jwtToken', token, {
-      maxAge: 604800000,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict'
+        try {
+          await redisClient.sAdd(
+            `user:sessions:${user.id}`,
+            req.sessionID
+          )
+
+          await pool.execute(
+            'UPDATE users SET lastLogin = NOW() WHERE id = ?',
+            [user.id]
+          )
+
+          return res.status(200).send('Logged in!')
+        } catch {
+          return res.status(401).send('Wrong username or password.')
+        }
+      })
     })
-
-    const csrfToken = crypto.randomBytes(32).toString('hex')
-
-    res.cookie('csrfToken', csrfToken, {
-      maxAge: 604800000,
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict'
-    })
-
-    await pool.execute(
-      "UPDATE users SET lastLogin = NOW() WHERE id = ?",
-      [user.id]
-    )
-
-    return res.status(200).send('Logged in!')
   } catch {
-    return res.status(400).send('Wrong username or password.')
+    return res.status(401).send('Wrong username or password.')
   }
 })
 
 /**
- * @description Route to log out only current device. Blacklist current JWT token.
+ * @description Route to log out only current device.
  */
-router.post('/logout', verifyJWTToken, verifyCsrfToken, async (req, res) => {
-  const token = req.cookies?.jwtToken
-  if (!token) return res.status(400).json('Internal server error')
-
-  try {
-    await blacklistToken(token)
-    await redisClient.sRem(`user:tokens:${req.user.id}`, token)
-
-    res.clearCookie('jwtToken')
-    res.clearCookie('csrfToken')
-
-    return res.status(200).json('Logged out successfully')
-  } catch {
-    return res.status(400).json('Internal server error')
-  }
-})
-
-/**
- * @description Route to log out all devices for a user. Blacklist all JWT tokens associated with the user.
- */
-router.post('/logout-all', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/logout', verifySession, doubleCsrfProtection, async (req, res) => {
   const userId = req.user.id
 
   try {
-    const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
+    await redisClient.sRem(`user:sessions:${userId}`, req.sessionID)
 
-    if (tokens && tokens.length > 0) {
-      await Promise.all(
-        tokens.map(token => blacklistToken(token))
-      )
-      await redisClient.del(`user:tokens:${userId}`)
-    }
-
-    res.clearCookie('jwtToken')
-    res.clearCookie('csrfToken')
-
-    return res.status(200).json('All devices logged out successfully')
+    req.session.destroy((err) => {
+      if (err) return res.status(400).json('Internal server error')
+      res.clearCookie('connect.sid')
+      return res.status(200).json('Logged out successfully')
+    })
   } catch {
     return res.status(400).json('Internal server error')
   }
 })
 
 /**
- * @description Route to update user password. Log out and blacklist all JWT tokens associated with the user.
+ * @description Route to log out all devices for a user.
  */
-router.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/logout-all', verifySession, doubleCsrfProtection, async (req, res) => {
+  const userId = req.user.id
+
+  try {
+    const sessionKeys = await redisClient.sMembers(`user:sessions:${userId}`)
+
+    if (sessionKeys.length > 0) {
+      await Promise.all(
+        sessionKeys.map(async (sid) => {
+          await redisClient.del(`notes:${sid}`)
+        })
+      )
+    }
+
+    await redisClient.del(`user:sessions:${userId}`)
+
+    req.session.destroy((err) => {
+      if (err) return res.status(400).json('Internal server error')
+      res.clearCookie('connect.sid')
+      return res.status(200).json('All devices logged out successfully')
+    })
+  } catch {
+    return res.status(400).json('Internal server error')
+  }
+})
+
+/**
+ * @description Route to update user password. Log out all devices.
+ */
+router.post('/update-password', verifySession, doubleCsrfProtection, async (req, res) => {
   const userId = req.user.id
   const parsed = updatePasswordSchema.safeParse(req.body)
+
   if (!parsed.success) {
     return res.status(400).json('Internal server error')
   }
@@ -382,29 +321,35 @@ router.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res
       "SELECT psswd FROM users WHERE id = ? LIMIT 1",
       [userId]
     )
+
     if (rows.length !== 1 || !(await bcrypt.compare(psswdOld, rows[0].psswd))) {
       return res.status(400).json('Wrong password')
     }
 
     const psswdNewHash = await bcrypt.hash(psswdNew, 12)
+
     await pool.execute(
       "UPDATE users SET psswd = ? WHERE id = ?",
       [psswdNewHash, userId]
     )
 
-    const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
+    const sessions = await redisClient.sMembers(`user:sessions:${userId}`)
 
-    if (tokens && tokens.length > 0) {
+    if (sessions.length > 0) {
       await Promise.all(
-        tokens.map(token => blacklistToken(token))
+        sessions.map((sid) => redisClient.del(`notes:${sid}`))
       )
-      await redisClient.del(`user:tokens:${userId}`)
+
+      await redisClient.del(`user:sessions:${userId}`)
     }
 
-    res.clearCookie('jwtToken')
-    res.clearCookie('csrfToken')
-
-    return res.status(200).json('Password updated. All devices logged out. Please login again.')
+    req.session.destroy((err) => {
+      if (err) return res.status(400).json('Internal server error')
+      res.clearCookie('connect.sid')
+      return res.status(200).json(
+        'Password updated. All devices logged out. Please login again.'
+      )
+    })
   } catch {
     return res.status(400).json('Internal server error')
   }
@@ -412,9 +357,9 @@ router.post('/update-password', verifyJWTToken, verifyCsrfToken, async (req, res
 
 /**
  * @description Route to delete an account and all notes ON DELETE CASCADE.
- * Log out and blacklist all JWT tokens associated with the user.
+ * Log out all devices.
  */
-router.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, res) => {
   const userId = req.user.id
   const parsed = deleteAccountSchema.safeParse(req.body)
   if (!parsed.success) {
@@ -434,19 +379,23 @@ router.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res)
 
     await pool.execute("DELETE FROM users WHERE id = ?", [userId])
 
-    const tokens = await redisClient.sMembers(`user:tokens:${userId}`)
+    const sessions = await redisClient.sMembers(`user:sessions:${userId}`)
 
-    if (tokens && tokens.length > 0) {
+    if (sessions.length > 0) {
       await Promise.all(
-        tokens.map(token => blacklistToken(token))
+        sessions.map((sid) => redisClient.del(`notes:${sid}`))
       )
-      await redisClient.del(`user:tokens:${userId}`)
+
+      await redisClient.del(`user:sessions:${userId}`)
     }
 
-    res.clearCookie('jwtToken')
-    res.clearCookie('csrfToken')
-
-    return res.status(200).json('Account deleted successfully. All devices logged out.')
+    req.session.destroy((err) => {
+      if (err) return res.status(400).json('Internal server error')
+      res.clearCookie('connect.sid')
+      return res.status(200).json(
+        'Account deleted successfully. All notes deleted. All devices logged out.'
+      )
+    })
   } catch {
     return res.status(400).json('Internal server error')
   }
@@ -454,7 +403,7 @@ router.post('/delete-account', verifyJWTToken, verifyCsrfToken, async (req, res)
 
 const noteSchema = z.object({
   title: z.string().min(1).max(30),
-  content: z.string().max(20000),
+  content: z.string().max(maxNoteContentLength),
   color: z.enum([
     "bg-default",
     "bg-red",
@@ -469,7 +418,6 @@ const noteSchema = z.object({
     "bg-pink"
   ]).default("bg-default"),
   hidden: z.number().int().min(0).max(1).default(0),
-  folder: z.string().max(63).nullable().optional(),
   category: z.string().max(63).nullable().optional(),
   reminder: z.string().max(63).nullable().optional()
 })
@@ -481,7 +429,7 @@ const updateNoteSchema = noteSchema.extend({
 /**
  * @description Route to get all user notes
  */
-router.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/get-notes', verifySession, doubleCsrfProtection, async (req, res) => {
   const userId = req.user.id
   const name = req.user.name
   const key = await getKey(userId)
@@ -492,23 +440,19 @@ router.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
   try {
     const [rows] = await pool.execute(`
-        SELECT id, title, content, historic, color, dateNote, hiddenNote, category, folder, pinnedNote, link, reminder
+        SELECT id, title, content, historic, color, dateNote, hiddenNote, category, pinnedNote, link, reminder
         FROM notes
         WHERE user = ?
       `, [userId])
 
     if (rows.length === 0) {
-      return res.status(200).json({ notes: [], name, lastLogin, maxNoteContentLength, maxDataByteSize, dataByteSize: 0 })
+      return res.status(200).json({ notes: [], name, lastLogin, maxNoteContentLength, maxNotesPerUser })
     }
-
-    let dataByteSize = 0
 
     const notes = rows.map(row => {
       const title = encryption.decryptData(row.title, key)
       const content = encryption.decryptData(row.content, key)
       const historic = encryption.decryptData(row.historic, key)
-      const noteSizeInBytes = Buffer.byteLength(title, 'utf8') + Buffer.byteLength(content, 'utf8')
-      dataByteSize += noteSizeInBytes
 
       return {
         id: row.id,
@@ -517,7 +461,6 @@ router.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
         historic,
         color: row.color,
         date: row.dateNote,
-        folder: row.folder || null,
         category: row.category || null,
         link: row.link || null,
         hidden: row.hiddenNote,
@@ -526,18 +469,28 @@ router.post('/get-notes', verifyJWTToken, verifyCsrfToken, async (req, res) => {
       }
     })
 
-    return res.status(200).json({ notes, name, lastLogin, allUserSessions, maxNoteContentLength, maxDataByteSize, dataByteSize })
+    return res.status(200).json({ notes, name, lastLogin, allUserSessions, maxNoteContentLength, maxNotesPerUser })
   } catch {
     return res.status(400).send('Notes retrieval failed')
   }
 })
 
-router.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const parsed = noteSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).send('Invalid input')
 
-  const { title, content, color, hidden, folder, category, reminder } = parsed.data
   const userId = req.user.id
+
+  const [rows] = await pool.execute(
+    "SELECT COUNT(*) as count FROM notes WHERE user = ?",
+    [userId]
+  )
+
+  if (rows[0].count >= maxNotesPerUser) {
+    return res.status(403).send('Note limit reached')
+  }
+
+  const { title, content, color, hidden, category, reminder } = parsed.data
   const key = await getKey(userId)
 
   if (!userId || !key || !title) return res.status(400).send('Note creation failed')
@@ -547,7 +500,7 @@ router.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
 
   try {
     await pool.execute(
-      "INSERT INTO notes (id, title, content, dateNote, color, hiddenNote, folder, category, reminder, user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO notes (id, title, content, dateNote, color, hiddenNote, category, reminder, user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         noteId,
         encryption.encryptData(title.trim(), key),
@@ -555,7 +508,6 @@ router.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
         dateNote,
         color,
         hidden,
-        folder,
         category,
         reminder,
         userId
@@ -567,12 +519,22 @@ router.post('/add-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-router.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const parsed = updateNoteSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).send('Invalid input')
 
-  const { noteId, title, content, color, hidden, folder, category, reminder } = parsed.data
   const userId = req.user.id
+
+  const [rows] = await pool.execute(
+    "SELECT COUNT(*) as count FROM notes WHERE user = ?",
+    [userId]
+  )
+
+  if (rows[0].count >= maxNotesPerUser) {
+    return res.status(403).send('Note limit reached')
+  }
+
+  const { noteId, title, content, color, hidden, category, reminder } = parsed.data
   const key = await getKey(userId)
 
   if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Update failed')
@@ -599,7 +561,6 @@ router.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) =>
         dateNote = ?,
         color = ?,
         hiddenNote = ?,
-        folder = ?,
         category = ?,
         reminder = ?
       WHERE id = ? AND user = ?
@@ -610,7 +571,6 @@ router.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) =>
       dateNote,
       color,
       hidden,
-      folder,
       category,
       reminder,
       noteId,
@@ -622,7 +582,7 @@ router.post('/update-note', verifyJWTToken, verifyCsrfToken, async (req, res) =>
   }
 })
 
-router.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/pin-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
@@ -640,7 +600,7 @@ router.post('/pin-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
   }
 })
 
-router.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/delete-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
@@ -654,7 +614,7 @@ router.post('/delete-note', verifyJWTToken, verifyCsrfToken, async (req, res) =>
   }
 })
 
-router.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
+router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const { noteId } = req.body
   const userId = req.user.id
 
@@ -663,22 +623,21 @@ router.post('/public-note', verifyJWTToken, verifyCsrfToken, async (req, res) =>
   const noteLink = crypto.randomBytes(16).toString('hex')
 
   try {
-    await pool.execute("UPDATE notes SET link = ? WHERE id = ? AND user = ? AND link IS NULL AND hiddenNote = 0", [noteLink, noteId, userId])
+    await pool.execute("UPDATE notes SET link = ? WHERE id = ? AND user = ? AND link IS NULL", [noteLink, noteId, userId])
     return res.status(200).send('Note link added successfully')
   } catch {
     return res.status(400).send('Note modification failed')
   }
 })
 
-router.post('/private-note', verifyJWTToken, verifyCsrfToken, async (req, res) => {
-  const { noteId, noteLink } = req.body
+router.post('/private-note', verifySession, doubleCsrfProtection, async (req, res) => {
+  const { noteId } = req.body
   const userId = req.user.id
 
   if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Note modification failed')
-  if (!noteLink || !/^[a-f0-9]{32}$/i.test(noteLink)) return res.status(400).send('Note modification failed')
 
   try {
-    await pool.execute("UPDATE notes SET link = NULL WHERE id = ? AND user = ? AND link = ?", [noteId, userId, noteLink])
+    await pool.execute("UPDATE notes SET link = NULL WHERE id = ? AND user = ?", [noteId, userId])
     return res.status(200).send('Note link removed successfully')
   } catch {
     return res.status(400).send('Note modification failed')
@@ -694,7 +653,7 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
 
   try {
     const [noteRows] = await pool.execute(`
-      SELECT title, content, dateNote, user
+      SELECT title, content, dateNote, reminder, user
       FROM notes
       WHERE link = ?
       LIMIT 1
@@ -704,7 +663,7 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
       return res.status(404).send('Note not found')
     }
 
-    const { title: encryptedTitle, content: encryptedContent, dateNote, user } = noteRows[0]
+    const { title: encryptedTitle, content: encryptedContent, dateNote, reminder, user } = noteRows[0]
 
     const key = await getKey(user)
     if (!key) return res.status(400).send('Internal server error')
@@ -712,7 +671,8 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
     const note = {
       title: encryption.decryptData(encryptedTitle, key),
       content: encryption.decryptData(encryptedContent, key),
-      date: dateNote
+      date: dateNote,
+      reminder
     }
 
     return res.status(200).json(note)
