@@ -26,7 +26,8 @@ const {
   cookieOptions: {
     httpOnly: true,
     sameSite: 'Strict',
-    secure: process.env.NODE_ENV === 'production'
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000
   },
   size: 64
 })
@@ -267,6 +268,7 @@ router.post('/logout', verifySession, doubleCsrfProtection, async (req, res) => 
     req.session.destroy((err) => {
       if (err) return res.status(400).json('Internal server error')
       res.clearCookie('connect.sid')
+      res.clearCookie('csrfToken')
       return res.status(200).json('Logged out successfully')
     })
   } catch {
@@ -296,6 +298,7 @@ router.post('/logout-all', verifySession, doubleCsrfProtection, async (req, res)
     req.session.destroy((err) => {
       if (err) return res.status(400).json('Internal server error')
       res.clearCookie('connect.sid')
+      res.clearCookie('csrfToken')
       return res.status(200).json('All devices logged out successfully')
     })
   } catch {
@@ -346,6 +349,7 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
     req.session.destroy((err) => {
       if (err) return res.status(400).json('Internal server error')
       res.clearCookie('connect.sid')
+      res.clearCookie('csrfToken')
       return res.status(200).json(
         'Password updated. All devices logged out. Please login again.'
       )
@@ -392,6 +396,7 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
     req.session.destroy((err) => {
       if (err) return res.status(400).json('Internal server error')
       res.clearCookie('connect.sid')
+      res.clearCookie('csrfToken')
       return res.status(200).json(
         'Account deleted successfully. All notes deleted. All devices logged out.'
       )
