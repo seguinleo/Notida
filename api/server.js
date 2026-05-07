@@ -1,7 +1,6 @@
 import express from 'express'
 import session from 'express-session'
 import { RedisStore } from 'connect-redis'
-import helmet from 'helmet'
 import { createClient } from 'redis'
 import routes from './routes.js'
 import cron from 'node-cron'
@@ -11,7 +10,6 @@ const app = express()
 
 app.disable('x-powered-by')
 app.set('trust proxy', 1)
-app.use(helmet())
 app.use(express.json({ limit: '50kb' }))
 
 const PORT = process.env.PORT || 3000
