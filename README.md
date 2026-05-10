@@ -66,6 +66,26 @@ The project have security features enabled by default, but for production use, I
 * Edit nginx configuration to add SSL
 * To store MASTER_KEY, I recommend using a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp
 
+.env template
+```
+#NODE_ENV=production
+NODE_ENV=development
+
+DB_HOST=localhost
+DB_DATABASE=notida
+DB_USER=user
+DB_PASSWORD=password
+DB_PORT=3306
+DB_CHARSET=utf8mb4
+
+REDIS_URL=redis://redis:6379
+
+# SET YOUR SECRETS HERE BEFORE DEPLOYING
+MASTER_KEY=
+SESSION_SECRET=
+CSRF_SECRET=
+```
+
 > [!IMPORTANT]
 > Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to [install a SSL certificate](https://github.com/seguinleo/WebSecurityCheatSheet) to use note encryption (Web Crypto API requires HTTPs).
 
