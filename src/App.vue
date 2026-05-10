@@ -99,6 +99,14 @@
               <input type="radio" name="sort-notes" value="2" v-model="sortOption">
               <span>Modification date (Z-A)</span>
             </label>
+            <label class="custom-check">
+              <input type="radio" name="sort-notes" value="3" v-model="sortOption">
+              <span>Title (A-Z)</span>
+            </label>
+            <label class="custom-check">
+              <input type="radio" name="sort-notes" value="4" v-model="sortOption">
+              <span>Title (Z-A)</span>
+            </label>
           </fieldset>
         </div>
       </div>
@@ -306,7 +314,7 @@
           <div class="row">
             <p class="version">
               GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.5.1</a>
+              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.5.2</a>
             </p>
           </div>
         </div>
@@ -540,26 +548,18 @@
                 <img alt="Open source" src="https://img.shields.io/badge/project-open_source-blue">
               </p>
               <h2>📝Features</h2>
-              <p>Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown
-                and HTML. They can add images, audio or videos via URL. Notes can be searched and sorted by category.
-              </p>
-              <p>Users can sync notes across devices in a secure database after signing in without needing an email
-                address, only a username and strong password. Public notes can be shared via a random URL.</p>
-              <p>This website is a Progressive Web App (PWA) that can be installed as an application. Design is
-                responsive and optimized for all mobile devices or macOS/Windows.</p>
-              <p>The site is accessible to users with disabilities through high-contrast colors, ARIA modules, and
-                focusable elements.</p>
+              <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your notes.</p>
+              <p>You can sync your notes across all your devices after logging in (no email address is required, just a username and a strong password). Public notes can be shared with anyone via a random URL.</p>
+              <p>This website is a Progressive Web App (PWA) that can be installed as an application. You can fully customize the application's color theme.</p>
+              <p>This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and focusable elements.</p>
               <h2>🔒Security</h2>
-              <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
-                  security recommendations</a>.
+              <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP security recommendations</a>.
               </p>
-              <p>All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with
-                AES-256-GCM. Each user has a cryptographically secure key generated after signing up.</p>
-              <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent
-                to the server, verification is local and UI/UX only.</p>
+              <p>All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using Argon2id. All notes are encrypted with AES-256-GCM.</p>
+              <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server, verification is local and UI/UX only.</p>
+              <p>User accounts are deleted 1 year after the last login.</p>
               <h2>🌐Community</h2>
-              <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
-                to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
+              <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
             </div>
           </div>
         </div>
@@ -714,7 +714,7 @@ export default {
       noteContentLength: 0,
       allUserNotes: [],
       allUserSessions: 0,
-      allCategories: [],
+      allCategories: new Set(),
       newCategory: '',
       allColors: [
         'bg-default', 'bg-red', 'bg-orange', 'bg-yellow', 'bg-lime', 'bg-green',
@@ -744,7 +744,7 @@ export default {
   components: { IroJs },
   watch: {
     async sortOption() {
-      if (!['1', '2'].includes(this.sortOption)) return
+      if (!['1', '2', '3', '4'].includes(this.sortOption)) return
       if (this.sortOption === '1') localStorage.removeItem('sort_notes')
       else localStorage.setItem('sort_notes', this.sortOption)
       if (this.isAuthenticated) await this.getCloudNotes()
@@ -846,7 +846,7 @@ export default {
       const state = EditorState.create({
         doc: '',
         extensions: [
-          placeholder('Content (Raw text, Markdown or HTML)'),
+          placeholder('Content (Markdown, KaTeX or HTML)'),
           history(),
           markdown(),
           oneDark,
@@ -1100,7 +1100,7 @@ export default {
       const psswd = document.querySelector('#psswd-create').value
       const psswdV = document.querySelector('#psswd-create-valid').value
       if (!name || !psswd || !psswdV || name.length < 3 || name.length > 30 || psswd.length < 10 || psswd.length > 64) return
-      if (!/^[\p{L} -]+$/u.test(name.normalize('NFC'))) {
+      if (!/^[\p{L} -]+$/u.test(name.normalize('NFKC'))) {
         this.showError('Name can only contain letters, spaces and accents...')
         return
       }
@@ -1146,7 +1146,7 @@ export default {
         psswdLogin.length < 10 ||
         psswdLogin.length > 64
       ) return
-      if (!/^[\p{L} -]+$/u.test(nameLogin.normalize('NFC'))) {
+      if (!/^[\p{L} -]+$/u.test(nameLogin.normalize('NFKC'))) {
         this.showError('Name can only contain letters, spaces and accents...')
         return
       }
@@ -1361,22 +1361,26 @@ export default {
         const db = await this.openIndexedDB(this.localDbName, this.localDbKeyName)
         this.localDbKey = await this.getKeyFromDB(db, this.localDbKeyName)
 
-        localNotes.sort((a, b) => {
+        const normalized = await Promise.all(
+          localNotes.map(n => this.normalizeNote(n))
+        )
+
+        this.allUserNotes = normalized.filter(Boolean)
+
+        this.allUserNotes.sort((a, b) => {
           if (a.pinned === 1 && b.pinned === 0) return -1
           if (a.pinned === 0 && b.pinned === 1) return 1
 
           switch (this.sortOption) {
             case '1': return b.date.localeCompare(a.date)
             case '2': return a.date.localeCompare(b.date)
+            case '3':
+              return (a.title).localeCompare(b.title)
+            case '4':
+              return (b.title).localeCompare(a.title)
             default: break
           }
         })
-
-        const normalized = await Promise.all(
-          localNotes.map(n => this.normalizeNote(n))
-        )
-
-        this.allUserNotes = normalized.filter(Boolean)
       } catch {
         this.showError('An error occurred')
       }
@@ -1394,7 +1398,12 @@ export default {
         const reminder = this.reminderNote || null
 
         if (this.isNoteUpdate && !noteId) return
-        if (!title || title.length > 30 || content.length > this.maxNoteContentLength || !color) return
+        else if (!this.isNoteUpdate && noteId) return
+
+        if (!title || title.length > 30 || content.length > this.maxNoteContentLength) {
+          this.showError(`Content max length is ${this.maxNoteContentLength} characters.`)
+          return
+        }
         if (!this.allColors.includes(color)) return
         if (reminder && !new Date(reminder).getTime()) return
 
@@ -1510,6 +1519,12 @@ export default {
 
         this.allCategories = new Set(this.allUserNotes.map(n => n.category).filter(Boolean))
 
+        const normalized = await Promise.all(
+          this.allUserNotes.map(n => this.normalizeNote(n))
+        )
+
+        this.allUserNotes = normalized.filter(Boolean)
+
         this.allUserNotes.sort((a, b) => {
           if (a.pinned === 1 && b.pinned === 0) return -1
           if (a.pinned === 0 && b.pinned === 1) return 1
@@ -1517,15 +1532,13 @@ export default {
           switch (this.sortOption) {
             case '1': return b.date.localeCompare(a.date)
             case '2': return a.date.localeCompare(b.date)
+            case '3':
+              return (a.title).localeCompare(b.title)
+            case '4':
+              return (b.title).localeCompare(a.title)
             default: break
           }
         })
-
-        const normalized = await Promise.all(
-          this.allUserNotes.map(n => this.normalizeNote(n))
-        )
-
-        this.allUserNotes = normalized.filter(Boolean)
       } catch {
         this.showError('An error occurred')
       }
@@ -1541,14 +1554,19 @@ export default {
         const noteId = this.currentNoteId
         const title = this.titleNote.trim()
         const content = this.editor.state.doc.toString().trim()
+        const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
         const color = this.selectedColor || 'bg-default'
         const hidden = this.hiddenNote ? 1 : 0
         const category = this.selectedCategory || null
         const reminder = this.reminderNote || null
 
         if (this.isNoteUpdate && !noteId) return
-        if (noteId && !/^[a-f0-9]{24}$/i.test(noteId)) return
-        if (!title || title.length > 30 || content.length > this.maxNoteContentLength) return
+        else if (!this.isNoteUpdate && noteId) return
+
+        if (!title || title.length > 30 || content.length > this.maxNoteContentLength) {
+          this.showError(`Content max length is ${this.maxNoteContentLength} characters.`)
+          return
+        }
         if (!this.allColors.includes(color)) return
         if (reminder && !new Date(reminder).getTime()) return
 
@@ -1559,6 +1577,7 @@ export default {
             noteId,
             title,
             content,
+            date,
             color,
             hidden,
             category,
@@ -1568,6 +1587,7 @@ export default {
           data = JSON.stringify({
             title,
             content,
+            date,
             color,
             hidden,
             category,
@@ -1625,7 +1645,7 @@ export default {
     },
     async privateNote() {
       const noteId = this.currentNoteId
-      if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return
+      if (!noteId) return
       try {
         const data = JSON.stringify({ noteId })
         const res = await fetch('api/private-note/', {
@@ -1648,7 +1668,7 @@ export default {
     },
     async publicNote() {
       const noteId = this.currentNoteId
-      if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return
+      if (!noteId) return
       try {
         const data = JSON.stringify({ noteId })
         const res = await fetch('api/public-note/', {
@@ -1665,8 +1685,6 @@ export default {
         }
         document.querySelector('#private-note-dialog').close()
         await this.getCloudNotes()
-        this.noteLink = this.getNoteById(noteId)?.link || ''
-        document.querySelector('#public-note-dialog').showModal()
       } catch {
         this.showError('An error occurred')
       }
@@ -1801,6 +1819,26 @@ export default {
       if (hidden && this.fingerprintEnabled) {
         const res = await this.verifyFingerprint()
         if (!res) return
+      }
+
+      const noteLastUpdate = await fetch(`api/get-note-date/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': this.csrfToken
+        },
+        body: JSON.stringify({ noteId })
+      })
+
+      if (!noteLastUpdate.ok) {
+        this.showError(`An error occurred - ${noteLastUpdate.status}`)
+        return
+      }
+
+      const data = await noteLastUpdate.json()
+
+      if (new Date(await data.date) > new Date(this.getNoteById(noteId)?.date)) {
+        this.showError('This note has been updated from another session and is not up to date!')
       }
 
       this.isNoteUpdate = true

@@ -2,7 +2,7 @@ import express from 'express'
 import cookieParser from 'cookie-parser'
 import { redisClient } from './server.js'
 import crypto from 'crypto'
-import bcrypt from 'bcrypt'
+import argon2 from 'argon2'
 import { doubleCsrf } from 'csrf-csrf'
 import rateLimit from 'express-rate-limit'
 import Encryption from './class/Encryption.js'
@@ -21,7 +21,7 @@ const {
   doubleCsrfProtection
 } = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET,
-  getSessionIdentifier: (req) => req.session?.id || req.ip,
+  getSessionIdentifier: (req) => req.sessionID || req.ip,
   cookieName: 'csrfToken',
   cookieOptions: {
     httpOnly: true,
@@ -66,27 +66,21 @@ const verifySession = (req, res, next) => {
   next()
 }
 
+const uuidSchema = z.string().uuid()
+
 /**
  * @function getKey
  * @description Get the encryption/decryption key for a user.
- * Important: This key has to be store in a secure vault like AWS KMS,
- * Azure Key Vault or a self-hosted solution like Hashicorp instead of the mysql database.
- * The key is never sent to the client.
+ * Important: For production, consider using a more secure key management strategy, such as AWS KMS or HashiCorp Vault.
+ * The key shoud never be sent to the client!
  */
 const getKey = async (userId) => {
-  if (!userId || !/^[a-f0-9]{24}$/i.test(userId)) return 0
+  if (!uuidSchema.safeParse(userId).success) return null
 
-  try {
-    const [rows] = await pool.execute(
-      "SELECT oneKey FROM users WHERE id = ? LIMIT 1",
-      [userId]
-    )
-
-    if (rows.length !== 1) return 0
-    return rows[0].oneKey
-  } catch {
-    return 0
-  }
+  return crypto
+    .createHmac('sha256', process.env.MASTER_KEY)
+    .update(userId)
+    .digest()
 }
 
 /**
@@ -149,6 +143,8 @@ router.get("/csrf-token", (req, res) => {
 const createAccountSchema = z.object({
   nameCreate: z
     .string()
+    .normalize('NFKC')
+    .trim()
     .min(3)
     .max(30)
     .regex(/^[\p{L} -]+$/u),
@@ -159,6 +155,8 @@ const createAccountSchema = z.object({
 const loginSchema = z.object({
   nameLogin: z
     .string()
+    .normalize('NFKC')
+    .trim()
     .min(3)
     .max(30)
     .regex(/^[\p{L} -]+$/u),
@@ -186,14 +184,14 @@ router.post('/create-account', async (req, res) => {
 
   const { nameCreate, psswdCreate } = parsed.data
 
-  const id = crypto.randomBytes(12).toString('hex')
-  const psswdCreateHash = await bcrypt.hash(psswdCreate, 12)
-  const keyBase64 = crypto.randomBytes(32).toString('base64')
+  const userId = crypto.randomUUID()
+  const psswdCreateHash = await argon2.hash(psswdCreate)
+  const currentDate = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
   try {
     await pool.execute(
-      "INSERT INTO users (id, name, psswd, oneKey) VALUES (?, ?, ?, ?)",
-      [id, nameCreate, psswdCreateHash, keyBase64]
+      "INSERT INTO users (id, name, psswd, creationDate) VALUES (?, ?, ?, ?)",
+      [userId, nameCreate, psswdCreateHash, currentDate]
     )
     return res.status(200).send('Account created successfully')
   } catch {
@@ -314,7 +312,7 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
   const parsed = updatePasswordSchema.safeParse(req.body)
 
   if (!parsed.success) {
-    return res.status(400).json('Internal server error')
+    return res.status(400).json('Invalid input')
   }
 
   const { psswdOld, psswdNew } = parsed.data
@@ -325,11 +323,11 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
       [userId]
     )
 
-    if (rows.length !== 1 || !(await bcrypt.compare(psswdOld, rows[0].psswd))) {
+    if (rows.length !== 1 || !(await argon2.verify(rows[0].psswd, psswdOld))) {
       return res.status(400).json('Wrong password')
     }
 
-    const psswdNewHash = await bcrypt.hash(psswdNew, 12)
+    const psswdNewHash = await argon2.hash(psswdNew)
 
     await pool.execute(
       "UPDATE users SET psswd = ? WHERE id = ?",
@@ -367,7 +365,7 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
   const userId = req.user.id
   const parsed = deleteAccountSchema.safeParse(req.body)
   if (!parsed.success) {
-    return res.status(400).json('Internal server error')
+    return res.status(400).json('Invalid input')
   }
 
   const { psswd } = parsed.data
@@ -377,7 +375,7 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
       "SELECT psswd FROM users WHERE id = ? LIMIT 1",
       [userId]
     )
-    if (rows.length !== 1 || !(await bcrypt.compare(psswd, rows[0].psswd))) {
+    if (rows.length !== 1 || !(await argon2.verify(rows[0].psswd, psswd))) {
       return res.status(400).json('Wrong password')
     }
 
@@ -409,6 +407,7 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
 const noteSchema = z.object({
   title: z.string().min(1).max(30),
   content: z.string().max(maxNoteContentLength),
+  date: z.string(),
   color: z.enum([
     "bg-default",
     "bg-red",
@@ -428,7 +427,7 @@ const noteSchema = z.object({
 })
 
 const updateNoteSchema = noteSchema.extend({
-  noteId: z.string().regex(/^[a-f0-9]{24}$/i)
+  noteId: uuidSchema
 })
 
 /**
@@ -445,9 +444,9 @@ router.post('/get-notes', verifySession, doubleCsrfProtection, async (req, res) 
 
   try {
     const [rows] = await pool.execute(`
-        SELECT id, title, content, historic, color, dateNote, hiddenNote, category, pinnedNote, link, reminder
+        SELECT id, title, content, historic, color, updateDate, hiddenNote, category, pinnedNote, link, reminder
         FROM notes
-        WHERE user = ?
+        WHERE userId = ?
       `, [userId])
 
     if (rows.length === 0) {
@@ -465,7 +464,7 @@ router.post('/get-notes', verifySession, doubleCsrfProtection, async (req, res) 
         content,
         historic,
         color: row.color,
-        date: row.dateNote,
+        date: row.updateDate,
         category: row.category || null,
         link: row.link || null,
         hidden: row.hiddenNote,
@@ -480,6 +479,28 @@ router.post('/get-notes', verifySession, doubleCsrfProtection, async (req, res) 
   }
 })
 
+router.post('/get-note-date', verifySession, doubleCsrfProtection, async (req, res) => {
+  const { noteId } = req.body
+  const userId = req.user.id
+
+  if (!uuidSchema.safeParse(noteId).success) {
+    return res.status(400).send('Invalid note id')
+  }
+
+  try {
+    const [rows] = await pool.execute(
+      "SELECT updateDate FROM notes WHERE id = ? AND userId = ?",
+      [noteId, userId]
+    )
+    if (rows.length !== 1) {
+      return res.status(400).send('Note retrieval failed')
+    }
+    return res.status(200).json({ date: rows[0].updateDate })
+  } catch {
+    return res.status(400).send('Note retrieval failed')
+  }
+})
+
 router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const parsed = noteSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).send('Invalid input')
@@ -487,7 +508,7 @@ router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) =
   const userId = req.user.id
 
   const [rows] = await pool.execute(
-    "SELECT COUNT(*) as count FROM notes WHERE user = ?",
+    "SELECT COUNT(*) as count FROM notes WHERE userId = ?",
     [userId]
   )
 
@@ -495,22 +516,22 @@ router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) =
     return res.status(403).send('Note limit reached')
   }
 
-  const { title, content, color, hidden, category, reminder } = parsed.data
+  const { title, content, date, color, hidden, category, reminder } = parsed.data
   const key = await getKey(userId)
 
   if (!userId || !key || !title) return res.status(400).send('Note creation failed')
 
-  const noteId = crypto.randomBytes(12).toString('hex')
-  const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
+  const noteId = crypto.randomUUID()
 
   try {
     await pool.execute(
-      "INSERT INTO notes (id, title, content, dateNote, color, hiddenNote, category, reminder, user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO notes (id, title, content, creationDate, updateDate, color, hiddenNote, category, reminder, userId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         noteId,
         encryption.encryptData(title.trim(), key),
         encryption.encryptData(content.trim(), key),
-        dateNote,
+        date,
+        date,
         color,
         hidden,
         category,
@@ -531,7 +552,7 @@ router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res
   const userId = req.user.id
 
   const [rows] = await pool.execute(
-    "SELECT COUNT(*) as count FROM notes WHERE user = ?",
+    "SELECT COUNT(*) as count FROM notes WHERE userId = ?",
     [userId]
   )
 
@@ -539,17 +560,17 @@ router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res
     return res.status(403).send('Note limit reached')
   }
 
-  const { noteId, title, content, color, hidden, category, reminder } = parsed.data
+  const { noteId, title, content, date, color, hidden, category, reminder } = parsed.data
   const key = await getKey(userId)
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Update failed')
+  if (!uuidSchema.safeParse(noteId).success) {
+    return res.status(400).send('Invalid note id')
+  }
   if (!userId || !key || !title) return res.status(400).send('Update failed')
-
-  const dateNote = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
   try {
     const [rows] = await pool.execute(
-      'SELECT content FROM notes WHERE id = ? AND user = ?',
+      'SELECT content FROM notes WHERE id = ? AND userId = ?',
       [noteId, userId]
     )
     if (rows.length === 0) {
@@ -563,17 +584,17 @@ router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res
         title = ?,
         content = ?,
         historic = ?,
-        dateNote = ?,
+        updateDate = ?,
         color = ?,
         hiddenNote = ?,
         category = ?,
         reminder = ?
-      WHERE id = ? AND user = ?
+      WHERE id = ? AND userId = ?
     `, [
       encryption.encryptData(title.trim(), key),
       encryption.encryptData(content.trim(), key),
       oldContent,
-      dateNote,
+      date,
       color,
       hidden,
       category,
@@ -591,13 +612,15 @@ router.post('/pin-note', verifySession, doubleCsrfProtection, async (req, res) =
   const { noteId } = req.body
   const userId = req.user.id
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Pin note failed')
+  if (!uuidSchema.safeParse(noteId).success) {
+    return res.status(400).send('Invalid note id')
+  }
 
   try {
     await pool.execute(`
           UPDATE notes
           SET pinnedNote = CASE WHEN pinnedNote = '0' THEN '1' ELSE '0' END
-          WHERE id = ? AND user = ?
+          WHERE id = ? AND userId = ?
       `, [noteId, userId])
     return res.status(200).send('Note pinned successfully')
   } catch {
@@ -609,10 +632,12 @@ router.post('/delete-note', verifySession, doubleCsrfProtection, async (req, res
   const { noteId } = req.body
   const userId = req.user.id
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Note deletion failed')
+  if (!uuidSchema.safeParse(noteId).success) {
+    return res.status(400).send('Invalid note id')
+  }
 
   try {
-    await pool.execute("DELETE FROM notes WHERE id = ? AND user = ? AND link IS NULL", [noteId, userId])
+    await pool.execute("DELETE FROM notes WHERE id = ? AND userId = ? AND link IS NULL", [noteId, userId])
     return res.status(200).send('Note deleted successfully')
   } catch {
     return res.status(400).send('Note deletion failed')
@@ -623,12 +648,14 @@ router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res
   const { noteId } = req.body
   const userId = req.user.id
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Note modification failed')
+  if (!uuidSchema.safeParse(noteId).success) {
+    return res.status(400).send('Invalid note id')
+  }
 
   const noteLink = crypto.randomBytes(16).toString('hex')
 
   try {
-    await pool.execute("UPDATE notes SET link = ? WHERE id = ? AND user = ? AND link IS NULL", [noteLink, noteId, userId])
+    await pool.execute("UPDATE notes SET link = ? WHERE id = ? AND userId = ? AND link IS NULL", [noteLink, noteId, userId])
     return res.status(200).send('Note link added successfully')
   } catch {
     return res.status(400).send('Note modification failed')
@@ -639,10 +666,12 @@ router.post('/private-note', verifySession, doubleCsrfProtection, async (req, re
   const { noteId } = req.body
   const userId = req.user.id
 
-  if (!noteId || !/^[a-f0-9]{24}$/i.test(noteId)) return res.status(400).send('Note modification failed')
+  if (!uuidSchema.safeParse(noteId).success) {
+    return res.status(400).send('Invalid note id')
+  }
 
   try {
-    await pool.execute("UPDATE notes SET link = NULL WHERE id = ? AND user = ?", [noteId, userId])
+    await pool.execute("UPDATE notes SET link = NULL WHERE id = ? AND userId = ?", [noteId, userId])
     return res.status(200).send('Note link removed successfully')
   } catch {
     return res.status(400).send('Note modification failed')
@@ -658,7 +687,7 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
 
   try {
     const [noteRows] = await pool.execute(`
-      SELECT title, content, dateNote, reminder, user
+      SELECT title, content, updateDate, reminder, userId
       FROM notes
       WHERE link = ?
       LIMIT 1
@@ -668,15 +697,15 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
       return res.status(404).send('Note not found')
     }
 
-    const { title: encryptedTitle, content: encryptedContent, dateNote, reminder, user } = noteRows[0]
+    const { title: encryptedTitle, content: encryptedContent, updateDate, reminder, userId } = noteRows[0]
 
-    const key = await getKey(user)
+    const key = await getKey(userId)
     if (!key) return res.status(400).send('Internal server error')
 
     const note = {
       title: encryption.decryptData(encryptedTitle, key),
       content: encryption.decryptData(encryptedContent, key),
-      date: dateNote,
+      date: updateDate,
       reminder
     }
 

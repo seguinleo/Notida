@@ -1,9 +1,10 @@
+/* eslint-disable no-unused-vars */
 import passport from 'passport'
 import { Strategy as LocalStrategy } from 'passport-local'
-import bcrypt from 'bcrypt'
+import argon2 from 'argon2'
 import { pool } from './config.js'
 
-const fakeHash = '$2a$12$zKSNbcfzJCMlm1jPRIuabOi0paRqo.AyVhHXoFE4TqIKJZZhd5.ia'
+const fakeHash = '$argon2id$v=19$m=19456,t=2,p=1$+to4xlALTkt0j6xnwHsvnw$fHRVrgonDBSmjJUZsXkYItC85pEWhKZc2Cva+0eeqPo'
 
 passport.use(
   new LocalStrategy(
@@ -23,19 +24,19 @@ passport.use(
         )
 
         if (rows.length !== 1) {
-          await bcrypt.compare(psswdLogin || '', fakeHash)
+          await argon2.verify(fakeHash, psswdLogin || '')
           return done(null, false)
         }
 
         const user = rows[0]
 
-        const isMatch = await bcrypt.compare(psswdLogin, user.psswd)
+        const isMatch = await argon2.verify(user.psswd, psswdLogin)
 
         if (!isMatch) {
           return done(null, false)
         }
 
-        const { ...safeUser } = user
+        const { psswd, ...safeUser } = user
 
         return done(null, safeUser)
       } catch (err) {
