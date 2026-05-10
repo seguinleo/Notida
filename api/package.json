@@ -1,6 +1,6 @@
 {
   "name": "notida",
-  "version": "26.5.1",
+  "version": "26.5.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@dotenvx/dotenvx": "^1.65.0",
-    "bcrypt": "^6.0.0",
+    "argon2": "^0.44.0",
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
     "csrf-csrf": "^4.0.3",

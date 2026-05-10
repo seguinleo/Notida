@@ -1,3 +1,10 @@
+#----v26.5.2----# !! DATABASE CHANGED !!
+-Add a message if note content is obsolete
+-Remove encryption key from db
+-Change psswd hash from bcrypt to Argon2id
+-Change noteId and userId format (UUID)
+-Minor bug fixes
+
 #----v26.5.1----#
 -Add CodeMirror Markdown editor
 -Add Table of content for heading

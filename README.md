@@ -22,19 +22,19 @@ A fast, private and secure web notebook.
 
 ## Features
 
-Users can create task lists, reminders, tables, links, math expressions or code blocks using Markdown and HTML. They can add images, audio or videos via URL. Notes can be searched and sorted by category.
+Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your notes.
 
-Users can sync notes across devices in a secure database after signing in without needing an email address, only a username and strong password. Public notes can be shared via a random URL.
+You can sync your notes across all your devices after logging in (no email address is required, just a username and a strong password). Public notes can be shared with anyone via a random URL.
 
-This website is a Progressive Web App (PWA) that can be installed as an application. Design is responsive and optimized for all mobile devices or macOS/Windows.
+This website is a Progressive Web App (PWA) that can be installed as an application. You can fully customize the application's color theme.
 
-The site is accessible to users with disabilities through high-contrast colors, ARIA modules, and focusable elements.
+This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and focusable elements.
 
 ## Security
 
 The website follows [OWASP security recommendations](https://cheatsheetseries.owasp.org/).
 
-All notes are sanitized and validated through the DOMPurify library. All notes are encrypted with AES-256-GCM. Each user has a cryptographically secure key generated after signing up.
+All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using Argon2id. All notes are encrypted with AES-256-GCM.
 
 Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server, verification is local and UI/UX only.
 
@@ -64,7 +64,7 @@ The project have security features enabled by default, but for production use, I
 * Edit all users, passwords and secret keys
 * Edit **.env** and **docker-compose.yml** files
 * Edit nginx configuration to add SSL
-* To store user encryption keys, I recommend using a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp instead of the database
+* To store MASTER_KEY, I recommend using a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp
 
 > [!IMPORTANT]
 > Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to [install a SSL certificate](https://github.com/seguinleo/WebSecurityCheatSheet) to use note encryption (Web Crypto API requires HTTPs).
