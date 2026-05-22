@@ -412,11 +412,6 @@ input {
     overflow-y: auto;
     width: 350px;
 
-    .main-title {
-      position: absolute;
-      left: -100%;
-    }
-
     .event-image {
       width: 100%;
       max-width: 400px;
@@ -821,9 +816,15 @@ dialog {
   }
 }
 
-#note-historic-content {
-  white-space: pre-wrap;
-  word-break: break-word;
+#note-historic-dialog {
+  .popup {
+    max-width: 1200px;
+  }
+
+  #note-historic-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 }
 
 .reminder-date {
@@ -1150,28 +1151,6 @@ dialog {
   display: flex;
   padding: 10px;
   line-height: 2;
-
-  .title {
-    padding: 2rem 0;
-    text-align: center;
-
-    span {
-      position: relative;
-      z-index: 1;
-      padding: 0 5px;
-
-      &:before {
-        content: "";
-        position: absolute;
-        height: 35%;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(150, 150, 150, .2);
-        z-index: -1;
-      }
-    }
-  }
 
   img {
     margin: 4px;
