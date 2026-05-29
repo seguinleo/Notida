@@ -104,22 +104,34 @@ const getLastLogin = async (userId) => {
  */
 const getAllUserSessions = async (userId) => {
   try {
-    const sessions = await redisClient.sMembers(`user:sessions:${userId}`)
+    const sessionsKey = `user:sessions:${userId}`
 
-    if (!sessions.length) return 0
+    const sessions = await redisClient.sMembers(sessionsKey)
 
-    const valid = await Promise.all(
+    if (sessions.length === 0) {
+      return 0
+    }
+
+    let activeSessions = 0
+
+    await Promise.all(
       sessions.map(async (sid) => {
-        const exists = await redisClient.exists(`notes:${sid}`)
-        if (!exists) {
-          await redisClient.sRem(`user:sessions:${userId}`, sid)
-          return false
+        const ttl = await redisClient.ttl(`notes:${sid}`)
+
+        if (ttl > 0) {
+          activeSessions++
+          return
         }
-        return true
+
+        await redisClient.sRem(sessionsKey, sid)
       })
     )
 
-    return valid.filter(Boolean).length
+    if (activeSessions === 0) {
+      await redisClient.del(sessionsKey)
+    }
+
+    return activeSessions
   } catch {
     return 0
   }

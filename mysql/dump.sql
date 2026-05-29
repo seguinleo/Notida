@@ -14,7 +14,7 @@
 
 CREATE TABLE `notes` (
   `id` CHAR(36) NOT NULL,
-  `title` varchar(63) NOT NULL,
+  `title` text NOT NULL,
   `content` longtext,
   `historic` longtext,
   `color` varchar(63) NOT NULL DEFAULT 'bg-default',
