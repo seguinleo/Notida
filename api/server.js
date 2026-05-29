@@ -30,6 +30,7 @@ const redisStore = new RedisStore({
   client: redisClient,
   prefix: 'notes:',
   ttl: 604800,
+  disableTouch: true
 })
 
 app.use(
