@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.69.1",
+    "@dotenvx/dotenvx": "^1.69.2",
     "argon2": "^0.44.0",
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
@@ -22,5 +22,8 @@
     "passport-local": "^1.0.0",
     "redis": "^6.0.0",
     "zod": "^4.4.3"
+  },
+  "allowScripts": {
+    "argon2@0.44.0": true
   }
 }

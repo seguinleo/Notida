@@ -140,8 +140,14 @@ const getAllUserSessions = async (userId) => {
 /**
  * @description Route to verify if the user is authenticated.
  */
-router.post('/whoami', verifySession, (req, res) => {
-  return res.json({ isAuthenticated: true })
+router.post('/whoami', (req, res) => {
+  if (!req.session?.user) {
+    return res.json({ isAuthenticated: false })
+  }
+
+  return res.json({
+    isAuthenticated: true
+  })
 })
 
 /**
