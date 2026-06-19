@@ -19,7 +19,7 @@ CREATE TABLE `notes` (
   `historic` longtext,
   `color` varchar(63) NOT NULL DEFAULT 'bg-default',
   `creationDate` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updateDate` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `updateDate` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `hiddenNote` tinyint NOT NULL DEFAULT '0',
   `pinnedNote` tinyint NOT NULL DEFAULT '0',
   `folder` varchar(63) DEFAULT NULL,

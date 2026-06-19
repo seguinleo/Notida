@@ -1,22 +1,19 @@
 import express from 'express'
 import session from 'express-session'
 import { RedisStore } from 'connect-redis'
-import { createClient } from 'redis'
 import routes from './routes.js'
+import { pool } from './config/config.js'
 import cron from 'node-cron'
+import { redisClient } from './config/redis.js'
 import { deleteInactiveAccounts } from './cron/cronJobs.js'
 
 const app = express()
 
 app.disable('x-powered-by')
 app.set('trust proxy', 1)
-app.use(express.json({ limit: '50kb' }))
+app.use(express.json({ limit: '100kb' }))
 
 const PORT = process.env.PORT || 3000
-
-const redisClient = createClient({
-  url: process.env.REDIS_URL,
-})
 
 try {
   await redisClient.connect()
@@ -32,6 +29,10 @@ const redisStore = new RedisStore({
   ttl: 604800,
   disableTouch: true
 })
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET is required')
+}
 
 app.use(
   session({
@@ -51,15 +52,31 @@ app.use(
 app.use('/', routes)
 
 // Each day at 12:00 AM
-cron.schedule('0 0 * * *', () => {
-  deleteInactiveAccounts()
+cron.schedule('0 0 * * *', async () => {
+  try {
+    await deleteInactiveAccounts()
+  } catch (err) {
+    console.error('Cron error:', err)
+  }
 })
 
-app.listen(
+const server = app.listen(
   PORT,
   //'127.0.0.1',
   () => {
     console.log(`Server is running on port ${PORT}`)
   })
+
+async function shutdown() {
+  server.close()
+
+  await redisClient.quit()
+  await pool.end()
+
+  process.exit(0)
+}
+
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
 
 export { redisClient }

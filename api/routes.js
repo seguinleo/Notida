@@ -1,6 +1,5 @@
 import express from 'express'
 import cookieParser from 'cookie-parser'
-import { redisClient } from './server.js'
 import crypto from 'crypto'
 import argon2 from 'argon2'
 import { doubleCsrf } from 'csrf-csrf'
@@ -8,6 +7,7 @@ import rateLimit from 'express-rate-limit'
 import Encryption from './class/Encryption.js'
 import { pool } from './config/config.js'
 import passport from './config/passport.js'
+import { redisClient } from './config/redis.js'
 import { z } from 'zod'
 
 const router = express.Router()
@@ -37,19 +37,31 @@ router.use(cookieParser())
 const limiter = rateLimit({
   windowMs: 3 * 60 * 1000,
   max: 100,
-  message: 'Too many requests, please try again later.',
+  handler: (req, res) => {
+    res.status(429).json({
+      message: 'Too many requests, please try again later.'
+    })
+  }
 })
 
 const loginLimiter = rateLimit({
   windowMs: 3 * 60 * 1000,
   max: 5,
-  message: 'Too many requests, please try again later.',
+  handler: (req, res) => {
+    res.status(429).json({
+      message: 'Too many requests, please try again later.'
+    })
+  }
 })
 
 const sharedNoteLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 25,
-  message: 'Too many requests, please try again later.',
+  handler: (req, res) => {
+    res.status(429).json({
+      message: 'Too many requests, please try again later.'
+    })
+  }
 })
 
 router.use(limiter)
@@ -213,7 +225,7 @@ router.post('/create-account', async (req, res) => {
     )
     return res.status(200).send('Account created successfully')
   } catch {
-    return res.status(400).send('Account creation failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -263,12 +275,12 @@ router.post('/login', loginLimiter, async (req, res, next) => {
 
           return res.status(200).send('Logged in!')
         } catch {
-          return res.status(401).send('Wrong username or password.')
+          return res.status(500).json('Internal server error')
         }
       })
     })
   } catch {
-    return res.status(401).send('Wrong username or password.')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -282,13 +294,13 @@ router.post('/logout', verifySession, doubleCsrfProtection, async (req, res) => 
     await redisClient.sRem(`user:sessions:${userId}`, req.sessionID)
 
     req.session.destroy((err) => {
-      if (err) return res.status(400).json('Internal server error')
+      if (err) return res.status(500).json('Internal server error')
       res.clearCookie('connect.sid')
       res.clearCookie('csrfToken')
       return res.status(200).json('Logged out successfully')
     })
   } catch {
-    return res.status(400).json('Internal server error')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -312,13 +324,13 @@ router.post('/logout-all', verifySession, doubleCsrfProtection, async (req, res)
     await redisClient.del(`user:sessions:${userId}`)
 
     req.session.destroy((err) => {
-      if (err) return res.status(400).json('Internal server error')
+      if (err) return res.status(500).json('Internal server error')
       res.clearCookie('connect.sid')
       res.clearCookie('csrfToken')
       return res.status(200).json('All devices logged out successfully')
     })
   } catch {
-    return res.status(400).json('Internal server error')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -363,7 +375,7 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
     }
 
     req.session.destroy((err) => {
-      if (err) return res.status(400).json('Internal server error')
+      if (err) return res.status(500).json('Internal server error')
       res.clearCookie('connect.sid')
       res.clearCookie('csrfToken')
       return res.status(200).json(
@@ -371,7 +383,7 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
       )
     })
   } catch {
-    return res.status(400).json('Internal server error')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -410,7 +422,7 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
     }
 
     req.session.destroy((err) => {
-      if (err) return res.status(400).json('Internal server error')
+      if (err) return res.status(500).json('Internal server error')
       res.clearCookie('connect.sid')
       res.clearCookie('csrfToken')
       return res.status(200).json(
@@ -418,7 +430,7 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
       )
     })
   } catch {
-    return res.status(400).json('Internal server error')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -493,7 +505,7 @@ router.post('/get-notes', verifySession, doubleCsrfProtection, async (req, res) 
 
     return res.status(200).json({ notes, name, lastLogin, allUserSessions, maxNoteContentLength, maxNotesPerUser })
   } catch {
-    return res.status(400).send('Notes retrieval failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -515,7 +527,7 @@ router.post('/get-note-date', verifySession, doubleCsrfProtection, async (req, r
     }
     return res.status(200).json({ date: rows[0].updateDate })
   } catch {
-    return res.status(400).send('Note retrieval failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -559,7 +571,7 @@ router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) =
     )
     return res.status(200).send('Note created successfully')
   } catch {
-    return res.status(400).send('Note creation failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -622,7 +634,7 @@ router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res
     ])
     return res.status(200).send('Note updated successfully')
   } catch {
-    return res.status(400).send('Update failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -642,7 +654,7 @@ router.post('/pin-note', verifySession, doubleCsrfProtection, async (req, res) =
       `, [noteId, userId])
     return res.status(200).send('Note pinned successfully')
   } catch {
-    return res.status(400).send('Pin note failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -658,7 +670,7 @@ router.post('/delete-note', verifySession, doubleCsrfProtection, async (req, res
     await pool.execute("DELETE FROM notes WHERE id = ? AND userId = ? AND link IS NULL", [noteId, userId])
     return res.status(200).send('Note deleted successfully')
   } catch {
-    return res.status(400).send('Note deletion failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -676,7 +688,7 @@ router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res
     await pool.execute("UPDATE notes SET link = ? WHERE id = ? AND userId = ? AND link IS NULL", [noteLink, noteId, userId])
     return res.status(200).send('Note link added successfully')
   } catch {
-    return res.status(400).send('Note modification failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -692,7 +704,7 @@ router.post('/private-note', verifySession, doubleCsrfProtection, async (req, re
     await pool.execute("UPDATE notes SET link = NULL WHERE id = ? AND userId = ?", [noteId, userId])
     return res.status(200).send('Note link removed successfully')
   } catch {
-    return res.status(400).send('Note modification failed')
+    return res.status(500).json('Internal server error')
   }
 })
 
@@ -729,7 +741,7 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
 
     return res.status(200).json(note)
   } catch {
-    return res.status(400).send('Internal server error')
+    return res.status(500).json('Internal server error')
   }
 })
 
