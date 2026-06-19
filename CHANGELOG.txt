@@ -1,3 +1,9 @@
+#----v26.6.1----#
+-Add diff for note history
+-Improve code structure
+-UI/UX fixes
+-Minor fixes
+
 #----v26.5.2----# !! DATABASE CHANGED !!
 -Add a message if note content is obsolete
 -Remove encryption key from db

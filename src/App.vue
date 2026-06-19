@@ -2,243 +2,310 @@
   <div v-if="!onLine" id="offline">
     <p>You are offline</p>
   </div>
-  <header v-if="!isLocked">
-    <button type="button" id="sidebar-indicator" class="btn-small" aria-label="Open sidebar" @click="openSidebar()">
-      <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"
-        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-        class="feather feather-sidebar">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-        <line x1="9" y1="3" x2="9" y2="21"></line>
-      </svg>
+  <div v-if="!isLocked" id="bottom-bar">
+    <button type="button" id="sidebar-indicator" class="btn-small bg-default" aria-label="Open sidebar"
+      @click="openSidebar()">
+      <i class="fa-solid fa-bars"></i>
     </button>
-    <div id="search-section" role="search">
+    <div id="search-section" class="bg-default" role="search">
       <i class="fa-solid fa-magnifying-glass" role="none"></i>
       <input v-model="searchValue" type="search" id="search-input" maxlength="30" aria-label="Search notes"
         autocomplete="off">
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
-  </header>
-  <div v-if="!isLocked" id="sidebar" ref="sidebar">
-    <nav>
-      <div v-if="new Date().getMonth() === 11" class="row">
-        <img src="./assets/img/christmas.png" role="presentation" alt="" class="event-image" loading="lazy">
-      </div>
-      <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
-        class="row">
-        <img src="./assets/img/halloween.png" role="presentation" alt="" class="event-image" loading="lazy">
-      </div>
-      <div class="row nav-buttons">
-        <button v-if="isAuthenticated && !isLocked" type="button" aria-label="Manage account"
-          @click="openManageAccountDialog()">
-          <i class="fa-solid fa-circle-user"></i>
-          <span>Manage account</span>
-        </button>
-        <button v-if="!isAuthenticated && !isLocked" type="button" aria-label="Log in" @click="openLoginDialog()">
-          <i class="fa-solid fa-circle-user"></i>
-          <span>Log in</span>
-        </button>
-        <button type="button" aria-label="Change app color" @click="openColorPickerDialog()">
-          <i class="fa-solid fa-palette"></i>
-          <span>Palette</span>
-        </button>
-        <button v-if="!isLocked" type="button" aria-label="Settings" @click="openSettingsDialog()">
-          <i class="fa-solid fa-gear"></i>
-          <span>Settings</span>
-        </button>
-      </div>
-      <div class="d-flex justify-content-between align-items-center">
-        <p class="bold">
-          Notes
-          ({{ filteredNotes.length }})
-        </p>
-        <div v-if="filteredNotes.length" id="manage-notes">
-          <button v-if="!isLocked" type="button" aria-label="Sort notes" @click="openSortDialog()">
+    <button type="button" id="btn-add-note" class="btn-small bg-default" aria-label="Add a note"
+      @click="openAddNoteDialog()">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+  </div>
+  <div id="layout">
+    <div v-if="!isLocked" id="sidebar" class="bg-default" ref="sidebar">
+      <nav>
+        <div v-if="new Date().getMonth() === 11" class="row">
+          <img src="./assets/img/christmas.png" role="presentation" alt="" class="event-image" loading="lazy">
+        </div>
+        <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
+          class="row">
+          <img src="./assets/img/halloween.png" role="presentation" alt="" class="event-image" loading="lazy">
+        </div>
+        <div class="row nav-buttons">
+          <button v-if="isAuthenticated && !isLocked" type="button" aria-label="Manage account"
+            @click="openManageAccountDialog()">
+            <i class="fa-solid fa-circle-user"></i>
+            <span>Manage account</span>
+          </button>
+          <button v-if="(!isAuthenticated && isAuthenticatedResponse) && !isLocked" type="button" aria-label="Log in"
+            @click="openLoginDialog()">
+            <i class="fa-solid fa-circle-user"></i>
+            <span>Log in</span>
+          </button>
+          <button type="button" aria-label="Change app color" @click="openColorPickerDialog()">
+            <i class="fa-solid fa-palette"></i>
+            <span>Palette</span>
+          </button>
+          <button v-if="!isLocked" type="button" aria-label="Settings" @click="openSettingsDialog()">
+            <i class="fa-solid fa-gear"></i>
+            <span>Settings</span>
+          </button>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <p class="bold">
+            Notes
+            ({{ filteredNotes.length }})
+          </p>
+          <button v-if="!isLocked" type="button" class="btn-small" aria-label="Sort notes" @click="openSortDialog()">
             <i class="fa-solid fa-arrow-up-wide-short"></i>
           </button>
         </div>
-      </div>
-      <div id="list-notes" ref="listNotes">
-        <button v-for="note in filteredNotes" :key="note.id" type="button" @click="toggleFullscreen(note.id, $event)">
-          <span v-if="note.pinned" class="badge">
-            <i class="fa-solid fa-thumbtack"></i>
-          </span>
-          <span v-if="note.link" class="badge">
-            <i class="fa-solid fa-link"></i>
-          </span>
-          <span v-if="note.category" class="badge">
-            <i class="fa-solid fa-tags"></i>
-            {{ note.category }}
-          </span>
-          <span class="title-list">{{ note.title }}</span>
-          <span class="date-list">
-            {{ formatDate(note.date) }}
-          </span>
-        </button>
-      </div>
-    </nav>
-  </div>
-  <main :class="noteLinkInUrl ? 'shared-main' : ''">
-    <div id="success-notification" aria-live="polite" class="d-none"></div>
-    <dialog id="sort-dialog" aria-modal="true">
-      <div class="popup">
-        <div class="content">
-          <div class="popup-header">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
-            </div>
-          </div>
-          <fieldset>
-            <legend>Sort notes</legend>
-            <label class="custom-check">
-              <input type="radio" name="sort-notes" value="1" v-model="sortOption">
-              <span>Modification date</span>
-            </label>
-            <label class="custom-check">
-              <input type="radio" name="sort-notes" value="2" v-model="sortOption">
-              <span>Modification date (Z-A)</span>
-            </label>
-            <label class="custom-check">
-              <input type="radio" name="sort-notes" value="3" v-model="sortOption">
-              <span>Title (A-Z)</span>
-            </label>
-            <label class="custom-check">
-              <input type="radio" name="sort-notes" value="4" v-model="sortOption">
-              <span>Title (Z-A)</span>
-            </label>
-          </fieldset>
-        </div>
-      </div>
-    </dialog>
-    <dialog id="delete-note-dialog" aria-modal="true">
-      <div class="popup">
-        <div class="content">
-          <div class="popup-header">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
-            </div>
-          </div>
-          <form @submit.prevent="isAuthenticated ? deleteCloudNote() : deleteLocalNote()">
-            <div class="error-notification d-none"></div>
-            <div class="row bold">
-              Deletion is permanent!
-            </div>
-            <div class="row">
-              <button type="submit" class="btn-cancel w-100">Delete note</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </dialog>
-    <dialog id="category-dialog" aria-modal="true">
-      <div class="popup">
-        <div class="content">
-          <div class="popup-header">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
-            </div>
-          </div>
-          <div class="row">
-            <label class="custom-check">
-              <input type="radio" name="add-cat" value="" v-model="selectedCategory">
-              <span>
-                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        <div id="list-notes" ref="listNotes">
+          <button v-for="note in filteredNotes" :key="note.id" type="button" @click="toggleFullscreen(note.id, $event)">
+            <div class="d-flex flex-column align-items-start">
+              <span v-if="note.pinned" class="title">
+                <i class="fa-solid fa-thumbtack"></i>
               </span>
-            </label>
-            <label v-for="category in allCategories" :key="category" class="custom-check">
-              <input type="radio" name="add-cat" :value="category" v-model="selectedCategory">
-              <span>{{ category }}</span>
-            </label>
-          </div>
-          <div class="row">
-            <form @submit.prevent="createCategory()">
-              <div class="error-notification d-none"></div>
-              <div class="row">
-                <input type="text" v-model="newCategory" placeholder="Category name" maxlength="18" aria-label="Name"
-                  required>
-              </div>
-              <button type="submit" class="w-100">Create category</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </dialog>
-    <dialog id="reminder-dialog" aria-modal="true">
-      <div class="popup">
-        <div class="content">
-          <div class="popup-header">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
+              <span v-if="note.link" class="title">
+                <i class="fa-solid fa-link"></i>
+              </span>
+              <span class="title">{{ note.title }}</span>
             </div>
-          </div>
-          <div class="row bold">
-            Reminder date
-          </div>
-          <div class="row">
-            <input type="datetime-local" v-model="reminderNote" aria-label="Date">
-          </div>
+            <div class="d-flex flex-column align-items-start">
+              <span v-if="note.category" class="badge bg-default">
+                #{{ note.category }}
+              </span>
+              <span class="sub-title">{{ formatDate(note.date) }}</span>
+            </div>
+          </button>
         </div>
-      </div>
-    </dialog>
-    <dialog id="add-note-dialog" aria-modal="true" ref="addNoteDialog">
-      <div class="popup">
-        <div class="content">
-          <form @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
+      </nav>
+    </div>
+    <main :class="noteLinkInUrl ? 'shared-main' : ''">
+      <div class="error-notification d-none"></div>
+      <div id="success-notification" aria-live="polite" class="d-none"></div>
+      <dialog id="sort-dialog" aria-modal="true">
+        <div class="popup">
+          <div class="content">
             <div class="popup-header">
               <div class="close">
-                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
+                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
                   <i class="fa-solid fa-chevron-left"></i>
                 </button>
               </div>
-              <div class="done">
-                <button type="submit" id="submit-note-btn" aria-label="Save note" :disabled="isBtnDisabled">
-                  <i class="fa-solid fa-check"></i>
-                  Done
+            </div>
+            <fieldset>
+              <legend>Sort notes</legend>
+              <label class="custom-check">
+                <input type="radio" name="sort-notes" value="1" v-model="sortOption">
+                <span class="bg-default">Modification date</span>
+              </label>
+              <label class="custom-check">
+                <input type="radio" name="sort-notes" value="2" v-model="sortOption">
+                <span class="bg-default">Modification date (Z-A)</span>
+              </label>
+              <label class="custom-check">
+                <input type="radio" name="sort-notes" value="3" v-model="sortOption">
+                <span class="bg-default">Title (A-Z)</span>
+              </label>
+              <label class="custom-check">
+                <input type="radio" name="sort-notes" value="4" v-model="sortOption">
+                <span class="bg-default">Title (Z-A)</span>
+              </label>
+            </fieldset>
+          </div>
+        </div>
+      </dialog>
+      <dialog id="delete-note-dialog" aria-modal="true">
+        <div class="popup">
+          <div class="content">
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
                 </button>
               </div>
             </div>
-            <div class="error-notification d-none"></div>
-            <input type="text" v-model="titleNote" maxlength="30" aria-label="Title" placeholder="Title" autofocus
-              required>
-            <div ref="editor" class="editor"></div>
-            <div class="row d-flex justify-content-between">
-              <div>
-                <button type="button" class="btn-small" aria-label="Add a category" @click="openCatDialog()">
-                  <i class="fa-solid fa-tags"></i>
-                </button>
-                <button type="button" class="btn-small" aria-label="Add a reminder" @click="openReminderDialog()">
-                  <i class="fa-solid fa-bell"></i>
-                </button>
+            <form @submit.prevent="isAuthenticated ? deleteCloudNote() : deleteLocalNote()">
+              <div class="error-notification d-none"></div>
+              <div class="row txt-small">
+                <i class="fa-solid fa-circle-info" role="none"></i>
+                <span>Deletion is permanent!</span>
               </div>
-              <div>
-                <span id="textarea-length">
-                  {{ noteContentLength }}/{{ maxNoteContentLength }}
-                </span>
-                <button type="button" @click="clearNoteContent()" aria-label="Clear all content" class="btn-clear">
-                  <i class="fa-solid fa-broom"></i>
+              <div class="row">
+                <button type="submit" class="btn-cancel w-100">Delete note</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </dialog>
+      <dialog id="category-dialog" aria-modal="true">
+        <div class="popup">
+          <div class="content">
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
                 </button>
               </div>
             </div>
             <div class="row">
-              <div id="colors-section">
-                <button v-for="color in allColors" :key="color" type="button" class="btn-color"
-                  :class="[color, { selected: selectedColor === color }]" :aria-label="color"
-                  @click="selectColor(color)"></button>
+              <label class="custom-check">
+                <input type="radio" name="add-cat" value="" v-model="selectedCategory">
+                <span class="bg-default">
+                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </span>
+              </label>
+              <label v-for="category in allCategories" :key="category" class="custom-check">
+                <input type="radio" name="add-cat" :value="category" v-model="selectedCategory">
+                <span class="bg-default">{{ category }}</span>
+              </label>
+            </div>
+            <div class="row">
+              <form @submit.prevent="createCategory()">
+                <div class="error-notification d-none"></div>
+                <div class="row">
+                  <input type="text" v-model="newCategory" placeholder="Category name" id="category-name" maxlength="30"
+                    aria-label="Name" required>
+                </div>
+                <button type="submit" class="w-100 bg-default">Create category</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </dialog>
+      <dialog id="reminder-dialog" aria-modal="true">
+        <div class="popup">
+          <div class="content">
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
               </div>
             </div>
-            <div class="row d-flex align-items-center">
-              <label class="switch-label">
-                Hide content
-              </label>
+            <div class="row bold">
+              Reminder date
+            </div>
+            <div class="row">
+              <input type="datetime-local" v-model="reminderNote" aria-label="Date">
+            </div>
+          </div>
+        </div>
+      </dialog>
+      <dialog id="add-note-dialog" aria-modal="true" ref="addNoteDialog">
+        <div class="popup">
+          <div class="content">
+            <form @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
+              <div class="popup-header">
+                <div class="close">
+                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                </div>
+                <div class="done">
+                  <button type="submit" id="submit-note-btn" aria-label="Save note" :disabled="isBtnDisabled">
+                    <i class="fa-solid fa-check"></i>
+                    Done
+                  </button>
+                </div>
+              </div>
+              <div class="error-notification d-none"></div>
+              <input type="text" v-model="titleNote" maxlength="30" aria-label="Title" id="note-title"
+                placeholder="Title" autofocus required>
+              <div ref="editor" class="editor"></div>
+              <div class="row d-flex justify-content-between">
+                <div>
+                  <button type="button" class="btn-small bg-default" aria-label="Add a category"
+                    @click="openCatDialog()">
+                    <i class="fa-solid fa-tags"></i>
+                  </button>
+                  <button type="button" class="btn-small bg-default" aria-label="Add a reminder"
+                    @click="openReminderDialog()">
+                    <i class="fa-solid fa-bell"></i>
+                  </button>
+                </div>
+                <div>
+                  <span id="textarea-length">
+                    {{ noteContentLength }}/{{ maxNoteContentLength }}
+                  </span>
+                  <button type="button" @click="clearNoteContent()" aria-label="Clear all content" class="btn-clear">
+                    <i class="fa-solid fa-broom"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="row">
+                <div id="colors-section">
+                  <button v-for="color in allColors" :key="color" type="button" class="btn-color"
+                    :class="[color, { selected: selectedColor === color }]" :aria-label="color"
+                    @click="selectColor(color)"></button>
+                </div>
+              </div>
+              <div class="row d-flex align-items-center">
+                <span>
+                  Hide content
+                </span>
+                <label class="switch">
+                  <input type="checkbox" v-model="hiddenNote" class="checkbox" role="switch" aria-label="Hide content">
+                  <span class="toggle-thumb" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
+                      <rect x="12" y="6" width="1" height="12" />
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="on">
+                      <circle cx="12" cy="12" r="5" stroke-width="1" fill="none" />
+                    </svg>
+                  </span>
+                </label>
+              </div>
+            </form>
+          </div>
+        </div>
+      </dialog>
+      <dialog id="colorpicker-dialog" aria-modal="true">
+        <div class="popup popup-small">
+          <div class="content">
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
+            </div>
+            <div class="row bold">
+              Change theme
+            </div>
+            <IroJs />
+          </div>
+        </div>
+      </dialog>
+      <dialog id="settings-dialog" aria-modal="true">
+        <div class="popup popup-small">
+          <div class="content">
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
+            </div>
+            <div class="error-notification d-none"></div>
+            <div class="row">
+              <a href="https://leoseguin.fr/mentionslegales/" rel="noopener noreferrer">Legal notice / privacy</a>
+            </div>
+            <div class="row">
+              <a href="https://github.com/seguinleo/Notida/wiki/Markdown" rel="noopener noreferrer">Markdown guide</a>
+            </div>
+            <div class="row">
+              <a href="https://github.com/seguinleo/Notida/wiki/Shortcuts" rel="noopener noreferrer">Shortcuts</a>
+            </div>
+            <div class="row">
+              <a href="https://github.com/seguinleo/Notida/discussions" rel="noopener noreferrer">Help and
+                discussions</a>
+            </div>
+            <div class="row d-flex align-items-center justify-content-between">
+              <span>
+                Lock app
+              </span>
               <label class="switch">
-                <input type="checkbox" v-model="hiddenNote" class="checkbox" role="switch" aria-label="Hide content">
+                <input v-model="isToggleLockApp" type="checkbox" class="checkbox" @click="toggleLockApp()" role="switch"
+                  aria-label="Lock app">
                 <span class="toggle-thumb" aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
                     <rect x="12" y="6" width="1" height="12" />
@@ -249,413 +316,358 @@
                 </span>
               </label>
             </div>
-          </form>
-        </div>
-      </div>
-    </dialog>
-    <dialog id="colorpicker-dialog" aria-modal="true">
-      <div class="popup popup-small">
-        <div class="content">
-          <div class="popup-header">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
+            <div class="row">
+              <p class="version">
+                GPL-3.0 &copy;
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.6.1</a>
+              </p>
             </div>
           </div>
-          <div class="row bold">
-            Change overall app color
-          </div>
-          <IroJs />
         </div>
-      </div>
-    </dialog>
-    <dialog id="settings-dialog" aria-modal="true">
-      <div class="popup popup-small">
-        <div class="content">
-          <div class="popup-header">
-            <div class="close">
-              <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
-            </div>
-          </div>
-          <div class="error-notification d-none"></div>
-          <div class="row">
-            <a href="https://leoseguin.fr/mentionslegales/" rel="noopener noreferrer">Legal notice / privacy</a>
-          </div>
-          <div class="row">
-            <a href="https://github.com/seguinleo/Notida/wiki/Markdown" rel="noopener noreferrer">Markdown guide</a>
-          </div>
-          <div class="row">
-            <a href="https://github.com/seguinleo/Notida/wiki/Shortcuts" rel="noopener noreferrer">Shortcuts</a>
-          </div>
-          <div class="row">
-            <a href="https://github.com/seguinleo/Notida/discussions" rel="noopener noreferrer">Help and
-              discussions</a>
-          </div>
-          <div class="row d-flex align-items-center justify-content-between">
-            <label class="switch-label">
-              Lock app
-            </label>
-            <label class="switch">
-              <input v-model="isToggleLockApp" type="checkbox" class="checkbox" @click="toggleLockApp()" role="switch"
-                aria-label="Lock app">
-              <span class="toggle-thumb" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
-                  <rect x="12" y="6" width="1" height="12" />
-                </svg>
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="on">
-                  <circle cx="12" cy="12" r="5" stroke-width="1" fill="none" />
-                </svg>
-              </span>
-            </label>
-          </div>
-          <div class="row">
-            <p class="version">
-              GPL-3.0 &copy;
-              <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.5.2</a>
-            </p>
-          </div>
-        </div>
-      </div>
-    </dialog>
-    <template v-if="(isAuthenticated && isAuthenticatedResponse) && !isLocked">
-      <dialog id="manage-dialog" aria-modal="true">
-        <div class="popup">
-          <div class="content">
-            <div class="popup-header">
-              <div class="close">
-                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                  <i class="fa-solid fa-chevron-left"></i>
+      </dialog>
+      <template v-if="(isAuthenticated && isAuthenticatedResponse) && !isLocked">
+        <dialog id="manage-dialog" aria-modal="true">
+          <div class="popup">
+            <div class="content">
+              <div class="popup-header">
+                <div class="close">
+                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="row bold">
+                {{ username }}
+              </div>
+              <div class="row txt-small">
+                <span>Last login: </span>
+                <span>{{ lastLoginDate }}</span>
+              </div>
+              <div class="row">
+                <button type="button" class="w-100 bg-default" @click="fetchLogout()">Log out</button>
+              </div>
+              <div class="row">
+                <button type="button" class="w-100 bg-default" @click="fetchLogoutAll()">
+                  Log out from all devices
+                  ({{ allUserSessions }})
                 </button>
               </div>
+              <div class="row">
+                <span>{{ allUserNotes.length }} / {{ maxNotesPerUser }} notes</span>
+                <progress :max="maxNotesPerUser" :value="allUserNotes.length"></progress>
+              </div>
+              <div class="row bold">
+                Update password
+              </div>
+              <div class="row">
+                <form @submit.prevent="updatePassword()">
+                  <div class="error-notification d-none"></div>
+                  <div class="row">
+                    <input id="old-psswd" type="password" minlength="10" maxlength="64" aria-label="Old password"
+                      placeholder="Old password" required>
+                  </div>
+                  <div class="row">
+                    <input id="new-psswd" type="password" minlength="10" maxlength="64" aria-label="New password"
+                      placeholder="New password" required>
+                  </div>
+                  <div class="row">
+                    <input id="new-psswd-valid" type="password" minlength="10" maxlength="64"
+                      placeholder="Confirm new password" aria-label="Confirm new password" required>
+                  </div>
+                  <button type="submit" class="w-100 bg-default">Update password</button>
+                </form>
+              </div>
+              <div class="row bold">
+                Delete account
+              </div>
+              <div class="row">
+                <form @submit.prevent="deleteAccount()">
+                  <div class="error-notification d-none"></div>
+                  <div class="row">
+                    <input id="delete-psswd" type="password" minlength="10" maxlength="64" placeholder="Password"
+                      aria-label="Password" required>
+                  </div>
+                  <div class="row txt-small">
+                    <i class="fa-solid fa-circle-info" role="none"></i>
+                    <span>Deletion is permanent! All notes will be deleted.</span>
+                  </div>
+                  <button type="submit" class="btn-cancel w-100">Delete account</button>
+                </form>
+              </div>
             </div>
-            <div class="row bold">
-              {{ username }}
-            </div>
-            <div class="row last-login">
-              <span>Last login: </span>
-              <span>{{ lastLoginDate }}</span>
-            </div>
-            <div class="row">
-              <button type="button" class="w-100" @click="fetchLogout()">Log out</button>
-            </div>
-            <div class="row">
-              <button type="button" class="w-100" @click="fetchLogoutAll()">
-                Log out from all devices
-                ({{ allUserSessions }})
-              </button>
-            </div>
-            <div class="row">
-              <span>{{ allUserNotes.length }} / {{ maxNotesPerUser }} notes</span>
-              <progress :max="maxNotesPerUser" :value="allUserNotes.length"></progress>
-            </div>
-            <div class="row bold">
-              Update password
-            </div>
-            <div class="row">
-              <form @submit.prevent="updatePassword()">
+          </div>
+        </dialog>
+        <dialog id="private-note-dialog" aria-modal="true">
+          <div class="popup">
+            <div class="content">
+              <div class="popup-header">
+                <div class="close">
+                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                </div>
+              </div>
+              <form @submit.prevent="publicNote()">
                 <div class="error-notification d-none"></div>
-                <div class="row">
-                  <input id="old-psswd" type="password" minlength="10" maxlength="64" aria-label="Old password"
-                    placeholder="Old password" required>
+                <div class="row txt-small">
+                  <i class="fa-solid fa-circle-info" role="none"></i>
+                  <span>Making your note public generates a random link to share it.</span>
                 </div>
                 <div class="row">
-                  <input id="new-psswd" type="password" minlength="10" maxlength="64" aria-label="New password"
-                    placeholder="New password" required>
+                  <button type="submit" class="w-100 bg-default">Make public</button>
                 </div>
-                <div class="row">
-                  <input id="new-psswd-valid" type="password" minlength="10" maxlength="64"
-                    placeholder="Confirm new password" aria-label="Confirm new password" required>
-                </div>
-                <button type="submit" class="w-100">Update password</button>
               </form>
             </div>
-            <div class="row bold">
-              Delete account
+          </div>
+        </dialog>
+        <dialog id="public-note-dialog" aria-modal="true">
+          <div class="popup">
+            <div class="content">
+              <div class="popup-header">
+                <div class="close">
+                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="row d-flex">
+                <p id="public-note-link" class="bg-default">{{ noteLink }}</p>
+                <button type="button" class="btn-small bg-default" aria-label="Copy link" @click="copySharedNoteLink()">
+                  <i class="fa-solid fa-clipboard"></i>
+                </button>
+              </div>
+              <form @submit.prevent="privateNote()">
+                <div class="error-notification d-none"></div>
+                <div class="row txt-small">
+                  <i class="fa-solid fa-circle-info" role="none"></i>
+                  <span>Making your note private removes the link.</span>
+                </div>
+                <div class="row">
+                  <button type="submit" class="btn-cancel w-100">Make private</button>
+                </div>
+              </form>
             </div>
-            <div class="row">
-              <form @submit.prevent="deleteAccount()">
+          </div>
+        </dialog>
+        <dialog id="note-historic-dialog" aria-modal="true">
+          <div class="popup">
+            <div class="content">
+              <div class="popup-header">
+                <div class="close">
+                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="row bold">
+                Last note version
+              </div>
+              <div class="row">
+                <p id="note-historic-content"></p>
+              </div>
+            </div>
+          </div>
+        </dialog>
+      </template>
+      <template v-else-if="isAuthenticatedResponse && !isLocked">
+        <dialog id="login-dialog" aria-modal="true">
+          <div class="popup">
+            <div class="content">
+              <div class="popup-header">
+                <div class="close">
+                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                </div>
+              </div>
+              <form autocomplete="off" @submit.prevent="loginUser()">
                 <div class="error-notification d-none"></div>
                 <div class="row">
-                  <input id="delete-psswd" type="password" minlength="10" maxlength="64" placeholder="Password"
+                  <input id="name-login" type="text" minlength="3" maxlength="30" spellcheck="false" placeholder="Name"
+                    autocapitalize="off" aria-label="Name" required>
+                </div>
+                <div class="row">
+                  <input id="psswd-login" type="password" minlength="10" maxlength="64" placeholder="Password"
                     aria-label="Password" required>
                 </div>
                 <div class="row">
-                  <i class="fa-solid fa-circle-info" role="none"></i>
-                  <span>Deletion is permanent! All notes will be deleted.</span>
+                  <button type="submit" class="w-100 bg-default" :disabled="isBtnDisabled">Log in</button>
                 </div>
-                <button type="submit" class="btn-cancel w-100">Delete account</button>
+                <div class="row align-center">
+                  <button type="button" class="w-100 bg-default" @click="openCreateAccountDialog()">Don't have an
+                    account yet?</button>
+                </div>
               </form>
             </div>
           </div>
-        </div>
-      </dialog>
-      <dialog id="private-note-dialog" aria-modal="true">
-        <div class="popup">
-          <div class="content">
-            <div class="popup-header">
-              <div class="close">
-                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
+        </dialog>
+        <dialog id="create-account-dialog" aria-modal="true">
+          <div class="popup">
+            <div class="content">
+              <div class="popup-header">
+                <div class="close">
+                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                </div>
+              </div>
+              <form autocomplete="off" @submit.prevent="createAccount()">
+                <div class="error-notification d-none"></div>
+                <div class="row">
+                  <input id="name-create" type="text" minlength="3" maxlength="30" spellcheck="false"
+                    autocapitalize="off" placeholder="Name" aria-label="Name" required>
+                </div>
+                <div class="row">
+                  <input id="psswd-create" type="password" minlength="10" maxlength="64" placeholder="Password"
+                    aria-label="Password" required>
+                </div>
+                <div class="row">
+                  <input id="psswd-create-valid" type="password" minlength="10" maxlength="64"
+                    placeholder="Confirm password" aria-label="Confirm password" required>
+                </div>
+                <div class="row">
+                  <i class="fa-solid fa-circle-info" role="none"></i>
+                  <span>Your password is stored securely and your notes are encrypted. You will not be able to recover
+                    your password if you forget it. Save your local notes before log in!</span>
+                </div>
+                <div class="row">
+                  <button type="submit" class="w-100 bg-default">Create my account</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </dialog>
+        <div v-if="allUserNotes.length === 0" class="welcome">
+          <div class="details">
+            <h1 class="align-center">
+              <span>Welcome to Notida!</span>
+            </h1>
+            <div class="details-content">
+              <div>
+                <p class="align-center">
+                  <img alt="App icon" src="/pwa/apple-touch-icon.png" width="64" height="64">
+                </p>
+                <p class="align-center italic">
+                  A fast, private and secure web notebook.
+                </p>
+                <p class="align-center">
+                  <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8">
+                  <img alt="Open source" src="https://img.shields.io/badge/project-open_source-blue">
+                </p>
+                <h2>📝Features</h2>
+                <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML
+                  and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your
+                  notes.
+                </p>
+                <p>You can sync your notes across all your devices after logging in (no email address is required, just
+                  a
+                  username and a strong password). Public notes can be shared with anyone via a random URL.</p>
+                <p>This website is a Progressive Web App (PWA) that can be installed as an application. You can fully
+                  customize the application's color theme.</p>
+                <p>This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and
+                  focusable elements.</p>
+                <h2>🔒Security</h2>
+                <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
+                    security recommendations</a>.
+                </p>
+                <p>All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using
+                  Argon2id. All notes are encrypted with AES-256-GCM.</p>
+                <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never
+                  sent
+                  to the server, verification is local and UI/UX only.</p>
+                <p>User accounts are deleted 1 year after the last login.</p>
+                <h2>🌐Community</h2>
+                <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
+                  to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
               </div>
             </div>
-            <form @submit.prevent="publicNote()">
-              <div class="error-notification d-none"></div>
-              <div class="row">
-                <span>Do you want to make your note public? A link will be available to share it.</span>
-              </div>
-              <div class="row">
-                <button type="submit" class="w-100">Make public</button>
-              </div>
-            </form>
           </div>
         </div>
-      </dialog>
-      <dialog id="public-note-dialog" aria-modal="true">
-        <div class="popup">
-          <div class="content">
-            <div class="popup-header">
-              <div class="close">
-                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
+      </template>
+      <template v-if="noteLinkInUrl">
+        <h1 v-if="sharedNote === null">Note not found or expired.</h1>
+        <div v-else class="shared-note">
+          <div class="details">
+            <h2 class="title">
+              {{ sharedNote.title }}
+            </h2>
+            <div v-if="sharedNote.reminder" class="row align-center">
+              <span class="reminder-date bg-default">
+                <i class="fa-solid fa-bell"></i>
+                {{ formatDate(sharedNote.reminder) }}
+              </span>
+            </div>
+            <div class="details-content">
+              <div v-html="sharedNote.contentHtml"></div>
+            </div>
+          </div>
+          <div class="date">
+            {{ formatDate(sharedNote.date) }}
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <button v-if="isLocked" id="btn-unlock-float" type="button" class="bg-default" aria-label="Unlock app"
+          @click="unlockApp()">
+          <i class="fa-solid fa-lock"></i>
+        </button>
+        <template v-else>
+          <div v-for="note in filteredNotes" :key="note.id" class="note" :class="[
+            note.color,
+            { 'hidden-note': note.hidden },
+            { 'fullscreen-note': fullscreenNoteId === note.id }
+          ]" @click="toggleFullscreen(note.id, $event)">
+            <div class="details">
+              <h2 class="title">
+                {{ note.title }}
+              </h2>
+              <div v-if="note.reminder" class="row align-center">
+                <span class="reminder-date bg-default">
+                  <i class="fa-solid fa-bell"></i>
+                  {{ formatDate(note.reminder) }}
+                </span>
+              </div>
+              <div class="details-content">
+                <div v-if="note.hidden">Hidden note</div>
+                <div v-else v-html="note.contentHtml"></div>
               </div>
             </div>
-            <div class="d-flex">
-              <p id="public-note-link">{{ noteLink }}</p>
-              <button type="button" class="btn-small" aria-label="Copy link" @click="copySharedNoteLink()">
+            <div class="date">
+              {{ formatDate(note.date) }}
+            </div>
+            <div class="bottom-content">
+              <button type="button" @click.stop="noteActions(note, 'edit-note')" aria-label="Edit note">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button v-if="note.pinned" type="button" @click.stop="noteActions(note, 'pin-note')"
+                aria-label="Unpin note">
+                <i class="fa-solid fa-thumbtack-slash"></i>
+              </button>
+              <button v-else type="button" @click.stop="noteActions(note, 'pin-note')" aria-label="Pin note">
+                <i class="fa-solid fa-thumbtack"></i>
+              </button>
+              <button v-if="note.content" type="button" @click.stop="noteActions(note, 'copy-note')"
+                aria-label="Copy note">
                 <i class="fa-solid fa-clipboard"></i>
               </button>
-            </div>
-            <form @submit.prevent="privateNote()">
-              <div class="error-notification d-none"></div>
-              <div class="row">
-                <span>Do you want to make your note private? The link will no longer be available.</span>
-              </div>
-              <div class="row">
-                <button type="submit" class="btn-cancel w-100">Make private</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </dialog>
-      <dialog id="note-historic-dialog" aria-modal="true">
-        <div class="popup">
-          <div class="content">
-            <div class="popup-header">
-              <div class="close">
-                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
-              </div>
-            </div>
-            <div class="row bold">
-              Last note version
-            </div>
-            <div class="row">
-              <p id="note-historic-content"></p>
+              <button v-if="!note.link" type="button" @click.stop="noteActions(note, 'delete-note')"
+                aria-label="Delete note">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+              <button v-if="isAuthenticated && note.content" type="button" @click.stop="noteActions(note, 'share-note')"
+                aria-label="Share note">
+                <i class="fa-solid fa-link"></i>
+              </button>
+              <button v-if="isAuthenticated && note.historic" type="button"
+                @click.stop="noteActions(note, 'historic-note')" aria-label="Show note historic">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+              </button>
             </div>
           </div>
-        </div>
-      </dialog>
-    </template>
-    <template v-else-if="isAuthenticatedResponse && !isLocked">
-      <dialog id="login-dialog" aria-modal="true">
-        <div class="popup">
-          <div class="content">
-            <div class="popup-header">
-              <div class="close">
-                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
-              </div>
-            </div>
-            <form autocomplete="off" @submit.prevent="loginUser()">
-              <div class="error-notification d-none"></div>
-              <div class="row">
-                <input id="name-login" type="text" minlength="3" maxlength="30" spellcheck="false" placeholder="Name"
-                  autocapitalize="off" aria-label="Name" required>
-              </div>
-              <div class="row">
-                <input id="psswd-login" type="password" minlength="10" maxlength="64" placeholder="Password"
-                  aria-label="Password" required>
-              </div>
-              <div class="row">
-                <button type="submit" class="w-100" :disabled="isBtnDisabled">Log in</button>
-              </div>
-              <div class="row align-center">
-                <button type="button" class="w-100" @click="openCreateAccountDialog()">Don't have an
-                  account yet?</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </dialog>
-      <dialog id="create-account-dialog" aria-modal="true">
-        <div class="popup">
-          <div class="content">
-            <div class="popup-header">
-              <div class="close">
-                <button type="button" aria-label="Close dialog" @click="closeDialog($event)">
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
-              </div>
-            </div>
-            <form autocomplete="off" @submit.prevent="createAccount()">
-              <div class="error-notification d-none"></div>
-              <div class="row">
-                <input id="name-create" type="text" minlength="3" maxlength="30" spellcheck="false" autocapitalize="off"
-                  placeholder="Name" aria-label="Name" required>
-              </div>
-              <div class="row">
-                <input id="psswd-create" type="password" minlength="10" maxlength="64" placeholder="Password"
-                  aria-label="Password" required>
-              </div>
-              <div class="row">
-                <input id="psswd-create-valid" type="password" minlength="10" maxlength="64"
-                  placeholder="Confirm password" aria-label="Confirm password" required>
-              </div>
-              <div class="row">
-                <i class="fa-solid fa-circle-info" role="none"></i>
-                <span>Your password is stored securely and your notes are encrypted. You will not be able to recover
-                  your password if you forget it. Save your local notes before log in!</span>
-              </div>
-              <div class="row">
-                <button type="submit" class="w-100">Create my account</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </dialog>
-      <div v-if="allUserNotes.length === 0" class="welcome">
-        <div class="details">
-          <h1 class="align-center">
-            <span>Welcome to Notida!</span>
-          </h1>
-          <div class="details-content">
-            <div>
-              <p class="align-center">
-                <img alt="App icon" src="/pwa/apple-touch-icon.png" width="64" height="64">
-              </p>
-              <p class="align-center italic">
-                A fast, private and secure web notebook.
-              </p>
-              <p class="align-center">
-                <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8">
-                <img alt="Open source" src="https://img.shields.io/badge/project-open_source-blue">
-              </p>
-              <h2>📝Features</h2>
-              <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML
-                and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your notes.
-              </p>
-              <p>You can sync your notes across all your devices after logging in (no email address is required, just a
-                username and a strong password). Public notes can be shared with anyone via a random URL.</p>
-              <p>This website is a Progressive Web App (PWA) that can be installed as an application. You can fully
-                customize the application's color theme.</p>
-              <p>This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and
-                focusable elements.</p>
-              <h2>🔒Security</h2>
-              <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
-                  security recommendations</a>.
-              </p>
-              <p>All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using
-                Argon2id. All notes are encrypted with AES-256-GCM.</p>
-              <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent
-                to the server, verification is local and UI/UX only.</p>
-              <p>User accounts are deleted 1 year after the last login.</p>
-              <h2>🌐Community</h2>
-              <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
-                to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-    <template v-if="noteLinkInUrl">
-      <h1 v-if="sharedNote === null">Note not found or expired.</h1>
-      <div v-else class="shared-note">
-        <div class="details">
-          <h2 class="title">
-            {{ sharedNote.title }}
-          </h2>
-          <div v-if="sharedNote.reminder" class="row align-center">
-            <span class="reminder-date">
-              <i class="fa-solid fa-bell"></i>
-              {{ formatDate(sharedNote.reminder) }}
-            </span>
-          </div>
-          <div class="details-content">
-            <div v-html="sharedNote.contentHtml"></div>
-          </div>
-        </div>
-        <div class="bottom-content">
-          {{ formatDate(sharedNote.date) }}
-        </div>
-      </div>
-    </template>
-    <template v-else>
-      <button v-if="isLocked" id="btn-unlock-float" type="button" aria-label="Unlock app" @click="unlockApp()">
-        <i class="fa-solid fa-lock"></i>
-      </button>
-      <button v-else type="button" id="btn-add-note" aria-label="Add a note" @click="openAddNoteDialog()">
-        <i class="fa-solid fa-plus"></i>
-        <span>Add note</span>
-      </button>
-      <div v-for="note in filteredNotes" :key="note.id" class="note" :class="[
-        note.color,
-        { 'hidden-note': note.hidden },
-        { 'fullscreen-note': fullscreenNoteId === note.id }
-      ]" @click="toggleFullscreen(note.id, $event)">
-        <div class="details">
-          <h2 class="title">
-            {{ note.title }}
-          </h2>
-          <div v-if="note.reminder" class="row align-center">
-            <span class="reminder-date">
-              <i class="fa-solid fa-bell"></i>
-              {{ formatDate(note.reminder) }}
-            </span>
-          </div>
-          <div class="details-content">
-            <div v-if="note.hidden">Hidden note</div>
-            <div v-else v-html="note.contentHtml"></div>
-          </div>
-        </div>
-        <div class="date">
-          {{ formatDate(note.date) }}
-        </div>
-        <div class="bottom-content">
-          <button type="button" @click.stop="noteActions(note, 'edit-note')" aria-label="Edit note">
-            <i class="fa-solid fa-pen"></i>
-          </button>
-          <button v-if="note.pinned" type="button" @click.stop="noteActions(note, 'pin-note')" aria-label="Unpin note">
-            <i class="fa-solid fa-thumbtack-slash"></i>
-          </button>
-          <button v-else type="button" @click.stop="noteActions(note, 'pin-note')" aria-label="Pin note">
-            <i class="fa-solid fa-thumbtack"></i>
-          </button>
-          <button v-if="note.content" type="button" @click.stop="noteActions(note, 'copy-note')" aria-label="Copy note">
-            <i class="fa-solid fa-clipboard"></i>
-          </button>
-          <button v-if="!note.link" type="button" @click.stop="noteActions(note, 'delete-note')"
-            aria-label="Delete note">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
-          <button v-if="isAuthenticated && note.content" type="button" @click.stop="noteActions(note, 'share-note')"
-            aria-label="Share note">
-            <i class="fa-solid fa-link"></i>
-          </button>
-          <button v-if="isAuthenticated && note.historic" type="button" @click.stop="noteActions(note, 'historic-note')"
-            aria-label="Show note historic">
-            <i class="fa-solid fa-clock-rotate-left"></i>
-          </button>
-        </div>
-      </div>
-    </template>
-  </main>
+        </template>
+      </template>
+    </main>
+  </div>
 </template>
 
 <script>
@@ -671,6 +683,7 @@ import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { markdown } from '@codemirror/lang-markdown'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { gfmHeadingId } from 'marked-gfm-heading-id'
+import { diffWords } from 'diff'
 
 const MARKED_CONFIG = {
   breaks: true,
@@ -747,7 +760,7 @@ export default {
       urlParams: '',
       noteLink: '',
       noteLinkInUrl: '',
-      sharedNote: null,
+      sharedNote: null
     }
   },
   components: { IroJs },
@@ -758,7 +771,7 @@ export default {
       else localStorage.setItem('sort_notes', this.sortOption)
       if (this.isAuthenticated) await this.getCloudNotes()
       else await this.getLocalNotes()
-    }
+    },
   },
   computed: {
     filteredNotes() {
@@ -953,8 +966,8 @@ export default {
           data
         )
         return JSON.parse(new TextDecoder().decode(decrypted))
-      } catch {
-        this.showError('An error occurred while decrypting the notes')
+      } catch (err) {
+        this.showError(`An error occurred while decrypting the notes - ${err}`)
         return null
       }
     },
@@ -993,8 +1006,8 @@ export default {
         this.isToggleLockApp = lockApp
         this.fingerprintEnabled = lockApp
         this.isLocked = lockApp
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async toggleLockApp() {
@@ -1060,8 +1073,8 @@ export default {
           },
         })
         return true
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
         return false
       }
     },
@@ -1097,8 +1110,8 @@ export default {
         this.fingerprintEnabled = true
         this.isLocked = false
         return true
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
         this.isToggleLockApp = false
         return false
       }
@@ -1138,8 +1151,8 @@ export default {
         }
         document.querySelector('#create-account-dialog').close()
         this.showSuccess('Account successfully created! You can now log in.')
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       } finally {
         document.querySelector('#psswd-create').value = ''
         document.querySelector('#psswd-create-valid').value = ''
@@ -1179,8 +1192,8 @@ export default {
           return
         }
         window.location.reload()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async fetchLogout() {
@@ -1196,8 +1209,8 @@ export default {
           return
         }
         window.location.reload()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async fetchLogoutAll() {
@@ -1213,8 +1226,8 @@ export default {
           return
         }
         window.location.reload()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async updatePassword() {
@@ -1244,8 +1257,8 @@ export default {
           return
         }
         window.location.reload()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       } finally {
         document.querySelector('#old-psswd').value = ''
         document.querySelector('#new-psswd').value = ''
@@ -1271,8 +1284,8 @@ export default {
           return
         }
         window.location.reload()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       } finally {
         document.querySelector('#delete-psswd').value = ''
       }
@@ -1282,11 +1295,20 @@ export default {
         const res = await fetch('api/whoami', {
           method: 'POST'
         })
+        if (res.status === 404) {
+          this.showError('Internal server error')
+          return
+        }
+        if (!res.ok) {
+          const error = await res.json()
+          this.showError(error.message)
+          return
+        }
         const data = await res.json()
         this.isAuthenticated = data.isAuthenticated
         this.isAuthenticatedResponse = true
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async noteActions(note, action) {
@@ -1314,7 +1336,7 @@ export default {
 
       if (action === 'share-note') return this.shareNote(note.id, note.link)
 
-      if (action === 'historic-note') return this.openNoteHistoricDialog(note.id, note.historic)
+      if (action === 'historic-note') return this.openNoteHistoricDialog(note.id, note.content, note.historic)
     },
     async normalizeNote(row) {
       const {
@@ -1390,8 +1412,8 @@ export default {
             default: break
           }
         })
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async addLocalNote() {
@@ -1465,8 +1487,8 @@ export default {
         localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
         this.$refs.addNoteDialog.close()
         await this.getLocalNotes()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async pinLocalNote(noteId) {
@@ -1548,8 +1570,8 @@ export default {
             default: break
           }
         })
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async addCloudNote() {
@@ -1619,8 +1641,8 @@ export default {
         }
         this.$refs.addNoteDialog.close()
         await this.getCloudNotes()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       } finally {
         this.isBtnDisabled = false
       }
@@ -1642,8 +1664,8 @@ export default {
           return
         }
         await this.getCloudNotes()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async deleteCloudNote() {
@@ -1671,8 +1693,8 @@ export default {
         }
         document.querySelector('#public-note-dialog').close()
         await this.getCloudNotes()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async publicNote() {
@@ -1694,8 +1716,8 @@ export default {
         }
         document.querySelector('#private-note-dialog').close()
         await this.getCloudNotes()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async fetchDeleteNote(noteId) {
@@ -1715,8 +1737,8 @@ export default {
           return
         }
         await this.getCloudNotes()
-      } catch {
-        this.showError('An error occurred')
+      } catch (err) {
+        this.showError(`An error occurred - ${err}`)
       }
     },
     async renderSharedNote() {
@@ -1783,6 +1805,7 @@ export default {
       document.querySelector('#manage-dialog').showModal()
     },
     openLoginDialog() {
+      if (!document.querySelector('#login-dialog')) return
       document.querySelector('#login-dialog').showModal()
     },
     openSettingsDialog() {
@@ -1819,10 +1842,26 @@ export default {
     openReminderDialog() {
       document.querySelector('#reminder-dialog').showModal()
     },
-    openNoteHistoricDialog(noteId, historic) {
-      if (!noteId || !historic) return
+    openNoteHistoricDialog(noteId, currentContent, historicContent) {
+      if (!noteId || !historicContent) return
+
+      const diff = diffWords(historicContent, currentContent)
+
+      const container = document.querySelector('#note-historic-content')
+      container.replaceChildren()
+
+      diff.forEach(part => {
+        const node = document.createElement('span')
+        node.textContent = part.value
+
+        if (part.added) {
+          node.classList.add('diff-added')
+        } else if (part.removed) {
+          node.classList.add('diff-removed')
+        }
+        container.appendChild(node)
+      })
       document.querySelector('#note-historic-dialog').showModal()
-      document.querySelector('#note-historic-content').textContent = historic
     },
     async openUpdateNoteDialog(noteId, title, content, color, hidden, category, reminder) {
       if (hidden && this.fingerprintEnabled) {
