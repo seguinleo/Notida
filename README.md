@@ -49,16 +49,17 @@ The project is configured to start with a single Docker command:
 
 ## Production
 
-The project have security features enabled by default, but for production use, I recommend to:
+The main security features are enabled by default, but for production use, I recommend to:
 
 * Change NODE_ENV to "production" in .env
 * Edit all users, passwords and secret keys
 * Edit **.env** and **docker-compose.yml** files
 * Edit nginx configuration to add SSL
-* To store MASTER_KEY, I recommend using a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp
+* Store the MASTER_KEY in a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp
 
 .env template
-```
+
+```ini
 #NODE_ENV=production
 NODE_ENV=development
 

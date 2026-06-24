@@ -21,7 +21,7 @@ const {
   doubleCsrfProtection
 } = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET,
-  getSessionIdentifier: (req) => req.sessionID || req.ip,
+  getSessionIdentifier: (req) => req.sessionID,
   cookieName: 'csrfToken',
   cookieOptions: {
     httpOnly: true,
@@ -86,7 +86,7 @@ const uuidSchema = z.string().uuid()
  * Important: For production, consider using a more secure key management strategy, such as AWS KMS or HashiCorp Vault.
  * The key shoud never be sent to the client!
  */
-const getKey = async (userId) => {
+const getKey = (userId) => {
   if (!uuidSchema.safeParse(userId).success) return null
 
   return crypto
@@ -96,48 +96,40 @@ const getKey = async (userId) => {
 }
 
 /**
- * @function getLastLogin
- * @description Get the last login timestamp for a user.
- */
-const getLastLogin = async (userId) => {
-  try {
-    const [rows] = await pool.execute("SELECT lastLogin FROM users WHERE id = ? LIMIT 1", [userId])
-
-    if (rows.length !== 1) return 0
-    return rows[0].lastLogin
-  } catch {
-    return 0
-  }
-}
-
-/**
  * @function getAllUserSessions
  * @description Get number of active sessions for a user and clean old sessions.
  */
 const getAllUserSessions = async (userId) => {
   try {
     const sessionsKey = `user:sessions:${userId}`
-
     const sessions = await redisClient.sMembers(sessionsKey)
 
     if (sessions.length === 0) {
       return 0
     }
 
+    const pipeline = redisClient.multi()
+
+    for (const sid of sessions) {
+      pipeline.ttl(`notes:${sid}`)
+    }
+
+    const results = await pipeline.exec()
+
     let activeSessions = 0
+    const expiredSessions = []
 
-    await Promise.all(
-      sessions.map(async (sid) => {
-        const ttl = await redisClient.ttl(`notes:${sid}`)
+    results.forEach((ttl, index) => {
+      if (ttl > 0) {
+        activeSessions++
+      } else {
+        expiredSessions.push(sessions[index])
+      }
+    })
 
-        if (ttl > 0) {
-          activeSessions++
-          return
-        }
-
-        await redisClient.sRem(sessionsKey, sid)
-      })
-    )
+    if (expiredSessions.length > 0) {
+      await redisClient.sRem(sessionsKey, expiredSessions)
+    }
 
     if (activeSessions === 0) {
       await redisClient.del(sessionsKey)
@@ -150,24 +142,19 @@ const getAllUserSessions = async (userId) => {
 }
 
 /**
- * @description Route to verify if the user is authenticated.
+ * @description Route to verify if the user is authenticated and return csrf token
  */
-router.post('/whoami', (req, res) => {
+router.get('/whoami', (req, res) => {
   if (!req.session?.user) {
     return res.json({ isAuthenticated: false })
   }
 
-  return res.json({
-    isAuthenticated: true
-  })
-})
-
-/**
- * @description Route to send CSRF token to client.
- */
-router.get("/csrf-token", (req, res) => {
   const token = generateCsrfToken(req, res)
-  res.json({ csrfToken: token })
+
+  return res.json({
+    isAuthenticated: true,
+    csrfToken: token
+  })
 })
 
 const createAccountSchema = z.object({
@@ -220,7 +207,7 @@ router.post('/create-account', async (req, res) => {
 
   try {
     await pool.execute(
-      "INSERT INTO users (id, name, psswd, creationDate) VALUES (?, ?, ?, ?)",
+      'INSERT INTO users (id, name, psswd, creationDate) VALUES (?, ?, ?, ?)',
       [userId, nameCreate, psswdCreateHash, currentDate]
     )
     return res.status(200).send('Account created successfully')
@@ -349,7 +336,7 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
 
   try {
     const [rows] = await pool.execute(
-      "SELECT psswd FROM users WHERE id = ? LIMIT 1",
+      'SELECT psswd FROM users WHERE id = ? LIMIT 1',
       [userId]
     )
 
@@ -360,7 +347,7 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
     const psswdNewHash = await argon2.hash(psswdNew)
 
     await pool.execute(
-      "UPDATE users SET psswd = ? WHERE id = ?",
+      'UPDATE users SET psswd = ? WHERE id = ?',
       [psswdNewHash, userId]
     )
 
@@ -402,14 +389,14 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
 
   try {
     const [rows] = await pool.execute(
-      "SELECT psswd FROM users WHERE id = ? LIMIT 1",
+      'SELECT psswd FROM users WHERE id = ? LIMIT 1',
       [userId]
     )
     if (rows.length !== 1 || !(await argon2.verify(rows[0].psswd, psswd))) {
       return res.status(400).json('Wrong password')
     }
 
-    await pool.execute("DELETE FROM users WHERE id = ?", [userId])
+    await pool.execute('DELETE FROM users WHERE id = ?', [userId])
 
     const sessions = await redisClient.sMembers(`user:sessions:${userId}`)
 
@@ -439,18 +426,18 @@ const noteSchema = z.object({
   content: z.string().max(maxNoteContentLength),
   date: z.string(),
   color: z.enum([
-    "bg-default",
-    "bg-red",
-    "bg-orange",
-    "bg-yellow",
-    "bg-lime",
-    "bg-green",
-    "bg-cyan",
-    "bg-light-blue",
-    "bg-blue",
-    "bg-purple",
-    "bg-pink"
-  ]).default("bg-default"),
+    'bg-default',
+    'bg-red',
+    'bg-orange',
+    'bg-yellow',
+    'bg-lime',
+    'bg-green',
+    'bg-cyan',
+    'bg-light-blue',
+    'bg-blue',
+    'bg-purple',
+    'bg-pink'
+  ]).default('bg-default'),
   hidden: z.number().int().min(0).max(1).default(0),
   category: z.string().max(63).nullable().optional(),
   reminder: z.string().max(63).nullable().optional()
@@ -463,51 +450,83 @@ const updateNoteSchema = noteSchema.extend({
 /**
  * @description Route to get all user notes
  */
-router.post('/get-notes', verifySession, doubleCsrfProtection, async (req, res) => {
-  const userId = req.user.id
-  const name = req.user.name
-  const key = await getKey(userId)
-  const lastLogin = await getLastLogin(userId)
-  const allUserSessions = await getAllUserSessions(userId)
+router.post(
+  '/get-notes',
+  verifySession,
+  doubleCsrfProtection,
+  async (req, res) => {
+    const userId = req.user.id
+    const name = req.user.name
 
-  if (!key) return res.status(400).send('Notes retrieval failed')
+    const key = getKey(userId)
 
-  try {
-    const [rows] = await pool.execute(`
-        SELECT id, title, content, historic, color, updateDate, hiddenNote, category, pinnedNote, link, reminder
-        FROM notes
-        WHERE userId = ?
-      `, [userId])
-
-    if (rows.length === 0) {
-      return res.status(200).json({ notes: [], name, lastLogin, maxNoteContentLength, maxNotesPerUser })
+    if (!key) {
+      return res.status(400).send('Notes retrieval failed')
     }
 
-    const notes = rows.map(row => {
-      const title = encryption.decryptData(row.title, key)
-      const content = encryption.decryptData(row.content, key)
-      const historic = encryption.decryptData(row.historic, key)
+    try {
+      const [
+        [userRows],
+        allUserSessions,
+        [noteRows]
+      ] = await Promise.all([
+        pool.execute(
+          'SELECT lastLogin FROM users WHERE id = ? LIMIT 1',
+          [userId]
+        ),
+        getAllUserSessions(userId),
+        pool.execute(`
+          SELECT
+            id,
+            title,
+            content,
+            historic,
+            color,
+            updateDate,
+            hiddenNote,
+            category,
+            pinnedNote,
+            link,
+            reminder
+          FROM notes
+          WHERE userId = ?
+        `, [userId])
+      ])
 
-      return {
+      const lastLogin =
+        userRows.length === 1
+          ? userRows[0].lastLogin
+          : 0
+
+      const notes = noteRows.map(row => ({
         id: row.id,
-        title,
-        content,
-        historic,
+        title: encryption.decryptData(row.title, key),
+        content: encryption.decryptData(row.content, key),
+        historic: row.historic
+          ? encryption.decryptData(row.historic, key)
+          : '',
         color: row.color,
         date: row.updateDate,
-        category: row.category || null,
-        link: row.link || null,
+        category: row.category,
+        link: row.link,
         hidden: row.hiddenNote,
         pinned: row.pinnedNote,
-        reminder: row.reminder || null,
-      }
-    })
+        reminder: row.reminder
+      }))
 
-    return res.status(200).json({ notes, name, lastLogin, allUserSessions, maxNoteContentLength, maxNotesPerUser })
-  } catch {
-    return res.status(500).json('Internal server error')
+      return res.status(200).json({
+        notes,
+        name,
+        lastLogin,
+        allUserSessions,
+        maxNoteContentLength,
+        maxNotesPerUser
+      })
+    } catch {
+      return res.status(500).json('Internal server error')
+    }
   }
-})
+)
 
 router.post('/get-note-date', verifySession, doubleCsrfProtection, async (req, res) => {
   const { noteId } = req.body
@@ -519,7 +538,7 @@ router.post('/get-note-date', verifySession, doubleCsrfProtection, async (req, r
 
   try {
     const [rows] = await pool.execute(
-      "SELECT updateDate FROM notes WHERE id = ? AND userId = ?",
+      'SELECT updateDate FROM notes WHERE id = ? AND userId = ?',
       [noteId, userId]
     )
     if (rows.length !== 1) {
@@ -537,17 +556,21 @@ router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) =
 
   const userId = req.user.id
 
-  const [rows] = await pool.execute(
-    "SELECT COUNT(*) as count FROM notes WHERE userId = ?",
-    [userId]
-  )
+  try {
+    const [rows] = await pool.execute(
+      'SELECT COUNT(*) as count FROM notes WHERE userId = ?',
+      [userId]
+    )
 
-  if (rows[0].count >= maxNotesPerUser) {
-    return res.status(403).send('Note limit reached')
+    if (rows[0].count >= maxNotesPerUser) {
+      return res.status(403).send('Note limit reached')
+    }
+  } catch {
+    return res.status(500).json('Internal server error')
   }
 
   const { title, content, date, color, hidden, category, reminder } = parsed.data
-  const key = await getKey(userId)
+  const key = getKey(userId)
 
   if (!userId || !key || !title) return res.status(400).send('Note creation failed')
 
@@ -555,7 +578,7 @@ router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) =
 
   try {
     await pool.execute(
-      "INSERT INTO notes (id, title, content, creationDate, updateDate, color, hiddenNote, category, reminder, userId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      'INSERT INTO notes (id, title, content, creationDate, updateDate, color, hiddenNote, category, reminder, userId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         noteId,
         encryption.encryptData(title.trim(), key),
@@ -580,18 +603,8 @@ router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res
   if (!parsed.success) return res.status(400).send('Invalid input')
 
   const userId = req.user.id
-
-  const [rows] = await pool.execute(
-    "SELECT COUNT(*) as count FROM notes WHERE userId = ?",
-    [userId]
-  )
-
-  if (rows[0].count >= maxNotesPerUser) {
-    return res.status(403).send('Note limit reached')
-  }
-
   const { noteId, title, content, date, color, hidden, category, reminder } = parsed.data
-  const key = await getKey(userId)
+  const key = getKey(userId)
 
   if (!uuidSchema.safeParse(noteId).success) {
     return res.status(400).send('Invalid note id')
@@ -667,7 +680,7 @@ router.post('/delete-note', verifySession, doubleCsrfProtection, async (req, res
   }
 
   try {
-    await pool.execute("DELETE FROM notes WHERE id = ? AND userId = ? AND link IS NULL", [noteId, userId])
+    await pool.execute('DELETE FROM notes WHERE id = ? AND userId = ? AND link IS NULL', [noteId, userId])
     return res.status(200).send('Note deleted successfully')
   } catch {
     return res.status(500).json('Internal server error')
@@ -685,7 +698,7 @@ router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res
   const noteLink = crypto.randomBytes(16).toString('hex')
 
   try {
-    await pool.execute("UPDATE notes SET link = ? WHERE id = ? AND userId = ? AND link IS NULL", [noteLink, noteId, userId])
+    await pool.execute('UPDATE notes SET link = ? WHERE id = ? AND userId = ? AND link IS NULL', [noteLink, noteId, userId])
     return res.status(200).send('Note link added successfully')
   } catch {
     return res.status(500).json('Internal server error')
@@ -701,7 +714,7 @@ router.post('/private-note', verifySession, doubleCsrfProtection, async (req, re
   }
 
   try {
-    await pool.execute("UPDATE notes SET link = NULL WHERE id = ? AND userId = ?", [noteId, userId])
+    await pool.execute('UPDATE notes SET link = NULL WHERE id = ? AND userId = ?', [noteId, userId])
     return res.status(200).send('Note link removed successfully')
   } catch {
     return res.status(500).json('Internal server error')
@@ -729,7 +742,7 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
 
     const { title: encryptedTitle, content: encryptedContent, updateDate, reminder, userId } = noteRows[0]
 
-    const key = await getKey(userId)
+    const key = getKey(userId)
     if (!key) return res.status(400).send('Internal server error')
 
     const note = {
