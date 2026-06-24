@@ -319,7 +319,7 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.6.1</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.6.2</a>
               </p>
             </div>
           </div>
@@ -551,8 +551,9 @@
                   A fast, private and secure web notebook.
                 </p>
                 <p class="align-center">
-                  <img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8">
-                  <img alt="Open source" src="https://img.shields.io/badge/project-open_source-blue">
+                  <img alt="License" height="20"
+                    src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8">
+                  <img alt="Open source" height="20" src="https://img.shields.io/badge/project-open_source-blue">
                 </p>
                 <h2>📝Features</h2>
                 <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML
@@ -684,6 +685,8 @@ import { markdown } from '@codemirror/lang-markdown'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { gfmHeadingId } from 'marked-gfm-heading-id'
 import { diffWords } from 'diff'
+import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
+import '@fortawesome/fontawesome-free/css/solid.min.css'
 
 const MARKED_CONFIG = {
   breaks: true,
@@ -1293,7 +1296,7 @@ export default {
     async isUserAuthenticated() {
       try {
         const res = await fetch('api/whoami', {
-          method: 'POST'
+          method: 'GET'
         })
         if (res.status === 404) {
           this.showError('Internal server error')
@@ -1306,6 +1309,7 @@ export default {
         }
         const data = await res.json()
         this.isAuthenticated = data.isAuthenticated
+        this.csrfToken = data.csrfToken
         this.isAuthenticatedResponse = true
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
@@ -1517,20 +1521,10 @@ export default {
       this.sortOption = localStorage.getItem('sort_notes') || '1'
 
       try {
-        const csrfRes = await fetch('api/csrf-token/', {
-          method: 'GET'
-        })
-
-        if (!csrfRes.ok) throw new Error(`An error occurred - ${csrfRes.status}`)
-
-        const csrfResponse = await csrfRes.json()
-
-        this.csrfToken = csrfResponse.csrfToken
-
         const res = await fetch('api/get-notes/', {
           method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
             'x-csrf-token': this.csrfToken
           },
         })
