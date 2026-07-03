@@ -1,3 +1,82 @@
+:root {
+  --bg: rgba(255, 255, 255, .1);
+  --surface: #111;
+  --text: #ddd;
+  --hover: rgba(255, 255, 255, .2);
+  --primary: #009b00;
+  --primary-transparent: #009b0080;
+}
+
+html {
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: rgba(150, 150, 150, .4) transparent;
+  scrollbar-width: thin;
+  accent-color: var(--primary);
+  font-family: OpenSans, Helvetica Neue, Helvetica, Arial, sans-serif;
+}
+
+body {
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+html.light {
+  --bg: rgba(0, 0, 0, .05);
+  --surface: #fff;
+  --text: #111;
+  --hover: rgba(0, 0, 0, .1);
+
+  scrollbar-color: rgba(0, 0, 0, .3) transparent;
+
+  \::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, .3);
+  }
+
+  .bg-red {
+    background: #ff8787;
+  }
+
+  .bg-orange {
+    background: #ffc65c;
+  }
+
+  .bg-yellow {
+    background: #fdf488;
+  }
+
+  .bg-lime {
+    background: #bcf88a;
+  }
+
+  .bg-green {
+    background: #80e47a;
+  }
+
+  .bg-cyan {
+    background: #bbfdec;
+  }
+
+  .bg-light-blue {
+    background: #d2eff7;
+  }
+
+  .bg-blue {
+    background: #b4caf6;
+  }
+
+  .bg-purple {
+    background: #d1acff;
+  }
+
+  .bg-pink {
+    background: #fdd0e7;
+  }
+}
+
 @font-face {
   font-family: OpenSans;
   font-style: normal;
@@ -14,99 +93,6 @@
   src: url("../fonts/OpenSans-700.woff2") format("woff2");
 }
 
-html {
-  color: #dddddd;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-text-size-adjust: 100%;
-  scrollbar-color: rgba(150, 150, 150, .4) transparent;
-  scrollbar-width: thin;
-  accent-color: #009b00;
-  font-family: OpenSans, Helvetica Neue, Helvetica, Arial, sans-serif;
-
-  &.light {
-    color: #111111;
-    scrollbar-color: rgba(0, 0, 0, .3) transparent;
-
-    \::-webkit-scrollbar-thumb {
-      background: rgba(0, 0, 0, .3);
-    }
-
-    .bg-red {
-      background: #ff8787;
-    }
-
-    .bg-orange {
-      background: #ffc65c;
-    }
-
-    .bg-yellow {
-      background: #fdf488;
-    }
-
-    .bg-lime {
-      background: #bcf88a;
-    }
-
-    .bg-green {
-      background: #80e47a;
-    }
-
-    .bg-cyan {
-      background: #bbfdec;
-    }
-
-    .bg-light-blue {
-      background: #d2eff7;
-    }
-
-    .bg-blue {
-      background: #b4caf6;
-    }
-
-    .bg-purple {
-      background: #d1acff;
-    }
-
-    .bg-pink {
-      background: #fdd0e7;
-    }
-
-    .bg-default {
-      background: rgba(0, 0, 0, .05);
-    }
-
-    hr {
-      border-top: 2px solid rgba(0, 0, 0, .05);
-    }
-
-    input,
-    #colors-section button,
-    fieldset {
-      border: 2px solid rgba(0, 0, 0, .05);
-    }
-
-    button:hover {
-      background: rgba(0, 0, 0, .1);
-    }
-
-    .switch .toggle-thumb {
-      background-color: rgba(0, 0, 0, .15);
-    }
-
-    blockquote {
-      border-left: 3px solid rgba(0, 0, 0, .05);
-    }
-
-    .fullscreen-note {
-      background: rgba(255, 255, 255, .1) !important;
-    }
-
-    .popup .content {
-      background: #fff;
-    }
-  }
-}
-
 * {
   color: inherit;
   margin: 0;
@@ -114,7 +100,7 @@ html {
 }
 
 :focus-visible {
-  outline: 2px solid #009b00;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -125,13 +111,6 @@ html {
 \::-webkit-scrollbar {
   width: 4px;
   height: 4px;
-}
-
-body {
-  max-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 #layout {
@@ -214,11 +193,13 @@ nav {
       width: 100%;
       height: 60px;
       text-align: left;
-      border-radius: 0;
+      border-radius: 4px;
+      padding: 0 4px;
       gap: 4px;
+      border-left: 3px solid transparent;
 
       &:hover {
-        border-left: 2px solid #009b0080;
+        border-left: 3px solid var(--primary-transparent);
       }
     }
 
@@ -356,12 +337,12 @@ kbd {
 
 hr {
   border: none;
-  border-top: 2px solid rgba(255, 255, 255, .1);
+  border-top: 2px solid var(--bg);
   margin: 10px 0;
 }
 
 fieldset {
-  border: 2px solid rgba(255, 255, 255, .1);
+  border: 2px solid var(--bg);
   border-radius: 10px;
   padding: 10px;
   margin: 10px 0;
@@ -372,7 +353,7 @@ fieldset {
 }
 
 blockquote {
-  border-left: 3px solid rgba(255, 255, 255, .1);
+  border-left: 3px solid var(--bg);
   padding-left: 10px;
 }
 
@@ -428,7 +409,7 @@ input {
 }
 
 input {
-  border: 2px solid rgba(255, 255, 255, .1);
+  border: 2px solid var(--bg);
 }
 
 select {
@@ -444,8 +425,10 @@ button {
   border-radius: 20px;
   border: none;
 
-  &:hover {
-    background: rgba(255, 255, 255, .2);
+  &:not(.btn-color) {
+    &:hover {
+      background: var(--hover)
+    }
   }
 
   &:disabled {
@@ -592,12 +575,12 @@ input {
 .done button,
 #btn-add-note,
 #success-notification {
-  background: #009b0080;
+  background: var(--primary-transparent);
 }
 
-.btn-cancel,
+.btn-danger,
 .error-notification {
-  background: #ea424280;
+  background: #ea424280 !important;
 }
 
 .hidden-note .details-content {
@@ -648,16 +631,16 @@ input {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, .1);
-  }
+    border: 2px solid var(--bg);
 
-  .btn-color.selected {
-    outline: 2px solid #009b00;
+    &.selected {
+      outline: 2px solid var(--primary);
+    }
   }
 }
 
 .bg-default {
-  background: rgba(255, 255, 255, .1);
+  background: var(--bg);
 }
 
 dialog {
@@ -681,7 +664,7 @@ dialog {
       padding: 4px 1rem;
       border-radius: 1rem;
       border: 1px solid rgba(255, 255, 255, .2);
-      background: #000;
+      background: var(--surface);
     }
   }
 
@@ -757,7 +740,7 @@ dialog {
   }
 
   input:focus+span {
-    outline: 2px solid #009b00;
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
 }
@@ -771,6 +754,8 @@ dialog {
     white-space: pre-wrap;
     word-break: break-word;
     font-size: .9rem;
+    max-height: calc(100dvh - 120px);
+    overflow-y: auto;
   }
 }
 
@@ -815,7 +800,7 @@ dialog {
     border: 0;
 
     &:checked+.toggle-thumb {
-      background-color: #009b0080;
+      background-color: var(--primary-transparent);
     }
 
     &:checked+.toggle-thumb:before {
@@ -832,7 +817,7 @@ dialog {
     }
 
     &:focus-visible+.toggle-thumb {
-      outline: 2px solid #009b00;
+      outline: 2px solid var(--primary);
       outline-offset: 2px;
     }
   }
@@ -847,7 +832,7 @@ dialog {
     justify-content: space-between;
     align-items: center;
     padding: 0 6px;
-    background-color: rgba(255, 255, 255, .2);
+    background-color: var(--bg);
     border-radius: 40px;
     cursor: pointer;
     transition: background-color .3s ease;

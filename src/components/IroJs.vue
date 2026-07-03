@@ -45,9 +45,7 @@ export default {
       })
       if (color.hsl.l >= 45) {
         document.querySelector('html').classList.add('light')
-        document.querySelector('html').classList.remove('dark')
       } else {
-        document.querySelector('html').classList.add('dark')
         document.querySelector('html').classList.remove('light')
       }
       localStorage.setItem('accent_color', color.hexString)

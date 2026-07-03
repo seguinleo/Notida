@@ -1,3 +1,10 @@
+#----v26.7.1----#
+-Add CORS for production
+-Improve code structure
+    -Optimize css
+-UI/UX fixes
+    -Improve light/dark mode
+
 #----v26.6.2----#
 -Move fontawesome locally
 -Performance fixes
