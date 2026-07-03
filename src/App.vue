@@ -127,10 +127,10 @@
               <div class="error-notification d-none"></div>
               <div class="row txt-small">
                 <i class="fa-solid fa-circle-info" role="none"></i>
-                <span>Deletion is permanent!</span>
+                <span class="italic">Deletion is permanent!</span>
               </div>
               <div class="row">
-                <button type="submit" class="btn-cancel w-100">Delete note</button>
+                <button type="submit" class="btn-danger w-100">Delete note</button>
               </div>
             </form>
           </div>
@@ -319,7 +319,7 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.6.2</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.7.1</a>
               </p>
             </div>
           </div>
@@ -340,8 +340,8 @@
                 {{ username }}
               </div>
               <div class="row txt-small">
-                <span>Last login: </span>
-                <span>{{ lastLoginDate }}</span>
+                Last login
+                {{ lastLoginDate }}
               </div>
               <div class="row">
                 <button type="button" class="w-100 bg-default" @click="fetchLogout()">Log out</button>
@@ -389,9 +389,9 @@
                   </div>
                   <div class="row txt-small">
                     <i class="fa-solid fa-circle-info" role="none"></i>
-                    <span>Deletion is permanent! All notes will be deleted.</span>
+                    <span class="italic">Deletion is permanent! All notes will be deleted.</span>
                   </div>
-                  <button type="submit" class="btn-cancel w-100">Delete account</button>
+                  <button type="submit" class="btn-danger w-100">Delete account</button>
                 </form>
               </div>
             </div>
@@ -411,7 +411,7 @@
                 <div class="error-notification d-none"></div>
                 <div class="row txt-small">
                   <i class="fa-solid fa-circle-info" role="none"></i>
-                  <span>Making your note public generates a random link to share it.</span>
+                  <span class="italic">Making your note public generates a random link to share it.</span>
                 </div>
                 <div class="row">
                   <button type="submit" class="w-100 bg-default">Make public</button>
@@ -440,10 +440,10 @@
                 <div class="error-notification d-none"></div>
                 <div class="row txt-small">
                   <i class="fa-solid fa-circle-info" role="none"></i>
-                  <span>Making your note private removes the link.</span>
+                  <span class="italic">Making your note private removes the link.</span>
                 </div>
                 <div class="row">
-                  <button type="submit" class="btn-cancel w-100">Make private</button>
+                  <button type="submit" class="btn-danger w-100">Make private</button>
                 </div>
               </form>
             </div>
@@ -460,7 +460,7 @@
                 </div>
               </div>
               <div class="row bold">
-                Last note version
+                Last version
               </div>
               <div class="row">
                 <p id="note-historic-content"></p>
@@ -527,7 +527,8 @@
                 </div>
                 <div class="row">
                   <i class="fa-solid fa-circle-info" role="none"></i>
-                  <span>Your password is stored securely and your notes are encrypted. You will not be able to recover
+                  <span class="italic">Your password is stored securely and your notes are encrypted. You will not be
+                    able to recover
                     your password if you forget it. Save your local notes before log in!</span>
                 </div>
                 <div class="row">

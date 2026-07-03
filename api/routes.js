@@ -193,7 +193,7 @@ const deleteAccountSchema = z.object({
 /**
  * @description Route to create a new user account.
  */
-router.post('/create-account', async (req, res) => {
+router.post('/create-account', loginLimiter, async (req, res) => {
   const parsed = createAccountSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).send('Account creation failed')
@@ -680,7 +680,7 @@ router.post('/delete-note', verifySession, doubleCsrfProtection, async (req, res
   }
 
   try {
-    await pool.execute('DELETE FROM notes WHERE id = ? AND userId = ? AND link IS NULL', [noteId, userId])
+    await pool.execute('DELETE FROM notes WHERE id = ? AND userId = ?', [noteId, userId])
     return res.status(200).send('Note deleted successfully')
   } catch {
     return res.status(500).json('Internal server error')

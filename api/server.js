@@ -1,5 +1,6 @@
 import express from 'express'
 import session from 'express-session'
+import cors from 'cors'
 import { RedisStore } from 'connect-redis'
 import routes from './routes.js'
 import { pool } from './config/config.js'
@@ -11,6 +12,24 @@ const app = express()
 
 app.disable('x-powered-by')
 app.set('trust proxy', 1)
+
+const allowedOrigins = [
+  process.env.ORIGIN_URL,
+]
+
+if (process.env.NODE_ENV === 'production') {
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true)
+      if (allowedOrigins.includes(origin)) return callback(null, true)
+      return callback(new Error('Not allowed by CORS'))
+    },
+    credentials: true,
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'x-csrf-token']
+  }))
+}
+
 app.use(express.json({ limit: '100kb' }))
 
 const PORT = process.env.PORT || 3000
@@ -62,7 +81,6 @@ cron.schedule('0 0 * * *', async () => {
 
 const server = app.listen(
   PORT,
-  //'127.0.0.1',
   () => {
     console.log(`Server is running on port ${PORT}`)
   })
