@@ -1,6 +1,6 @@
 {
   "name": "notida",
-  "version": "26.7.1",
+  "version": "26.7.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,14 +13,14 @@
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/search": "^6.7.1",
-    "@codemirror/state": "^6.7.0",
+    "@codemirror/state": "^6.7.1",
     "@codemirror/theme-one-dark": "^6.1.3",
-    "@codemirror/view": "^6.43.4",
+    "@codemirror/view": "^6.43.6",
     "@fortawesome/fontawesome-free": "^7.3.0",
     "@jaames/iro": "^5.5.2",
     "diff": "^9.0.0",
-    "dompurify": "^3.4.11",
-    "marked": "^18.0.5",
+    "dompurify": "^3.4.12",
+    "marked": "^18.0.6",
     "marked-gfm-heading-id": "^4.1.4",
     "marked-katex-extension": "^5.1.10",
     "vue": "^3.5.39"
@@ -28,9 +28,9 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vitejs/plugin-vue": "^6.0.7",
-    "eslint": "^10.6.0",
+    "eslint": "^10.7.0",
     "eslint-plugin-vue": "^10.9.2",
     "globals": "^17.7.0",
-    "vite": "^8.1.3"
+    "vite": "^8.1.4"
   }
 }
