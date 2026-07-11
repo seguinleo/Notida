@@ -14,7 +14,7 @@
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
     <button type="button" id="btn-add-note" class="btn-small bg-default" aria-label="Add a note"
-      @click="openAddNoteDialog()">
+      @click="openAddNoteModal()">
       <i class="fa-solid fa-plus"></i>
     </button>
   </div>
@@ -30,20 +30,20 @@
         </div>
         <div class="row nav-buttons">
           <button v-if="isAuthenticated && !isLocked" type="button" aria-label="Manage account"
-            @click="openManageAccountDialog()">
+            @click="showManageAccountModal = true">
             <i class="fa-solid fa-circle-user"></i>
             <span>Manage account</span>
           </button>
           <button v-if="(!isAuthenticated && isAuthenticatedResponse) && !isLocked" type="button" aria-label="Log in"
-            @click="openLoginDialog()">
+            @click="showLoginModal = true">
             <i class="fa-solid fa-circle-user"></i>
             <span>Log in</span>
           </button>
-          <button type="button" aria-label="Change app color" @click="openColorPickerDialog()">
+          <button type="button" aria-label="Change app color" @click="showColorPickerModal = true">
             <i class="fa-solid fa-palette"></i>
             <span>Palette</span>
           </button>
-          <button v-if="!isLocked" type="button" aria-label="Settings" @click="openSettingsDialog()">
+          <button v-if="!isLocked" type="button" aria-label="Settings" @click="showSettingsModal = true">
             <i class="fa-solid fa-gear"></i>
             <span>Settings</span>
           </button>
@@ -53,7 +53,8 @@
             Notes
             ({{ filteredNotes.length }})
           </p>
-          <button v-if="!isLocked" type="button" class="btn-small" aria-label="Sort notes" @click="openSortDialog()">
+          <button v-if="!isLocked" type="button" class="btn-small" aria-label="Sort notes"
+            @click="showSortNotesModal = true">
             <i class="fa-solid fa-arrow-up-wide-short"></i>
           </button>
         </div>
@@ -79,14 +80,15 @@
       </nav>
     </div>
     <main :class="noteLinkInUrl ? 'shared-main' : ''">
-      <div class="error-notification d-none"></div>
+      <div id="error-notification" aria-live="polite" class="d-none"></div>
       <div id="success-notification" aria-live="polite" class="d-none"></div>
-      <dialog id="sort-dialog" aria-modal="true">
+      <div v-show="showSortNotesModal" class="modal" role="dialog"
+        aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="popup-header">
               <div class="close">
-                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                <button type="button" aria-label="Close modal" class="bg-default" @click="showSortNotesModal = false">
                   <i class="fa-solid fa-chevron-left"></i>
                 </button>
               </div>
@@ -112,19 +114,19 @@
             </fieldset>
           </div>
         </div>
-      </dialog>
-      <dialog id="delete-note-dialog" aria-modal="true">
+      </div>
+      <div v-show="showDeleteNoteModal" class="modal" role="dialog"
+        aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="popup-header">
               <div class="close">
-                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                <button type="button" aria-label="Close modal" class="bg-default" @click="showDeleteNoteModal = false">
                   <i class="fa-solid fa-chevron-left"></i>
                 </button>
               </div>
             </div>
             <form @submit.prevent="isAuthenticated ? deleteCloudNote() : deleteLocalNote()">
-              <div class="error-notification d-none"></div>
               <div class="row txt-small">
                 <i class="fa-solid fa-circle-info" role="none"></i>
                 <span class="italic">Deletion is permanent!</span>
@@ -135,68 +137,15 @@
             </form>
           </div>
         </div>
-      </dialog>
-      <dialog id="category-dialog" aria-modal="true">
-        <div class="popup">
-          <div class="content">
-            <div class="popup-header">
-              <div class="close">
-                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
-              </div>
-            </div>
-            <div class="row">
-              <label class="custom-check">
-                <input type="radio" name="add-cat" value="" v-model="selectedCategory">
-                <span class="bg-default">
-                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                </span>
-              </label>
-              <label v-for="category in allCategories" :key="category" class="custom-check">
-                <input type="radio" name="add-cat" :value="category" v-model="selectedCategory">
-                <span class="bg-default">{{ category }}</span>
-              </label>
-            </div>
-            <div class="row">
-              <form @submit.prevent="createCategory()">
-                <div class="error-notification d-none"></div>
-                <div class="row">
-                  <input type="text" v-model="newCategory" placeholder="Category name" id="category-name" maxlength="30"
-                    aria-label="Name" required>
-                </div>
-                <button type="submit" class="w-100 bg-default">Create category</button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </dialog>
-      <dialog id="reminder-dialog" aria-modal="true">
-        <div class="popup">
-          <div class="content">
-            <div class="popup-header">
-              <div class="close">
-                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
-              </div>
-            </div>
-            <div class="row bold">
-              Reminder date
-            </div>
-            <div class="row">
-              <input type="datetime-local" v-model="reminderNote" aria-label="Date">
-            </div>
-          </div>
-        </div>
-      </dialog>
-      <dialog id="add-note-dialog" aria-modal="true" ref="addNoteDialog">
+      </div>
+      <div v-show="showAddNoteModal" id="add-note-modal" class="modal"
+        role="dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <form @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
               <div class="popup-header">
                 <div class="close">
-                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <button type="button" aria-label="Close modal" class="bg-default" @click="showAddNoteModal = false">
                     <i class="fa-solid fa-chevron-left"></i>
                   </button>
                 </div>
@@ -207,18 +156,17 @@
                   </button>
                 </div>
               </div>
-              <div class="error-notification d-none"></div>
               <input type="text" v-model="titleNote" maxlength="30" aria-label="Title" id="note-title"
-                placeholder="Title" autofocus required>
+                placeholder="Title" required>
               <div ref="editor" class="editor"></div>
               <div class="row d-flex justify-content-between">
                 <div>
                   <button type="button" class="btn-small bg-default" aria-label="Add a category"
-                    @click="openCatDialog()">
+                    @click="showCategoryModal = true">
                     <i class="fa-solid fa-tags"></i>
                   </button>
                   <button type="button" class="btn-small bg-default" aria-label="Add a reminder"
-                    @click="openReminderDialog()">
+                    @click="showReminderModal = true">
                     <i class="fa-solid fa-bell"></i>
                   </button>
                 </div>
@@ -257,13 +205,73 @@
             </form>
           </div>
         </div>
-      </dialog>
-      <dialog id="colorpicker-dialog" aria-modal="true">
-        <div class="popup popup-small">
+      </div>
+      <div v-show="showCategoryModal" class="modal" role="dialog"
+        aria-modal="true">
+        <div class="popup">
           <div class="content">
             <div class="popup-header">
               <div class="close">
-                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                <button type="button" aria-label="Close modal" class="bg-default" @click="showCategoryModal = false">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <label class="custom-check">
+                <input type="radio" name="add-cat" value="" v-model="selectedCategory">
+                <span class="bg-default">
+                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </span>
+              </label>
+              <label v-for="category in allCategories" :key="category" class="custom-check">
+                <input type="radio" name="add-cat" :value="category" v-model="selectedCategory">
+                <span class="bg-default">{{ category }}</span>
+              </label>
+            </div>
+            <div class="row">
+              <form @submit.prevent="createCategory()">
+                <div class="row">
+                  <input type="text" v-model="newCategory" placeholder="Category name" id="category-name" maxlength="30"
+                    aria-label="Name" required>
+                </div>
+                <div class="row txt-small">
+                  <i class="fa-solid fa-circle-info" role="none"></i>
+                  <span class="italic">Categories not linked to notes are removed!</span>
+                </div>
+                <button type="submit" class="w-100 bg-default">Create category</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-show="showReminderModal" class="modal" role="dialog"
+        aria-modal="true">
+        <div class="popup">
+          <div class="content">
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close modal" class="bg-default" @click="showReminderModal = false">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+              </div>
+            </div>
+            <div class="row bold">
+              Reminder date
+            </div>
+            <div class="row">
+              <input type="datetime-local" v-model="reminderNote" aria-label="Date">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-show="showColorPickerModal" class="modal" role="dialog"
+        aria-modal="true">
+        <div class="popup">
+          <div class="content">
+            <div class="popup-header">
+              <div class="close">
+                <button type="button" aria-label="Close modal" class="bg-default" @click="showColorPickerModal = false">
                   <i class="fa-solid fa-chevron-left"></i>
                 </button>
               </div>
@@ -274,18 +282,18 @@
             <IroJs />
           </div>
         </div>
-      </dialog>
-      <dialog id="settings-dialog" aria-modal="true">
-        <div class="popup popup-small">
+      </div>
+      <div v-show="showSettingsModal" class="modal" role="dialog"
+        aria-modal="true">
+        <div class="popup">
           <div class="content">
             <div class="popup-header">
               <div class="close">
-                <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                <button type="button" aria-label="Close modal" class="bg-default" @click="showSettingsModal = false">
                   <i class="fa-solid fa-chevron-left"></i>
                 </button>
               </div>
             </div>
-            <div class="error-notification d-none"></div>
             <div class="row">
               <a href="https://leoseguin.fr/mentionslegales/" rel="noopener noreferrer">Legal notice / privacy</a>
             </div>
@@ -319,19 +327,21 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.7.1</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.7.2</a>
               </p>
             </div>
           </div>
         </div>
-      </dialog>
+      </div>
       <template v-if="(isAuthenticated && isAuthenticatedResponse) && !isLocked">
-        <dialog id="manage-dialog" aria-modal="true">
+        <div v-show="showManageAccountModal" class="modal" role="dialog"
+          aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
                 <div class="close">
-                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <button type="button" aria-label="Close modal" class="bg-default"
+                    @click="showManageAccountModal = false">
                     <i class="fa-solid fa-chevron-left"></i>
                   </button>
                 </div>
@@ -353,7 +363,7 @@
                 </button>
               </div>
               <div class="row">
-                <span>{{ allUserNotes.length }} / {{ maxNotesPerUser }} notes</span>
+                <span class="txt-small">{{ allUserNotes.length }} / {{ maxNotesPerUser }} notes</span>
                 <progress :max="maxNotesPerUser" :value="allUserNotes.length"></progress>
               </div>
               <div class="row bold">
@@ -361,7 +371,6 @@
               </div>
               <div class="row">
                 <form @submit.prevent="updatePassword()">
-                  <div class="error-notification d-none"></div>
                   <div class="row">
                     <input id="old-psswd" type="password" minlength="10" maxlength="64" aria-label="Old password"
                       placeholder="Old password" required>
@@ -382,7 +391,6 @@
               </div>
               <div class="row">
                 <form @submit.prevent="deleteAccount()">
-                  <div class="error-notification d-none"></div>
                   <div class="row">
                     <input id="delete-psswd" type="password" minlength="10" maxlength="64" placeholder="Password"
                       aria-label="Password" required>
@@ -396,19 +404,20 @@
               </div>
             </div>
           </div>
-        </dialog>
-        <dialog id="private-note-dialog" aria-modal="true">
+        </div>
+        <div v-show="showPrivateNoteModal" class="modal" role="dialog"
+          aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
                 <div class="close">
-                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <button type="button" aria-label="Close modal" class="bg-default"
+                    @click="showPrivateNoteModal = false">
                     <i class="fa-solid fa-chevron-left"></i>
                   </button>
                 </div>
               </div>
               <form @submit.prevent="publicNote()">
-                <div class="error-notification d-none"></div>
                 <div class="row txt-small">
                   <i class="fa-solid fa-circle-info" role="none"></i>
                   <span class="italic">Making your note public generates a random link to share it.</span>
@@ -419,25 +428,26 @@
               </form>
             </div>
           </div>
-        </dialog>
-        <dialog id="public-note-dialog" aria-modal="true">
+        </div>
+        <div v-show="showPublicNoteModal" class="modal" role="dialog"
+          aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
                 <div class="close">
-                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <button type="button" aria-label="Close modal" class="bg-default"
+                    @click="showPublicNoteModal = false">
                     <i class="fa-solid fa-chevron-left"></i>
                   </button>
                 </div>
               </div>
               <div class="row d-flex">
-                <p id="public-note-link" class="bg-default">{{ noteLink }}</p>
+                <p id="public-note-link" class="bg-default txt-small">{{ noteLink }}</p>
                 <button type="button" class="btn-small bg-default" aria-label="Copy link" @click="copySharedNoteLink()">
                   <i class="fa-solid fa-clipboard"></i>
                 </button>
               </div>
               <form @submit.prevent="privateNote()">
-                <div class="error-notification d-none"></div>
                 <div class="row txt-small">
                   <i class="fa-solid fa-circle-info" role="none"></i>
                   <span class="italic">Making your note private removes the link.</span>
@@ -448,13 +458,15 @@
               </form>
             </div>
           </div>
-        </dialog>
-        <dialog id="note-historic-dialog" aria-modal="true">
+        </div>
+        <div v-show="showNoteHistoricModal" id="note-historic-modal"
+          class="modal" role="dialog" aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
                 <div class="close">
-                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <button type="button" aria-label="Close modal" class="bg-default"
+                    @click="showNoteHistoricModal = false">
                     <i class="fa-solid fa-chevron-left"></i>
                   </button>
                 </div>
@@ -467,21 +479,20 @@
               </div>
             </div>
           </div>
-        </dialog>
+        </div>
       </template>
       <template v-else-if="isAuthenticatedResponse && !isLocked">
-        <dialog id="login-dialog" aria-modal="true">
+        <div v-show="showLoginModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
                 <div class="close">
-                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <button type="button" aria-label="Close modal" class="bg-default" @click="showLoginModal = false">
                     <i class="fa-solid fa-chevron-left"></i>
                   </button>
                 </div>
               </div>
               <form autocomplete="off" @submit.prevent="loginUser()">
-                <div class="error-notification d-none"></div>
                 <div class="row">
                   <input id="name-login" type="text" minlength="3" maxlength="30" spellcheck="false" placeholder="Name"
                     autocapitalize="off" aria-label="Name" required>
@@ -494,25 +505,27 @@
                   <button type="submit" class="w-100 bg-default" :disabled="isBtnDisabled">Log in</button>
                 </div>
                 <div class="row align-center">
-                  <button type="button" class="w-100 bg-default" @click="openCreateAccountDialog()">Don't have an
+                  <button type="button" class="w-100 bg-default"
+                    @click="showCreateAccountModal = true, showLoginModal = false">Don't have an
                     account yet?</button>
                 </div>
               </form>
             </div>
           </div>
-        </dialog>
-        <dialog id="create-account-dialog" aria-modal="true">
+        </div>
+        <div v-show="showCreateAccountModal" class="modal" role="dialog"
+          aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
                 <div class="close">
-                  <button type="button" aria-label="Close dialog" class="bg-default" @click="closeDialog($event)">
+                  <button type="button" aria-label="Close modal" class="bg-default"
+                    @click="showCreateAccountModal = false">
                     <i class="fa-solid fa-chevron-left"></i>
                   </button>
                 </div>
               </div>
               <form autocomplete="off" @submit.prevent="createAccount()">
-                <div class="error-notification d-none"></div>
                 <div class="row">
                   <input id="name-create" type="text" minlength="3" maxlength="30" spellcheck="false"
                     autocapitalize="off" placeholder="Name" aria-label="Name" required>
@@ -537,7 +550,7 @@
               </form>
             </div>
           </div>
-        </dialog>
+        </div>
         <div v-if="allUserNotes.length === 0" class="welcome">
           <div class="details">
             <h1 class="align-center">
@@ -690,18 +703,13 @@ import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
 import '@fortawesome/fontawesome-free/css/solid.min.css'
 
 const MARKED_CONFIG = {
-  breaks: true,
-  renderer: {
-    checkbox({ checked }) {
-      if (checked) return '<span class="task-list task-checked">✅ '
-      else return '<span class="task-list">⬜ '
-    }
-  }
+  breaks: true
 }
 
 const PURIFY_CONFIG = {
   SANITIZE_NAMED_PROPS: true,
-  FORBID_TAGS: ['button', 'dialog', 'footer', 'form', 'header', 'iframe', 'input', 'main', 'nav', 'script', 'style'],
+  FORBID_TAGS: ['button', 'dialog', 'footer', 'form', 'header', 'iframe', 'main', 'nav', 'script', 'style'],
+  FORBID_ATTR: ['style', 'onerror', 'onclick', 'class', 'data'],
 }
 
 const KATEX_CONFIG = {
@@ -764,7 +772,20 @@ export default {
       urlParams: '',
       noteLink: '',
       noteLinkInUrl: '',
-      sharedNote: null
+      sharedNote: null,
+      showAddNoteModal: false,
+      showSortNotesModal: false,
+      showDeleteNoteModal: false,
+      showCategoryModal: false,
+      showReminderModal: false,
+      showColorPickerModal: false,
+      showSettingsModal: false,
+      showManageAccountModal: false,
+      showPrivateNoteModal: false,
+      showPublicNoteModal: false,
+      showNoteHistoricModal: false,
+      showLoginModal: false,
+      showCreateAccountModal: false,
     }
   },
   components: { IroJs },
@@ -809,10 +830,10 @@ export default {
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key.toUpperCase() === 'K') {
         e.preventDefault()
-        document.querySelector('#search-input').focus()
+        document.querySelector('#search-input')?.focus()
       } else if (e.altKey && e.shiftKey && e.key.toUpperCase() === 'N') {
         e.preventDefault()
-        document.querySelector('#btn-add-note').click()
+        document.querySelector('#btn-add-note')?.click()
       }
     })
 
@@ -862,11 +883,8 @@ export default {
     initEditor() {
       const updateListener = EditorView.updateListener.of((update) => {
         if (update.docChanged) {
-          const value = update.state.doc.toString()
+          const value = update.state.doc
           this.noteContentLength = value.length
-          this.editor.dom.style.transform = 'translateZ(0)'
-          this.editor.dom.offsetHeight
-          this.editor.dom.style.transform = ''
         }
       })
       const state = EditorState.create({
@@ -980,29 +998,6 @@ export default {
     },
     formatDate(date) {
       return new Date(date).toLocaleString(undefined, DATE_OPTIONS)
-    },
-    closeDialog(e) {
-      const dialog = e.target.closest('dialog')
-      if (['category-dialog', 'reminder-dialog'].includes(dialog.id)) {
-        dialog.close()
-        return
-      }
-      this.editor.dispatch({
-        changes: {
-          from: 0,
-          to: this.editor.state.doc.length,
-          insert: ''
-        },
-        selection: { anchor: 0 }
-      })
-      this.isNoteUpdate = false
-      this.currentNoteId = null
-      this.titleNote = ''
-      this.hiddenNote = false
-      this.selectedColor = 'bg-default'
-      this.selectedCategory = ''
-      this.reminderNote = ''
-      dialog.close()
     },
     async getLockApp() {
       try {
@@ -1153,7 +1148,7 @@ export default {
           this.showError('Username already taken...')
           return
         }
-        document.querySelector('#create-account-dialog').close()
+        this.showCreateAccountModal = false
         this.showSuccess('Account successfully created! You can now log in.')
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
@@ -1299,26 +1294,30 @@ export default {
         const res = await fetch('api/whoami', {
           method: 'GET'
         })
-        if (res.status === 404) {
+        if (!res.ok) {
           this.showError('Internal server error')
           return
         }
-        if (!res.ok) {
-          const error = await res.json()
-          this.showError(error.message)
+        let data = null
+
+        const contentType = res.headers.get('content-type')
+        if (contentType?.includes('application/json')) {
+          data = await res.json()
+        } else {
+          this.showError('Internal server error')
           return
         }
-        const data = await res.json()
         this.isAuthenticated = data.isAuthenticated
         this.csrfToken = data.csrfToken
-        this.isAuthenticatedResponse = true
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
+      } finally {
+        this.isAuthenticatedResponse = true
       }
     },
     async noteActions(note, action) {
       if (action === 'edit-note') {
-        return this.openUpdateNoteDialog(
+        return this.openUpdateNoteModal(
           note.id,
           note.title,
           note.content,
@@ -1337,11 +1336,11 @@ export default {
 
       if (action === 'copy-note') return this.copy(note.content)
 
-      if (action === 'delete-note') return this.openDeleteNoteDialog(note.id)
+      if (action === 'delete-note') return this.openDeleteNoteModal(note.id)
 
       if (action === 'share-note') return this.shareNote(note.id, note.link)
 
-      if (action === 'historic-note') return this.openNoteHistoricDialog(note.id, note.content, note.historic)
+      if (action === 'historic-note') return this.openNoteHistoricModal(note.id, note.content, note.historic)
     },
     async normalizeNote(row) {
       const {
@@ -1490,7 +1489,7 @@ export default {
         } else this.allUserNotes.push(note)
 
         localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
-        this.$refs.addNoteDialog.close()
+        this.showAddNoteModal = false
         await this.getLocalNotes()
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
@@ -1513,7 +1512,7 @@ export default {
       this.allUserNotes.splice(noteIndex, 1)
       localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
       await this.getLocalNotes()
-      document.querySelector('#delete-note-dialog').close()
+      this.showDeleteNoteModal = false
     },
     async getCloudNotes() {
       if (this.isLocked) return
@@ -1634,7 +1633,7 @@ export default {
           this.showError(`An error occurred - ${res.status}`)
           return
         }
-        this.$refs.addNoteDialog.close()
+        this.showAddNoteModal = false
         await this.getCloudNotes()
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
@@ -1667,7 +1666,7 @@ export default {
       const noteId = this.currentNoteId
       if (!noteId) return
       await this.fetchDeleteNote(noteId)
-      document.querySelector('#delete-note-dialog').close()
+      this.showDeleteNoteModal = false
     },
     async privateNote() {
       const noteId = this.currentNoteId
@@ -1686,7 +1685,7 @@ export default {
           this.showError(`An error occurred - ${res.status}`)
           return
         }
-        document.querySelector('#public-note-dialog').close()
+        this.showPublicNoteModal = false
         await this.getCloudNotes()
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
@@ -1709,7 +1708,7 @@ export default {
           this.showError(`An error occurred - ${res.status}`)
           return
         }
-        document.querySelector('#private-note-dialog').close()
+        this.showPrivateNoteModal = false
         await this.getCloudNotes()
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
@@ -1773,11 +1772,11 @@ export default {
     shareNote(noteId, link) {
       if (!noteId) return
       if (link) {
-        document.querySelector('#public-note-dialog').showModal()
+        this.showPublicNoteModal = true
         this.currentNoteId = noteId
         this.noteLink = link
       } else {
-        document.querySelector('#private-note-dialog').showModal()
+        this.showPrivateNoteModal = true
         this.currentNoteId = noteId
       }
     },
@@ -1788,34 +1787,12 @@ export default {
     closeSidebar() {
       this.$refs.sidebar.classList.remove('show')
     },
-    openCreateAccountDialog() {
-      document.querySelector('#login-dialog').close()
-      document.querySelector('#create-account-dialog').showModal()
-    },
-    openDeleteNoteDialog(noteId) {
-      document.querySelector('#delete-note-dialog').showModal()
+    openDeleteNoteModal(noteId) {
+      this.showDeleteNoteModal = true
       this.currentNoteId = noteId
     },
-    openManageAccountDialog() {
-      document.querySelector('#manage-dialog').showModal()
-    },
-    openLoginDialog() {
-      if (!document.querySelector('#login-dialog')) return
-      document.querySelector('#login-dialog').showModal()
-    },
-    openSettingsDialog() {
-      document.querySelector('#settings-dialog').showModal()
-    },
-    openSortDialog() {
-      document.querySelector('#sort-dialog').showModal()
-    },
-    openColorPickerDialog() {
-      document.querySelector('#settings-dialog').close()
-      document.querySelector('#colorpicker-dialog').showModal()
-    },
-    openAddNoteDialog() {
-      const dialog = this.$refs.addNoteDialog
-      dialog.showModal()
+    openAddNoteModal() {
+      this.showAddNoteModal = true
       this.isNoteUpdate = false
       this.editor.dispatch({
         changes: {
@@ -1825,19 +1802,18 @@ export default {
         },
         selection: { anchor: 0 }
       })
+      this.isNoteUpdate = false
+      this.currentNoteId = null
       this.titleNote = ''
-      this.selectedColor = 'bg-default'
       this.hiddenNote = false
+      this.selectedColor = 'bg-default'
       this.selectedCategory = ''
       this.reminderNote = ''
+      this.$nextTick(() => {
+        document.querySelector('#note-title')?.focus()
+      })
     },
-    openCatDialog() {
-      document.querySelector('#category-dialog').showModal()
-    },
-    openReminderDialog() {
-      document.querySelector('#reminder-dialog').showModal()
-    },
-    openNoteHistoricDialog(noteId, currentContent, historicContent) {
+    openNoteHistoricModal(noteId, currentContent, historicContent) {
       if (!noteId || !historicContent) return
 
       const diff = diffWords(historicContent, currentContent)
@@ -1856,9 +1832,9 @@ export default {
         }
         container.appendChild(node)
       })
-      document.querySelector('#note-historic-dialog').showModal()
+      this.showNoteHistoricModal = true
     },
-    async openUpdateNoteDialog(noteId, title, content, color, hidden, category, reminder) {
+    async openUpdateNoteModal(noteId, title, content, color, hidden, category, reminder) {
       if (hidden && this.fingerprintEnabled) {
         const res = await this.verifyFingerprint()
         if (!res) return
@@ -1888,8 +1864,7 @@ export default {
 
       this.isNoteUpdate = true
 
-      const dialog = this.$refs.addNoteDialog
-      dialog.showModal()
+      this.showAddNoteModal = true
 
       if (!this.editor) return
       this.editor.dispatch({
@@ -1934,18 +1909,16 @@ export default {
       notification.classList.remove('d-none')
       this.timeoutNotification = setTimeout(() => {
         notification.classList.add('d-none')
-      }, 5000)
+      }, 4000)
     },
     showError(message) {
       if (this.timeoutNotification) clearTimeout(this.timeoutNotification)
-      const notification = document.querySelectorAll('.error-notification')
-      notification.forEach((e) => {
-        e.textContent = message
-        e.classList.remove('d-none')
-        this.timeoutNotification = setTimeout(() => {
-          e.classList.add('d-none')
-        }, 5000)
-      })
+      const notification = document.querySelector('#error-notification')
+      notification.textContent = message
+      notification.classList.remove('d-none')
+      this.timeoutNotification = setTimeout(() => {
+        notification.classList.add('d-none')
+      }, 4000)
     },
     selectColor(color) {
       this.selectedColor = color
@@ -1974,6 +1947,7 @@ export default {
       const link = this.noteLink
       const url = new URL(`./?link=${encodeURIComponent(link)}`, window.location.href)
       navigator.clipboard.writeText(url.href)
+      this.showSuccess('Content copied to clipboard')
     }
   }
 }

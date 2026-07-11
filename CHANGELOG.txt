@@ -1,3 +1,13 @@
+#----v26.7.2----#
+-Improve code structure
+-Replace dialog with modal
+-UI/UX fixes
+    -Update fonts
+    -Improve theme sliders
+    -Responsive fixes
+-Performance fixes
+-Minor fixes
+
 #----v26.7.1----#
 -Add CORS for production
 -Improve code structure

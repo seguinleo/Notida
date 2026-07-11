@@ -6,49 +6,37 @@
 import iro from '@jaames/iro'
 
 export default {
-  data() {
-    return {
-    }
-  },
   mounted() {
+    const root = document.body
+
     const colorPicker = new iro.ColorPicker('#colorPicker', {
-      color: localStorage.getItem('accent_color') || '#151e15',
-      width: 316,
-      borderWidth: 2,
-      borderColor: '#fff',
+      color: localStorage.getItem('theme-color') || '#151e15',
+      borderWidth: 1,
+      borderColor: "#fff",
       layout: [
         {
+          component: iro.ui.Box,
+        },
+        {
           component: iro.ui.Slider,
           options: {
+            id: 'hue-slider',
             sliderType: 'hue'
           }
-        },
-        {
-          component: iro.ui.Slider,
-          options: {
-            sliderType: 'saturation'
-          }
-        },
-        {
-          component: iro.ui.Slider,
-          options: {
-            sliderType: 'value'
-          }
-        },
+        }
       ]
     })
 
     colorPicker.on(['color:init', 'input:change'], (color) => {
-      document.body.style.backgroundColor = color.hexString
+      root.style.setProperty('--theme-color', color.hexString)
+
       document.querySelectorAll('.theme-color').forEach((element) => {
         element.content = color.hexString
       })
-      if (color.hsl.l >= 45) {
-        document.querySelector('html').classList.add('light')
-      } else {
-        document.querySelector('html').classList.remove('light')
-      }
-      localStorage.setItem('accent_color', color.hexString)
+
+      root.classList.toggle('light', color.hsl.l >= 45)
+
+      localStorage.setItem('theme-color', color.hexString)
     })
   }
 }
