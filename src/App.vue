@@ -19,71 +19,72 @@
     </button>
   </div>
   <div id="layout">
-    <div v-if="!isLocked" id="sidebar" class="bg-default" ref="sidebar">
-      <nav>
-        <div v-if="new Date().getMonth() === 11" class="row">
-          <img src="./assets/img/christmas.png" role="presentation" alt="" class="event-image" loading="lazy">
-        </div>
-        <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
-          class="row">
-          <img src="./assets/img/halloween.png" role="presentation" alt="" class="event-image" loading="lazy">
-        </div>
-        <div class="row nav-buttons">
-          <button v-if="isAuthenticated && !isLocked" type="button" aria-label="Manage account"
-            @click="showManageAccountModal = true">
-            <i class="fa-solid fa-circle-user"></i>
-            <span>Manage account</span>
-          </button>
-          <button v-if="(!isAuthenticated && isAuthenticatedResponse) && !isLocked" type="button" aria-label="Log in"
-            @click="showLoginModal = true">
-            <i class="fa-solid fa-circle-user"></i>
-            <span>Log in</span>
-          </button>
-          <button type="button" aria-label="Change app color" @click="showColorPickerModal = true">
-            <i class="fa-solid fa-palette"></i>
-            <span>Palette</span>
-          </button>
-          <button v-if="!isLocked" type="button" aria-label="Settings" @click="showSettingsModal = true">
-            <i class="fa-solid fa-gear"></i>
-            <span>Settings</span>
-          </button>
-        </div>
-        <div class="d-flex justify-content-between align-items-center">
-          <p class="bold">
-            Notes
-            ({{ filteredNotes.length }})
-          </p>
-          <button v-if="!isLocked" type="button" class="btn-small" aria-label="Sort notes"
-            @click="showSortNotesModal = true">
-            <i class="fa-solid fa-arrow-up-wide-short"></i>
-          </button>
-        </div>
-        <div id="list-notes" ref="listNotes">
-          <button v-for="note in filteredNotes" :key="note.id" type="button" @click="toggleFullscreen(note.id, $event)">
-            <div class="d-flex flex-column align-items-start">
-              <span v-if="note.pinned" class="title">
-                <i class="fa-solid fa-thumbtack"></i>
-              </span>
-              <span v-if="note.link" class="title">
-                <i class="fa-solid fa-link"></i>
-              </span>
-              <span class="title">{{ note.title }}</span>
-            </div>
-            <div class="d-flex flex-column align-items-start">
-              <span v-if="note.category" class="badge bg-default">
-                #{{ note.category }}
-              </span>
-              <span class="sub-title">{{ formatDate(note.date) }}</span>
-            </div>
-          </button>
-        </div>
-      </nav>
-    </div>
+    <nav v-if="!isLocked" class="bg-default" ref="sidebar">
+      <div v-if="new Date().getMonth() === 11" class="row">
+        <img src="./assets/img/christmas.png" role="presentation" alt="" class="event-image" loading="lazy">
+      </div>
+      <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
+        class="row">
+        <img src="./assets/img/halloween.png" role="presentation" alt="" class="event-image" loading="lazy">
+      </div>
+      <div class="row nav-buttons">
+        <button v-if="isAuthenticated && !isLocked" type="button" aria-label="Manage account"
+          @click="showManageAccountModal = true">
+          <i class="fa-solid fa-circle-user"></i>
+          <span>Manage account</span>
+        </button>
+        <button v-if="(!isAuthenticated && isAuthenticatedResponse) && !isLocked" type="button" aria-label="Log in"
+          @click="openLoginModal()">
+          <i class="fa-solid fa-circle-user"></i>
+          <span>Log in</span>
+        </button>
+        <button type="button" aria-label="Change app color" @click="showColorPickerModal = true">
+          <i class="fa-solid fa-palette"></i>
+          <span>Palette</span>
+        </button>
+        <button v-if="!isLocked" type="button" aria-label="Settings" @click="showSettingsModal = true">
+          <i class="fa-solid fa-gear"></i>
+          <span>Settings</span>
+        </button>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <p class="bold">
+          Notes
+          ({{ filteredNotes.length }})
+        </p>
+        <button v-if="!isLocked" type="button" class="btn-small" aria-label="Sort notes"
+          @click="showSortNotesModal = true">
+          <i class="fa-solid fa-arrow-up-wide-short"></i>
+        </button>
+      </div>
+      <div v-if="(!isAuthenticated && isAuthenticatedResponse) && !isLocked" class="row txt-small">
+        <i class="fa-solid fa-circle-info" role="none"></i>
+        <span class="italic">Local notes are stored in the browser's localStorage and are therefore temporary!</span>
+      </div>
+      <div id="list-notes" ref="listNotes">
+        <button v-for="note in filteredNotes" :key="note.id" type="button" @click="toggleFullscreen(note.id, $event)">
+          <div class="d-flex flex-column align-items-start">
+            <span v-if="note.pinned" class="title">
+              <i class="fa-solid fa-thumbtack"></i>
+            </span>
+            <span v-if="note.link" class="title">
+              <i class="fa-solid fa-link"></i>
+            </span>
+            <span class="title">{{ note.title }}</span>
+          </div>
+          <div class="d-flex flex-column align-items-start">
+            <span v-if="note.category" class="badge bg-default">
+              #{{ note.category }}
+            </span>
+            <span class="sub-title">{{ formatDate(note.date) }}</span>
+          </div>
+        </button>
+      </div>
+    </nav>
     <main :class="noteLinkInUrl ? 'shared-main' : ''">
       <div id="error-notification" aria-live="polite" class="d-none"></div>
       <div id="success-notification" aria-live="polite" class="d-none"></div>
-      <div v-show="showSortNotesModal" class="modal" role="dialog"
-        aria-modal="true">
+      <div v-show="showSortNotesModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="popup-header">
@@ -115,8 +116,7 @@
           </div>
         </div>
       </div>
-      <div v-show="showDeleteNoteModal" class="modal" role="dialog"
-        aria-modal="true">
+      <div v-show="showDeleteNoteModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="popup-header">
@@ -138,8 +138,7 @@
           </div>
         </div>
       </div>
-      <div v-show="showAddNoteModal" id="add-note-modal" class="modal"
-        role="dialog" aria-modal="true">
+      <div v-show="showAddNoteModal" id="add-note-modal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <form @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
@@ -160,7 +159,7 @@
                 placeholder="Title" required>
               <div ref="editor" class="editor"></div>
               <div class="row d-flex justify-content-between">
-                <div>
+                <div class="add-note-modal-control">
                   <button type="button" class="btn-small bg-default" aria-label="Add a category"
                     @click="showCategoryModal = true">
                     <i class="fa-solid fa-tags"></i>
@@ -170,11 +169,12 @@
                     <i class="fa-solid fa-bell"></i>
                   </button>
                 </div>
-                <div>
-                  <span id="textarea-length">
+                <div class="add-note-modal-control">
+                  <span id="note-content-length">
                     {{ noteContentLength }}/{{ maxNoteContentLength }}
                   </span>
-                  <button type="button" @click="clearNoteContent()" aria-label="Clear all content" class="btn-clear">
+                  <button type="button" @click="clearNoteContent()" aria-label="Clear all content"
+                    class="btn-small bg-default">
                     <i class="fa-solid fa-broom"></i>
                   </button>
                 </div>
@@ -191,7 +191,7 @@
                   Hide content
                 </span>
                 <label class="switch">
-                  <input type="checkbox" v-model="hiddenNote" class="checkbox" role="switch" aria-label="Hide content">
+                  <input type="checkbox" v-model="hiddenNote" role="switch" aria-label="Hide content">
                   <span class="toggle-thumb" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
                       <rect x="12" y="6" width="1" height="12" />
@@ -206,8 +206,7 @@
           </div>
         </div>
       </div>
-      <div v-show="showCategoryModal" class="modal" role="dialog"
-        aria-modal="true">
+      <div v-show="showCategoryModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="popup-header">
@@ -218,22 +217,25 @@
               </div>
             </div>
             <div class="row">
-              <label class="custom-check">
-                <input type="radio" name="add-cat" value="" v-model="selectedCategory">
-                <span class="bg-default">
-                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                </span>
-              </label>
-              <label v-for="category in allCategories" :key="category" class="custom-check">
-                <input type="radio" name="add-cat" :value="category" v-model="selectedCategory">
-                <span class="bg-default">{{ category }}</span>
-              </label>
+              <fieldset>
+                <legend>Select a category</legend>
+                <label class="custom-check">
+                  <input type="radio" name="add-cat" value="" v-model="selectedCategory">
+                  <span class="bg-default">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                  </span>
+                </label>
+                <label v-for="category in allCategories" :key="category" class="custom-check">
+                  <input type="radio" name="add-cat" :value="category" v-model="selectedCategory">
+                  <span class="bg-default">{{ category }}</span>
+                </label>
+              </fieldset>
             </div>
             <div class="row">
               <form @submit.prevent="createCategory()">
                 <div class="row">
-                  <input type="text" v-model="newCategory" placeholder="Category name" id="category-name" maxlength="30"
-                    aria-label="Name" required>
+                  <input type="text" v-model="newCategory" placeholder="New category name" id="category-name"
+                    maxlength="30" aria-label="New category name" required>
                 </div>
                 <div class="row txt-small">
                   <i class="fa-solid fa-circle-info" role="none"></i>
@@ -245,8 +247,7 @@
           </div>
         </div>
       </div>
-      <div v-show="showReminderModal" class="modal" role="dialog"
-        aria-modal="true">
+      <div v-show="showReminderModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="popup-header">
@@ -265,8 +266,7 @@
           </div>
         </div>
       </div>
-      <div v-show="showColorPickerModal" class="modal" role="dialog"
-        aria-modal="true">
+      <div v-show="showColorPickerModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="popup-header">
@@ -283,8 +283,7 @@
           </div>
         </div>
       </div>
-      <div v-show="showSettingsModal" class="modal" role="dialog"
-        aria-modal="true">
+      <div v-show="showSettingsModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
           <div class="content">
             <div class="popup-header">
@@ -309,10 +308,27 @@
             </div>
             <div class="row d-flex align-items-center justify-content-between">
               <span>
+                Compact mode
+              </span>
+              <label class="switch">
+                <input v-model="isCompactMode" type="checkbox" @change="toggleCompactMode()" role="switch"
+                  aria-label="Compact mode">
+                <span class="toggle-thumb" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
+                    <rect x="12" y="6" width="1" height="12" />
+                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="on">
+                    <circle cx="12" cy="12" r="5" stroke-width="1" fill="none" />
+                  </svg>
+                </span>
+              </label>
+            </div>
+            <div class="row d-flex align-items-center justify-content-between">
+              <span>
                 Lock app
               </span>
               <label class="switch">
-                <input v-model="isToggleLockApp" type="checkbox" class="checkbox" @click="toggleLockApp()" role="switch"
+                <input v-model="fingerprintEnabled" type="checkbox" @change="toggleLockApp()" role="switch"
                   aria-label="Lock app">
                 <span class="toggle-thumb" aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
@@ -327,15 +343,14 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.7.2</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.7.3</a>
               </p>
             </div>
           </div>
         </div>
       </div>
       <template v-if="(isAuthenticated && isAuthenticatedResponse) && !isLocked">
-        <div v-show="showManageAccountModal" class="modal" role="dialog"
-          aria-modal="true">
+        <div v-show="showManageAccountModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
@@ -405,8 +420,7 @@
             </div>
           </div>
         </div>
-        <div v-show="showPrivateNoteModal" class="modal" role="dialog"
-          aria-modal="true">
+        <div v-show="showPrivateNoteModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
@@ -429,8 +443,7 @@
             </div>
           </div>
         </div>
-        <div v-show="showPublicNoteModal" class="modal" role="dialog"
-          aria-modal="true">
+        <div v-show="showPublicNoteModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
@@ -459,8 +472,7 @@
             </div>
           </div>
         </div>
-        <div v-show="showNoteHistoricModal" id="note-historic-modal"
-          class="modal" role="dialog" aria-modal="true">
+        <div v-show="showNoteHistoricModal" id="note-historic-modal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
@@ -505,16 +517,14 @@
                   <button type="submit" class="w-100 bg-default" :disabled="isBtnDisabled">Log in</button>
                 </div>
                 <div class="row align-center">
-                  <button type="button" class="w-100 bg-default"
-                    @click="showCreateAccountModal = true, showLoginModal = false">Don't have an
+                  <button type="button" class="w-100 bg-default" @click="openCreateAccountModal()">Don't have an
                     account yet?</button>
                 </div>
               </form>
             </div>
           </div>
         </div>
-        <div v-show="showCreateAccountModal" class="modal" role="dialog"
-          aria-modal="true">
+        <div v-show="showCreateAccountModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
             <div class="content">
               <div class="popup-header">
@@ -552,11 +562,11 @@
           </div>
         </div>
         <div v-if="allUserNotes.length === 0" class="welcome">
-          <div class="details">
+          <div class="note-container">
             <h1 class="align-center">
               <span>Welcome to Notida!</span>
             </h1>
-            <div class="details-content">
+            <div class="note-content">
               <div>
                 <p class="align-center">
                   <img alt="App icon" src="/pwa/apple-touch-icon.png" width="64" height="64">
@@ -565,9 +575,8 @@
                   A fast, private and secure web notebook.
                 </p>
                 <p class="align-center">
-                  <img alt="License" height="20"
-                    src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8">
-                  <img alt="Open source" height="20" src="https://img.shields.io/badge/project-open_source-blue">
+                  <img alt="License GPL-3" height="20" src="./assets/img/license-GPL-3.svg">
+                  <img alt="Open source" height="20" src="./assets/img/project-open-source.svg">
                 </p>
                 <h2>📝Features</h2>
                 <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML
@@ -602,7 +611,7 @@
       <template v-if="noteLinkInUrl">
         <h1 v-if="sharedNote === null">Note not found or expired.</h1>
         <div v-else class="shared-note">
-          <div class="details">
+          <div class="note-container">
             <h2 class="title">
               {{ sharedNote.title }}
             </h2>
@@ -612,7 +621,7 @@
                 {{ formatDate(sharedNote.reminder) }}
               </span>
             </div>
-            <div class="details-content">
+            <div class="note-content">
               <div v-html="sharedNote.contentHtml"></div>
             </div>
           </div>
@@ -632,7 +641,7 @@
             { 'hidden-note': note.hidden },
             { 'fullscreen-note': fullscreenNoteId === note.id }
           ]" @click="toggleFullscreen(note.id, $event)">
-            <div class="details">
+            <div class="note-container">
               <h2 class="title">
                 {{ note.title }}
               </h2>
@@ -642,13 +651,10 @@
                   {{ formatDate(note.reminder) }}
                 </span>
               </div>
-              <div class="details-content">
+              <div class="note-content">
                 <div v-if="note.hidden">Hidden note</div>
                 <div v-else v-html="note.contentHtml"></div>
               </div>
-            </div>
-            <div class="date">
-              {{ formatDate(note.date) }}
             </div>
             <div class="bottom-content">
               <button type="button" @click.stop="noteActions(note, 'edit-note')" aria-label="Edit note">
@@ -738,7 +744,7 @@ export default {
       timeoutNotification: null,
       fingerprintEnabled: true,
       onLine: true,
-      isToggleLockApp: true,
+      isCompactMode: false,
       isLocked: true,
       isAuthenticated: false,
       isAuthenticatedResponse: false,
@@ -765,7 +771,7 @@ export default {
       hiddenNote: false,
       reminderNote: '',
       searchValue: '',
-      localDbName: 'notes_db',
+      localDbName: 'notida-local',
       localDbKeyName: 'key',
       localDbKey: null,
       csrfToken: null,
@@ -792,8 +798,8 @@ export default {
   watch: {
     async sortOption() {
       if (!['1', '2', '3', '4'].includes(this.sortOption)) return
-      if (this.sortOption === '1') localStorage.removeItem('sort_notes')
-      else localStorage.setItem('sort_notes', this.sortOption)
+      if (this.sortOption === '1') localStorage.removeItem('sort-notes')
+      else localStorage.setItem('sort-notes', this.sortOption)
       if (this.isAuthenticated) await this.getCloudNotes()
       else await this.getLocalNotes()
     },
@@ -821,6 +827,9 @@ export default {
       await this.renderSharedNote()
       return
     }
+
+    this.isCompactMode = localStorage.getItem('compact-mode') === 'true'
+    if (this.isCompactMode) document.body.classList.add('compact-mode')
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
@@ -1001,8 +1010,7 @@ export default {
     },
     async getLockApp() {
       try {
-        const lockApp = localStorage.getItem('lockApp') === 'true'
-        this.isToggleLockApp = lockApp
+        const lockApp = localStorage.getItem('lock-app') === 'true'
         this.fingerprintEnabled = lockApp
         this.isLocked = lockApp
       } catch (err) {
@@ -1010,32 +1018,21 @@ export default {
       }
     },
     async toggleLockApp() {
-      if (this.isLocked) return
-
-      let success
-
-      if (this.fingerprintEnabled) {
-        success = await this.verifyFingerprint()
-        if (!success) {
-          this.isToggleLockApp = true
-          return
-        }
-
-        this.fingerprintEnabled = false
-        this.isToggleLockApp = false
-        localStorage.setItem('lockApp', 'false')
-
-      } else {
-        success = await this.createFingerprint()
-        if (!success) {
-          this.isToggleLockApp = false
-          return
-        }
-
-        this.fingerprintEnabled = true
-        this.isToggleLockApp = true
-        localStorage.setItem('lockApp', 'true')
+      if (this.isLocked) {
+        this.fingerprintEnabled = !this.fingerprintEnabled
+        return
       }
+
+      const success = this.fingerprintEnabled
+        ? await this.createFingerprint()
+        : await this.verifyFingerprint()
+
+      if (!success) {
+        this.fingerprintEnabled = !this.fingerprintEnabled
+        return
+      }
+
+      localStorage.setItem('lock-app', String(this.fingerprintEnabled))
     },
     async unlockApp() {
       const success = await this.verifyFingerprint()
@@ -1043,9 +1040,8 @@ export default {
 
       this.isLocked = false
 
-      const lockApp = localStorage.getItem('lockApp') === 'true'
+      const lockApp = localStorage.getItem('lock-app') === 'true'
       this.fingerprintEnabled = lockApp
-      this.isToggleLockApp = lockApp
 
       await this.isUserAuthenticated()
 
@@ -1056,7 +1052,7 @@ export default {
       }
     },
     async verifyFingerprint() {
-      const credId = localStorage.getItem('webauth_cred_id')
+      const credId = localStorage.getItem('webauth-cred-id')
       if (!credId) return false
 
       try {
@@ -1102,7 +1098,7 @@ export default {
         })
 
         localStorage.setItem(
-          'webauth_cred_id',
+          'webauth-cred-id',
           this.arrayBufferToBase64(credential.rawId)
         )
 
@@ -1111,7 +1107,6 @@ export default {
         return true
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
-        this.isToggleLockApp = false
         return false
       }
     },
@@ -1384,9 +1379,9 @@ export default {
       if (this.isLocked) return
 
       this.currentNoteId = null
-      this.sortOption = localStorage.getItem('sort_notes') || '1'
+      this.sortOption = localStorage.getItem('sort-notes') || '1'
 
-      const localNotes = JSON.parse(localStorage.getItem('local_notes')) || []
+      const localNotes = JSON.parse(localStorage.getItem('local-notes')) || []
 
       if (localNotes.length === 0) return
 
@@ -1442,7 +1437,7 @@ export default {
         if (!this.allColors.includes(color)) return
         if (reminder && !new Date(reminder).getTime()) return
 
-        const dbName = 'notes_db'
+        const dbName = this.localDbName
         const objectStoreName = 'key'
         const db = await this.openIndexedDB(dbName, objectStoreName)
         let key = await this.getKeyFromDB(db, objectStoreName)
@@ -1488,7 +1483,7 @@ export default {
           })
         } else this.allUserNotes.push(note)
 
-        localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
+        localStorage.setItem('local-notes', JSON.stringify(this.allUserNotes))
         this.showAddNoteModal = false
         await this.getLocalNotes()
       } catch (err) {
@@ -1501,7 +1496,7 @@ export default {
       const noteIndex = this.allUserNotes.findIndex(note => note.id === noteId)
       if (noteIndex === -1) return
       this.allUserNotes[noteIndex].pinned = pinned ? 0 : 1
-      localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
+      localStorage.setItem('local-notes', JSON.stringify(this.allUserNotes))
       await this.getLocalNotes()
     },
     async deleteLocalNote() {
@@ -1510,7 +1505,7 @@ export default {
       const noteIndex = this.allUserNotes.findIndex(note => note.id === noteId)
       if (noteIndex === -1) return
       this.allUserNotes.splice(noteIndex, 1)
-      localStorage.setItem('local_notes', JSON.stringify(this.allUserNotes))
+      localStorage.setItem('local-notes', JSON.stringify(this.allUserNotes))
       await this.getLocalNotes()
       this.showDeleteNoteModal = false
     },
@@ -1518,7 +1513,7 @@ export default {
       if (this.isLocked) return
 
       this.currentNoteId = null
-      this.sortOption = localStorage.getItem('sort_notes') || '1'
+      this.sortOption = localStorage.getItem('sort-notes') || '1'
 
       try {
         const res = await fetch('api/get-notes/', {
@@ -1787,6 +1782,19 @@ export default {
     closeSidebar() {
       this.$refs.sidebar.classList.remove('show')
     },
+    openLoginModal() {
+      this.showLoginModal = true
+      this.$nextTick(() => {
+        document.querySelector('#name-login')?.focus()
+      })
+    },
+    openCreateAccountModal() {
+      this.showLoginModal = false
+      this.showCreateAccountModal = true
+      this.$nextTick(() => {
+        document.querySelector('#name-create')?.focus()
+      })
+    },
     openDeleteNoteModal(noteId) {
       this.showDeleteNoteModal = true
       this.currentNoteId = noteId
@@ -1927,7 +1935,7 @@ export default {
       if (!noteId) return
 
       if (
-        event.target.closest('a, details') ||
+        event.target.closest('a, note-container') ||
         window.getSelection().toString()
       ) return
 
@@ -1948,6 +1956,11 @@ export default {
       const url = new URL(`./?link=${encodeURIComponent(link)}`, window.location.href)
       navigator.clipboard.writeText(url.href)
       this.showSuccess('Content copied to clipboard')
+    },
+    toggleCompactMode() {
+      document.body.classList.toggle('compact-mode')
+      if (!this.isCompactMode) localStorage.removeItem('compact-mode')
+      else localStorage.setItem('compact-mode', 'true')
     }
   }
 }
