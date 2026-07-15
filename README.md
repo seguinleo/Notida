@@ -7,10 +7,6 @@
 A fast, private and secure web notebook.
 </p>
 
-<p align="center">
-<img alt="License" src="https://img.shields.io/github/license/seguinleo/Notida?color=8ab4f8&style=for-the-badge">
-</p>
-
 ## Features
 
 Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your notes.

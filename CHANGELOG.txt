@@ -1,3 +1,12 @@
+#----v26.7.3----#
+-Add Compact mode
+-UI/UX fixes
+    -Better note button action
+    -Standardize font sizes
+    -Update website logo
+-Improve code structure
+-Bug fixes
+
 #----v26.7.2----#
 -Improve code structure
 -Replace dialog with modal
