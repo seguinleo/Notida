@@ -408,7 +408,6 @@ li {
     width: 1rem;
     height: 1rem;
     border-radius: 4px;
-    cursor: not-allowed;
     display: inline-flex;
     justify-content: center;
     align-items: center;
@@ -497,7 +496,6 @@ input {
 
   &:disabled {
     cursor: not-allowed;
-    opacity: .8;
   }
 }
 
