@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^2.10.0",
+    "@dotenvx/dotenvx": "^2.13.0",
     "argon2": "^0.44.0",
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
