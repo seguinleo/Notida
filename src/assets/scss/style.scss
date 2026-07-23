@@ -33,9 +33,10 @@
 :root {
   --theme-color: #151e15;
   --bg: rgba(255, 255, 255, .1);
+  --glass-bg: rgba(0, 0, 0, .1);
   --surface: #111;
   --text: #ddd;
-  --hover: rgba(255, 255, 255, .2);
+  --hover: rgba(255, 255, 255, .15);
   --primary: #0b9636;
   --primary-transparent: #0b963680;
 }
@@ -60,15 +61,10 @@ body {
 
   &.light {
     --bg: rgba(0, 0, 0, .05);
+    --glass-bg: rgba(255, 255, 255, .1);
     --surface: #fff;
     --text: #222;
-    --hover: rgba(0, 0, 0, .1);
-
-    scrollbar-color: rgba(0, 0, 0, .3) transparent;
-
-    \::-webkit-scrollbar-thumb {
-      background: rgba(0, 0, 0, .3);
-    }
+    --hover: rgba(0, 0, 0, .07);
 
     .bg-red {
       background: #ff8787;
@@ -164,6 +160,8 @@ nav {
   user-select: none;
   display: flex;
   flex-direction: column;
+  background: var(--theme-color);
+  border-right: 1px solid var(--bg);
   padding: 1rem;
   overflow-y: auto;
   width: 300px;
@@ -182,7 +180,7 @@ nav {
       width: 100%;
       font-weight: 700;
       border: none;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
       display: flex;
       align-items: center;
       justify-content: flex-start;
@@ -212,7 +210,7 @@ nav {
       border: none;
       border-radius: 4px;
       font-size: .9rem;
-      margin: 4px;
+      margin: 4px 0;
       padding: 0 2px;
       gap: 4px;
     }
@@ -249,6 +247,10 @@ nav {
   }
 }
 
+mark {
+  color: #222;
+}
+
 #bottom-bar {
   position: fixed;
   bottom: 0;
@@ -268,22 +270,22 @@ nav {
   }
 }
 
-.bottom-content,
-nav,
+.bottom-note-actions,
 #success-notification,
 #error-notification,
 #search-section,
 #btn-add-note,
 #sidebar-indicator {
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
+  background: var(--glass-bg);
 }
 
 #search-section {
   flex-grow: 1;
   display: flex;
   align-items: center;
-  max-width: 250px;
-  height: 44px;
+  max-width: 220px;
+  height: 45px;
   border-radius: 48px;
   border: 1px solid var(--bg);
   padding: 10px;
@@ -300,7 +302,7 @@ nav,
   input {
     flex-grow: 1;
     padding: 0 4px;
-    height: 44px;
+    height: 45px;
     border: none;
     border-radius: 0;
     outline: none;
@@ -349,12 +351,12 @@ kbd {
 
 hr {
   border: none;
-  border-top: 2px solid var(--bg);
+  border-top: 1px solid var(--bg);
   margin: 10px 0;
 }
 
 fieldset {
-  border: 2px solid var(--bg);
+  border: 1px solid var(--bg);
   border-radius: 10px;
   padding: 10px;
   margin: 10px 0;
@@ -362,11 +364,6 @@ fieldset {
   legend {
     font-weight: 700;
   }
-}
-
-blockquote {
-  border-left: 3px solid var(--bg);
-  padding-left: 10px;
 }
 
 progress {
@@ -445,7 +442,7 @@ input {
 }
 
 input {
-  border: 2px solid var(--bg);
+  border: 1px solid var(--bg);
 }
 
 select {
@@ -529,13 +526,12 @@ input {
     text-align: center;
   }
 
-  .bottom-content {
+  .bottom-note-actions {
     -webkit-user-select: none;
     user-select: none;
     display: flex;
     justify-content: space-evenly;
     align-items: center;
-    background: var(--bg);
     border: 1px solid var(--bg);
     border-radius: 48px;
     max-width: 350px;
@@ -568,7 +564,7 @@ input {
     overflow-y: auto;
   }
 
-  .bottom-content {
+  .bottom-note-actions {
     opacity: 0;
     visibility: hidden;
     transition: opacity .1s;
@@ -581,7 +577,7 @@ input {
   &:hover,
   &:focus-within {
 
-    .bottom-content {
+    .bottom-note-actions {
       visibility: visible;
       opacity: 1;
     }
@@ -655,7 +651,7 @@ input {
     justify-content: center;
   }
 
-  .bottom-content {
+  .bottom-note-actions {
     visibility: visible;
     opacity: 1;
     position: fixed;
@@ -673,7 +669,7 @@ input {
     width: 20px;
     height: 20px;
     border-radius: 48px;
-    border: 2px solid var(--bg);
+    border: 1px solid var(--bg);
 
     &.selected {
       outline: 2px solid var(--primary);
@@ -882,7 +878,7 @@ input {
     justify-content: space-between;
     align-items: center;
     padding: 0 6px;
-    background-color: var(--bg);
+    background-color: var(--hover);
     border-radius: 48px;
     cursor: pointer;
     transition: background-color .3s ease;
@@ -1046,7 +1042,7 @@ input {
 
   .note {
 
-    .bottom-content {
+    .bottom-note-actions {
       visibility: visible;
       opacity: 1;
       width: 100%;
@@ -1067,7 +1063,7 @@ input {
         pointer-events: none;
       }
 
-      .bottom-content {
+      .bottom-note-actions {
         display: none;
       }
     }

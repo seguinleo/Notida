@@ -1,3 +1,7 @@
+#----v26.7.4----#
+-Improve search
+-UI/UX/accessibility fixes
+
 #----v26.7.3----#
 -Add Compact mode
 -UI/UX fixes
