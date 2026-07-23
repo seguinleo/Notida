@@ -1807,8 +1807,7 @@ export default {
           from: 0,
           to: this.editor.state.doc.length,
           insert: ''
-        },
-        selection: { anchor: 0 }
+        }
       })
       this.isNoteUpdate = false
       this.currentNoteId = null
@@ -1872,18 +1871,15 @@ export default {
       this.isNoteUpdate = true
       this.showAddNoteModal = true
 
-      if (!this.editor) return
-      this.editor.dispatch({
-        changes: {
-          from: 0,
-          to: this.editor.state.doc.length,
-          insert: content ?? ''
-        },
-        selection: { anchor: 0 },
-        scrollIntoView: true
-      })
-      requestAnimationFrame(() => {
-        this.editor.focus()
+      this.$nextTick(() => {
+        if (!this.editor) return
+        this.editor.dispatch({
+          changes: {
+            from: 0,
+            to: this.editor.state.doc.length,
+            insert: content ?? ''
+          }
+        })
       })
 
       this.currentNoteId = noteId
@@ -1904,8 +1900,7 @@ export default {
           from: 0,
           to: this.editor.state.doc.length,
           insert: ''
-        },
-        selection: { anchor: 0 }
+        }
       })
     },
     showSuccess(message) {
