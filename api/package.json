@@ -1,6 +1,6 @@
 {
   "name": "notida",
-  "version": "26.7.3",
+  "version": "26.7.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,15 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^2.13.0",
-    "argon2": "^0.44.0",
+    "@dotenvx/dotenvx": "^2.17.2",
+    "argon2": "^0.45.1",
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csrf-csrf": "^4.0.3",
-    "express-rate-limit": "^8.5.2",
+    "express-rate-limit": "^8.6.0",
     "express-session": "^1.19.0",
-    "mysql2": "^3.23.0",
+    "mysql2": "^3.23.1",
     "node-cron": "^4.6.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",

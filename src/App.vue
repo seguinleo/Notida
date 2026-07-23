@@ -19,7 +19,7 @@
     </button>
   </div>
   <div id="layout">
-    <nav v-if="!isLocked" class="bg-default" ref="sidebar">
+    <nav v-if="!isLocked" ref="sidebar">
       <div v-if="new Date().getMonth() === 11" class="row">
         <img src="./assets/img/christmas.png" role="presentation" alt="" class="event-image" loading="lazy">
       </div>
@@ -47,12 +47,12 @@
           <span>Settings</span>
         </button>
       </div>
-      <div class="d-flex justify-content-between align-items-center">
+      <div class="row d-flex justify-content-between align-items-center">
         <p class="bold">
           Notes
           ({{ filteredNotes.length }})
         </p>
-        <button v-if="!isLocked" type="button" class="btn-small" aria-label="Sort notes"
+        <button v-if="!isLocked" type="button" class="btn-small bg-default" aria-label="Sort notes"
           @click="showSortNotesModal = true">
           <i class="fa-solid fa-arrow-up-wide-short"></i>
         </button>
@@ -343,7 +343,7 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.7.3</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.7.4</a>
               </p>
             </div>
           </div>
@@ -656,7 +656,7 @@
                 <div v-else v-html="note.contentHtml"></div>
               </div>
             </div>
-            <div class="bottom-content">
+            <div class="bottom-note-actions">
               <button type="button" @click.stop="noteActions(note, 'edit-note')" aria-label="Edit note">
                 <i class="fa-solid fa-pen"></i>
               </button>
@@ -705,6 +705,7 @@ import { markdown } from '@codemirror/lang-markdown'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { gfmHeadingId } from 'marked-gfm-heading-id'
 import { diffWords } from 'diff'
+import Mark from 'mark.js'
 import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
 import '@fortawesome/fontawesome-free/css/solid.min.css'
 
@@ -796,6 +797,12 @@ export default {
   },
   components: { IroJs },
   watch: {
+    searchValue() {
+      clearTimeout(this._searchTimer)
+      this._searchTimer = setTimeout(() => {
+        this.highlightMatches()
+      }, 100)
+    },
     async sortOption() {
       if (!['1', '2', '3', '4'].includes(this.sortOption)) return
       if (this.sortOption === '1') localStorage.removeItem('sort-notes')
@@ -806,18 +813,13 @@ export default {
   },
   computed: {
     filteredNotes() {
-      const search = this.searchValue.trim().toLowerCase()
-
+      const search = this.normalize(this.searchValue)
       if (!search) return this.allUserNotes
 
       return this.allUserNotes.filter(note => {
-        const title = (note.title || '').toLowerCase()
-        const content = (note.content || '').toLowerCase()
-
-        return (
-          title.includes(search) ||
-          content.includes(search)
-        )
+        const title = this.normalize(note.title)
+        const content = this.normalize(note.content)
+        return title.includes(search) || content.includes(search)
       })
     }
   },
@@ -900,6 +902,12 @@ export default {
         doc: '',
         extensions: [
           placeholder('Content (Markdown, KaTeX or HTML)'),
+          EditorView.contentAttributes.of({
+            spellcheck: "true",
+            autocorrect: "on",
+            autocomplete: "on",
+            autocapitalize: "sentences"
+          }),
           history(),
           markdown(),
           oneDark,
@@ -1077,7 +1085,6 @@ export default {
       try {
         const challenge = crypto.getRandomValues(new Uint8Array(32))
         const userId = crypto.getRandomValues(new Uint8Array(16))
-
         const credential = await navigator.credentials.create({
           publicKey: {
             challenge,
@@ -1322,19 +1329,14 @@ export default {
           note.reminder ?? ''
         )
       }
-
       if (action === 'pin-note') {
         return this.isAuthenticated
           ? this.pinCloudNote(note.id)
           : this.pinLocalNote(note.id)
       }
-
       if (action === 'copy-note') return this.copy(note.content)
-
       if (action === 'delete-note') return this.openDeleteNoteModal(note.id)
-
       if (action === 'share-note') return this.shareNote(note.id, note.link)
-
       if (action === 'historic-note') return this.openNoteHistoricModal(note.id, note.content, note.historic)
     },
     async normalizeNote(row) {
@@ -1751,7 +1753,6 @@ export default {
       }
 
       const response = await res.json()
-
       const { title, date, reminder } = response
       const contentHtml = DOMPurify.sanitize(marked.parse(response.content), PURIFY_CONFIG)
 
@@ -1761,7 +1762,6 @@ export default {
         date,
         reminder
       }
-
       document.title = this.sharedNote.title
     },
     shareNote(noteId, link) {
@@ -1825,7 +1825,6 @@ export default {
       if (!noteId || !historicContent) return
 
       const diff = diffWords(historicContent, currentContent)
-
       const container = document.querySelector('#note-historic-content')
       container.replaceChildren()
 
@@ -1871,7 +1870,6 @@ export default {
       }
 
       this.isNoteUpdate = true
-
       this.showAddNoteModal = true
 
       if (!this.editor) return
@@ -1932,9 +1930,8 @@ export default {
       this.selectedColor = color
     },
     toggleFullscreen(noteId, event) {
-      if (!noteId) return
-
       if (
+        !noteId ||
         event.target.closest('a, note-container') ||
         window.getSelection().toString()
       ) return
@@ -1944,7 +1941,6 @@ export default {
       } else {
         this.fullscreenNoteId = noteId
       }
-
       this.closeSidebar()
     },
     copy(content) {
@@ -1961,6 +1957,41 @@ export default {
       document.body.classList.toggle('compact-mode')
       if (!this.isCompactMode) localStorage.removeItem('compact-mode')
       else localStorage.setItem('compact-mode', 'true')
+    },
+    normalize(str) {
+      return (str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+    },
+    highlightMatches() {
+      this.$nextTick(() => {
+        document.querySelectorAll('.note').forEach(noteEl => {
+          const targets = noteEl.querySelectorAll('.title, .note-content')
+          const instance = new Mark(targets)
+
+          instance.unmark({
+            done: () => {
+              const term = this.searchValue.trim()
+              if (!term || term.length < 2) return
+
+              instance.mark(term, {
+                accuracy: 'partially',
+                separateWordSearch: false,
+                done: () => {
+                  this.scrollToFirstMatch(noteEl)
+                }
+              })
+            }
+          })
+        })
+      })
+    },
+    scrollToFirstMatch(noteEl) {
+      const firstMark = noteEl.querySelector('mark')
+      if (firstMark) {
+        firstMark.scrollIntoView({ block: 'nearest' })
+      }
     }
   }
 }
