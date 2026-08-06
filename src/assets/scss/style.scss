@@ -897,6 +897,14 @@ input {
   }
 }
 
+.switch-danger {
+  input[type=checkbox] {
+    &:checked+.toggle-thumb {
+      background-color: #ea424280 !important;
+    }
+  }
+}
+
 .version {
   text-align: right;
   margin: 0 4px;

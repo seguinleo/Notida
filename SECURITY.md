@@ -1,14 +1,15 @@
 # Security Policy
 
-## Node version
+## Node.js version
 
-| Version | Supported          |
-|---------|--------------------|
-| 25.x    | :white_check_mark: |
-| 24.x    | :white_check_mark: |
-| < 24    | :x:                |
+| Version                | Supported          |
+|------------------------|--------------------|
+| 26.x                   | 🟢                 |
+| 25.x                   | 🟠                 |
+| 24.x (recommended LTS) | 🟢                 |
+| < 24                   | 🔴                 |
 
-## DOCKER version
+## Docker version
 I recommend using the latest version of Docker images.
 
 ## Reporting a Vulnerability

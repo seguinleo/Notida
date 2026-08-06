@@ -688,7 +688,7 @@ router.post('/delete-note', verifySession, doubleCsrfProtection, async (req, res
 })
 
 router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res) => {
-  const { noteId } = req.body
+  const { noteId, oneTimeAccess } = req.body
   const userId = req.user.id
 
   if (!uuidSchema.safeParse(noteId).success) {
@@ -698,7 +698,7 @@ router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res
   const noteLink = crypto.randomBytes(16).toString('hex')
 
   try {
-    await pool.execute('UPDATE notes SET link = ? WHERE id = ? AND userId = ? AND link IS NULL', [noteLink, noteId, userId])
+    await pool.execute('UPDATE notes SET link = ?, oneTimeAccess = ? WHERE id = ? AND userId = ? AND link IS NULL', [noteLink, oneTimeAccess, noteId, userId])
     return res.status(200).send('Note link added successfully')
   } catch {
     return res.status(500).json('Internal server error')
@@ -714,7 +714,7 @@ router.post('/private-note', verifySession, doubleCsrfProtection, async (req, re
   }
 
   try {
-    await pool.execute('UPDATE notes SET link = NULL WHERE id = ? AND userId = ?', [noteId, userId])
+    await pool.execute('UPDATE notes SET link = NULL, oneTimeAccess = 0 WHERE id = ? AND userId = ?', [noteId, userId])
     return res.status(200).send('Note link removed successfully')
   } catch {
     return res.status(500).json('Internal server error')
@@ -730,7 +730,7 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
 
   try {
     const [noteRows] = await pool.execute(`
-      SELECT title, content, updateDate, reminder, userId
+      SELECT id, title, content, updateDate, reminder, oneTimeAccess, userId
       FROM notes
       WHERE link = ?
       LIMIT 1
@@ -740,16 +740,22 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
       return res.status(404).send('Note not found')
     }
 
-    const { title: encryptedTitle, content: encryptedContent, updateDate, reminder, userId } = noteRows[0]
+    const { id, title: encryptedTitle, content: encryptedContent, updateDate, reminder, oneTimeAccess, userId } = noteRows[0]
 
     const key = getKey(userId)
     if (!key) return res.status(400).send('Internal server error')
 
     const note = {
+      id,
       title: encryption.decryptData(encryptedTitle, key),
       content: encryption.decryptData(encryptedContent, key),
       date: updateDate,
-      reminder
+      reminder,
+      oneTimeAccess
+    }
+
+    if (oneTimeAccess) {
+      await pool.execute('UPDATE notes SET link = NULL, oneTimeAccess = 0 WHERE id = ?', [id])
     }
 
     return res.status(200).json(note)
