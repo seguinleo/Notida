@@ -308,6 +308,23 @@
             </div>
             <div class="row d-flex align-items-center justify-content-between">
               <span>
+                Spellcheck
+              </span>
+              <label class="switch">
+                <input v-model="isSpellcheck" type="checkbox" @change="toggleSpellcheck()" role="switch"
+                  aria-label="Spellcheck">
+                <span class="toggle-thumb" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
+                    <rect x="12" y="6" width="1" height="12" />
+                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="on">
+                    <circle cx="12" cy="12" r="5" stroke-width="1" fill="none" />
+                  </svg>
+                </span>
+              </label>
+            </div>
+            <div class="row d-flex align-items-center justify-content-between">
+              <span>
                 Compact mode
               </span>
               <label class="switch">
@@ -343,7 +360,7 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.7.4</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.8.1</a>
               </p>
             </div>
           </div>
@@ -432,6 +449,22 @@
                 </div>
               </div>
               <form @submit.prevent="publicNote()">
+                <div class="row d-flex align-items-center justify-content-between">
+                  <span>
+                    One-time access
+                  </span>
+                  <label class="switch switch-danger">
+                    <input v-model="oneTimeAccessNote" type="checkbox" role="switch" aria-label="One-time access">
+                    <span class="toggle-thumb" aria-hidden="true">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
+                        <rect x="12" y="6" width="1" height="12" />
+                      </svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="on">
+                        <circle cx="12" cy="12" r="5" stroke-width="1" fill="none" />
+                      </svg>
+                    </span>
+                  </label>
+                </div>
                 <div class="row txt-small">
                   <i class="fa-solid fa-circle-info" role="none"></i>
                   <span class="italic">Making your note public generates a random link to share it.</span>
@@ -609,9 +642,11 @@
         </div>
       </template>
       <template v-if="noteLinkInUrl">
-        <h1 v-if="sharedNote === null">Note not found or expired.</h1>
-        <div v-else class="shared-note">
+        <div v-if="sharedNote !== null" class="shared-note">
           <div class="note-container">
+            <div v-if="sharedNote.oneTimeAccess" class="row align-center italic">
+              The note will be deleted after you read it!
+            </div>
             <h2 class="title">
               {{ sharedNote.title }}
             </h2>
@@ -625,7 +660,7 @@
               <div v-html="sharedNote.contentHtml"></div>
             </div>
           </div>
-          <div class="date">
+          <div v-if="sharedNote.date" class="date">
             {{ formatDate(sharedNote.date) }}
           </div>
         </div>
@@ -697,12 +732,11 @@ import { marked } from 'marked'
 import IroJs from './components/IroJs.vue'
 import markedKatex from 'marked-katex-extension'
 import 'katex/dist/katex.min.css'
-import { EditorState } from '@codemirror/state'
-import { EditorView, keymap, placeholder } from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
-import { markdown } from '@codemirror/lang-markdown'
-import { oneDark } from '@codemirror/theme-one-dark'
+import { basicSetup } from "codemirror"
+import { EditorState, Compartment } from "@codemirror/state"
+import { EditorView, placeholder } from "@codemirror/view"
+import { markdown } from "@codemirror/lang-markdown"
+import { oneDark } from "@codemirror/theme-one-dark"
 import { gfmHeadingId } from 'marked-gfm-heading-id'
 import { diffWords } from 'diff'
 import Mark from 'mark.js'
@@ -734,6 +768,8 @@ const DATE_OPTIONS = {
 
 marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG), gfmHeadingId())
 
+const contentAttributesCompartment = new Compartment()
+
 export default {
   data() {
     return {
@@ -745,6 +781,7 @@ export default {
       timeoutNotification: null,
       fingerprintEnabled: true,
       onLine: true,
+      isSpellcheck: true,
       isCompactMode: false,
       isLocked: true,
       isAuthenticated: false,
@@ -771,6 +808,7 @@ export default {
       selectedColor: 'bg-default',
       hiddenNote: false,
       reminderNote: '',
+      oneTimeAccessNote: false,
       searchValue: '',
       localDbName: 'notida-local',
       localDbKeyName: 'key',
@@ -830,6 +868,7 @@ export default {
       return
     }
 
+    if (localStorage.getItem('spellcheck') === 'false') this.isSpellcheck = false
     this.isCompactMode = localStorage.getItem('compact-mode') === 'true'
     if (this.isCompactMode) document.body.classList.add('compact-mode')
 
@@ -893,38 +932,32 @@ export default {
   methods: {
     initEditor() {
       const updateListener = EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          const value = update.state.doc
-          this.noteContentLength = value.length
-        }
+        if (!update.docChanged) return
+        this.noteContent = update.state.doc.toString()
+        this.noteContentLength = update.state.doc.length
       })
-      const state = EditorState.create({
-        doc: '',
-        extensions: [
-          placeholder('Content (Markdown, KaTeX or HTML)'),
-          EditorView.contentAttributes.of({
-            spellcheck: "true",
-            autocorrect: "on",
-            autocomplete: "on",
-            autocapitalize: "sentences"
-          }),
-          history(),
-          markdown(),
-          oneDark,
-          EditorView.lineWrapping,
-          highlightSelectionMatches(),
-          keymap.of([
-            indentWithTab,
-            ...defaultKeymap,
-            ...historyKeymap,
-            ...searchKeymap
-          ]),
-          updateListener
-        ]
-      })
+
       this.editor = new EditorView({
-        state,
-        parent: this.$refs.editor
+        parent: this.$refs.editor,
+        state: EditorState.create({
+          doc: this.noteContent || "",
+          extensions: [
+            basicSetup,
+            markdown(),
+            oneDark,
+            EditorView.lineWrapping,
+            placeholder("Contenu (Markdown, KaTeX ou HTML)"),
+            contentAttributesCompartment.of(
+              EditorView.contentAttributes.of({
+                spellcheck: this.isSpellcheck ? 'true' : 'false',
+                autocorrect: 'on',
+                autocomplete: 'on',
+                autocapitalize: 'sentences'
+              })
+            ),
+            updateListener
+          ]
+        })
       })
     },
     async handleOnline() {
@@ -1690,9 +1723,10 @@ export default {
     },
     async publicNote() {
       const noteId = this.currentNoteId
+      const oneTimeAccess = this.oneTimeAccessNote ? 1 : 0
       if (!noteId) return
       try {
-        const data = JSON.stringify({ noteId })
+        const data = JSON.stringify({ noteId, oneTimeAccess })
         const res = await fetch('api/public-note/', {
           method: 'POST',
           headers: {
@@ -1736,6 +1770,9 @@ export default {
       this.noteLinkInUrl = this.urlParams.get('link')
 
       if (!this.noteLinkInUrl || !/^[a-f0-9]{32}$/i.test(this.noteLinkInUrl)) {
+        this.sharedNote = {
+          title: 'Wrong public link.'
+        }
         return
       }
 
@@ -1749,18 +1786,22 @@ export default {
       })
 
       if (!res.ok) {
+        this.sharedNote = {
+          title: 'Note not found or expired.'
+        }
         return
       }
 
       const response = await res.json()
-      const { title, date, reminder } = response
+      const { title, date, reminder, oneTimeAccess } = response
       const contentHtml = DOMPurify.sanitize(marked.parse(response.content), PURIFY_CONFIG)
 
       this.sharedNote = {
         title,
         contentHtml,
         date,
-        reminder
+        reminder,
+        oneTimeAccess
       }
       document.title = this.sharedNote.title
     },
@@ -1947,6 +1988,20 @@ export default {
       const url = new URL(`./?link=${encodeURIComponent(link)}`, window.location.href)
       navigator.clipboard.writeText(url.href)
       this.showSuccess('Content copied to clipboard')
+    },
+    toggleSpellcheck() {
+      if (this.isSpellcheck) localStorage.removeItem('spellcheck')
+      else localStorage.setItem('spellcheck', 'false')
+      this.editor.dispatch({
+        effects: contentAttributesCompartment.reconfigure(
+          EditorView.contentAttributes.of({
+            spellcheck: this.isSpellcheck ? 'true' : 'false',
+            autocorrect: 'on',
+            autocomplete: 'on',
+            autocapitalize: 'sentences'
+          })
+        )
+      })
     },
     toggleCompactMode() {
       document.body.classList.toggle('compact-mode')
