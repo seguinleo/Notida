@@ -13,7 +13,7 @@ import { z } from 'zod'
 const router = express.Router()
 const encryption = new Encryption()
 
-const maxNoteContentLength = 50000
+const maxNoteContentLength = 60000
 const maxNotesPerUser = 100
 
 const {
@@ -35,8 +35,8 @@ const {
 router.use(cookieParser())
 
 const limiter = rateLimit({
-  windowMs: 3 * 60 * 1000,
-  max: 100,
+  windowMs: 1 * 60 * 1000,
+  max: 200,
   handler: (req, res) => {
     res.status(429).json({
       message: 'Too many requests, please try again later.'
@@ -45,7 +45,7 @@ const limiter = rateLimit({
 })
 
 const loginLimiter = rateLimit({
-  windowMs: 3 * 60 * 1000,
+  windowMs: 1 * 60 * 1000,
   max: 5,
   handler: (req, res) => {
     res.status(429).json({
@@ -56,7 +56,7 @@ const loginLimiter = rateLimit({
 
 const sharedNoteLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 25,
+  max: 50,
   handler: (req, res) => {
     res.status(429).json({
       message: 'Too many requests, please try again later.'
@@ -78,7 +78,7 @@ const verifySession = (req, res, next) => {
   next()
 }
 
-const uuidSchema = z.string().uuid()
+const uuidSchema = z.uuid()
 
 /**
  * @function getKey
@@ -104,32 +104,22 @@ const getAllUserSessions = async (userId) => {
     const sessionsKey = `user:sessions:${userId}`
     const sessions = await redisClient.sMembers(sessionsKey)
 
-    if (sessions.length === 0) {
-      return 0
-    }
-
-    const pipeline = redisClient.multi()
-
-    for (const sid of sessions) {
-      pipeline.ttl(`notes:${sid}`)
-    }
-
-    const results = await pipeline.exec()
-
     let activeSessions = 0
-    const expiredSessions = []
 
-    results.forEach((ttl, index) => {
-      if (ttl > 0) {
-        activeSessions++
-      } else {
-        expiredSessions.push(sessions[index])
-      }
-    })
+    if (sessions.length === 0) return activeSessions
 
-    if (expiredSessions.length > 0) {
-      await redisClient.sRem(sessionsKey, expiredSessions)
-    }
+    await Promise.all(
+      sessions.map(async (sid) => {
+        const ttl = await redisClient.ttl(`notida:${sid}`)
+
+        if (ttl > 0) {
+          activeSessions++
+          return
+        }
+
+        await redisClient.sRem(sessionsKey, sid)
+      })
+    )
 
     if (activeSessions === 0) {
       await redisClient.del(sessionsKey)
@@ -250,16 +240,17 @@ router.post('/login', loginLimiter, async (req, res, next) => {
         if (err) return res.status(401).send('Wrong username or password.')
 
         try {
-          await redisClient.sAdd(
-            `user:sessions:${user.id}`,
-            req.sessionID
-          )
+          if (redisClient) {
+            await redisClient.sAdd(
+              `user:sessions:${user.id}`,
+              req.sessionID
+            )
+          }
 
           await pool.execute(
             'UPDATE users SET lastLogin = NOW() WHERE id = ?',
             [user.id]
           )
-
           return res.status(200).send('Logged in!')
         } catch {
           return res.status(500).json('Internal server error')
@@ -278,10 +269,11 @@ router.post('/logout', verifySession, doubleCsrfProtection, async (req, res) => 
   const userId = req.user.id
 
   try {
-    await redisClient.sRem(`user:sessions:${userId}`, req.sessionID)
-
+    if (redisClient) {
+      await redisClient.sRem(`user:sessions:${userId}`, req.sessionID)
+    }
     req.session.destroy((err) => {
-      if (err) return res.status(500).json('Internal server error')
+      if (err) return res.status(400).json('Internal server error')
       res.clearCookie('connect.sid')
       res.clearCookie('csrfToken')
       return res.status(200).json('Logged out successfully')
@@ -298,20 +290,22 @@ router.post('/logout-all', verifySession, doubleCsrfProtection, async (req, res)
   const userId = req.user.id
 
   try {
-    const sessionKeys = await redisClient.sMembers(`user:sessions:${userId}`)
+    if (redisClient) {
+      const sessionKeys = await redisClient.sMembers(`user:sessions:${userId}`)
 
-    if (sessionKeys.length > 0) {
-      await Promise.all(
-        sessionKeys.map(async (sid) => {
-          await redisClient.del(`notes:${sid}`)
-        })
-      )
+      if (sessionKeys.length > 0) {
+        await Promise.all(
+          sessionKeys.map(async (sid) => {
+            await redisClient.del(`notida:${sid}`)
+          })
+        )
+      }
+
+      await redisClient.del(`user:sessions:${userId}`)
     }
 
-    await redisClient.del(`user:sessions:${userId}`)
-
     req.session.destroy((err) => {
-      if (err) return res.status(500).json('Internal server error')
+      if (err) return res.status(400).json('Internal server error')
       res.clearCookie('connect.sid')
       res.clearCookie('csrfToken')
       return res.status(200).json('All devices logged out successfully')
@@ -351,23 +345,25 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
       [psswdNewHash, userId]
     )
 
-    const sessions = await redisClient.sMembers(`user:sessions:${userId}`)
+    if (redisClient) {
+      const sessionKeys = await redisClient.sMembers(`user:sessions:${userId}`)
 
-    if (sessions.length > 0) {
-      await Promise.all(
-        sessions.map((sid) => redisClient.del(`notes:${sid}`))
-      )
+      if (sessionKeys.length > 0) {
+        await Promise.all(
+          sessionKeys.map(async (sid) => {
+            await redisClient.del(`notida:${sid}`)
+          })
+        )
+      }
 
       await redisClient.del(`user:sessions:${userId}`)
     }
 
     req.session.destroy((err) => {
-      if (err) return res.status(500).json('Internal server error')
+      if (err) return res.status(400).json('Internal server error')
       res.clearCookie('connect.sid')
       res.clearCookie('csrfToken')
-      return res.status(200).json(
-        'Password updated. All devices logged out. Please login again.'
-      )
+      return res.status(200).json('Password updated. All devices logged out. Please login again.')
     })
   } catch {
     return res.status(500).json('Internal server error')
@@ -398,23 +394,25 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
 
     await pool.execute('DELETE FROM users WHERE id = ?', [userId])
 
-    const sessions = await redisClient.sMembers(`user:sessions:${userId}`)
+    if (redisClient) {
+      const sessionKeys = await redisClient.sMembers(`user:sessions:${userId}`)
 
-    if (sessions.length > 0) {
-      await Promise.all(
-        sessions.map((sid) => redisClient.del(`notes:${sid}`))
-      )
+      if (sessionKeys.length > 0) {
+        await Promise.all(
+          sessionKeys.map(async (sid) => {
+            await redisClient.del(`notida:${sid}`)
+          })
+        )
+      }
 
       await redisClient.del(`user:sessions:${userId}`)
     }
 
     req.session.destroy((err) => {
-      if (err) return res.status(500).json('Internal server error')
+      if (err) return res.status(400).json('Internal server error')
       res.clearCookie('connect.sid')
       res.clearCookie('csrfToken')
-      return res.status(200).json(
-        'Account deleted successfully. All notes deleted. All devices logged out.'
-      )
+      return res.status(200).json('Account deleted successfully. All notes deleted. All devices logged out.')
     })
   } catch {
     return res.status(500).json('Internal server error')
@@ -422,9 +420,9 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
 })
 
 const noteSchema = z.object({
-  title: z.string().min(1).max(30),
-  content: z.string().max(maxNoteContentLength),
-  date: z.string(),
+  title: z.string().trim().min(1).max(30),
+  content: z.string().trim().max(maxNoteContentLength),
+  date: z.string().max(63),
   color: z.enum([
     'bg-default',
     'bg-red',
@@ -552,51 +550,124 @@ router.post('/get-note-date', verifySession, doubleCsrfProtection, async (req, r
 
 router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const parsed = noteSchema.safeParse(req.body)
-  if (!parsed.success) return res.status(400).send('Invalid input')
+
+  if (!parsed.success) {
+    return res.status(400).send('Invalid input')
+  }
 
   const userId = req.user.id
+  const key = getKey(userId)
+
+  if (!userId || !key) {
+    return res.status(400).send('Note creation failed')
+  }
+
+  const {
+    title,
+    content,
+    date,
+    color,
+    hidden,
+    category,
+    reminder
+  } = parsed.data
+
+  if (!title) {
+    return res.status(400).send('Note creation failed')
+  }
+
+  let connection
 
   try {
-    const [rows] = await pool.execute(
-      'SELECT COUNT(*) as count FROM notes WHERE userId = ?',
+    connection = await pool.getConnection()
+    await connection.beginTransaction()
+
+    const [userRows] = await connection.execute(
+      `
+          SELECT id
+          FROM users
+          WHERE id = ?
+          FOR UPDATE
+        `,
       [userId]
     )
 
-    if (rows[0].count >= maxNotesPerUser) {
+    if (userRows.length !== 1) {
+      await connection.rollback()
+      return res.status(401).send('User not found')
+    }
+
+    const [noteRows] = await connection.execute(
+      `
+          SELECT COUNT(*) AS count
+          FROM notes
+          WHERE userId = ?
+        `,
+      [userId]
+    )
+
+    const noteCount = Number(noteRows[0].count)
+
+    if (noteCount >= maxNotesPerUser) {
+      await connection.rollback()
       return res.status(403).send('Note limit reached')
     }
-  } catch {
-    return res.status(500).json('Internal server error')
-  }
 
-  const { title, content, date, color, hidden, category, reminder } = parsed.data
-  const key = getKey(userId)
+    const noteId = crypto.randomUUID()
 
-  if (!userId || !key || !title) return res.status(400).send('Note creation failed')
+    const encryptedTitle = encryption.encryptData(
+      title.trim(),
+      key
+    )
 
-  const noteId = crypto.randomUUID()
+    const encryptedContent = encryption.encryptData(
+      content.trim(),
+      key
+    )
 
-  try {
-    await pool.execute(
-      'INSERT INTO notes (id, title, content, creationDate, updateDate, color, hiddenNote, category, reminder, userId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    await connection.execute(
+      `
+          INSERT INTO notes (
+            id,
+            title,
+            content,
+            creationDate,
+            updateDate,
+            color,
+            hiddenNote,
+            category,
+            reminder,
+            userId
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
       [
         noteId,
-        encryption.encryptData(title.trim(), key),
-        encryption.encryptData(content.trim(), key),
+        encryptedTitle,
+        encryptedContent,
         date,
         date,
         color,
         hidden,
-        category,
-        reminder,
+        category ?? null,
+        reminder ?? null,
         userId
       ]
     )
-    return res.status(200).send('Note created successfully')
+
+    await connection.commit()
+
+    return res.status(201).send('Note created successfully')
   } catch {
+    if (connection) {
+      await connection.rollback()
+    }
     return res.status(500).json('Internal server error')
+  } finally {
+    connection?.release()
   }
-})
+}
+)
 
 router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const parsed = updateNoteSchema.safeParse(req.body)
@@ -634,8 +705,8 @@ router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res
         reminder = ?
       WHERE id = ? AND userId = ?
     `, [
-      encryption.encryptData(title.trim(), key),
-      encryption.encryptData(content.trim(), key),
+      encryption.encryptData(title, key),
+      encryption.encryptData(content, key),
       oldContent,
       date,
       color,
@@ -687,13 +758,20 @@ router.post('/delete-note', verifySession, doubleCsrfProtection, async (req, res
   }
 })
 
-router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res) => {
-  const { noteId, oneTimeAccess } = req.body
-  const userId = req.user.id
+const publicNoteSchema = z.object({
+  noteId: uuidSchema,
+  oneTimeAccess: z.union([z.literal(0), z.literal(1)])
+})
 
-  if (!uuidSchema.safeParse(noteId).success) {
-    return res.status(400).send('Invalid note id')
+router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res) => {
+  const parsed = publicNoteSchema.safeParse(req.body)
+
+  if (!parsed.success) {
+    return res.status(400).send('Invalid input')
   }
+
+  const { noteId, oneTimeAccess } = parsed.data
+  const userId = req.user.id
 
   const noteLink = crypto.randomBytes(16).toString('hex')
 
@@ -728,22 +806,43 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
     return res.status(400).json('Invalid note link')
   }
 
+  const connection = await pool.getConnection()
+
   try {
-    const [noteRows] = await pool.execute(`
-      SELECT id, title, content, updateDate, reminder, oneTimeAccess, userId
-      FROM notes
-      WHERE link = ?
-      LIMIT 1
-    `, [noteLink])
+    await connection.beginTransaction()
+
+    const [noteRows] = await connection.execute(
+      `
+        SELECT id, title, content, updateDate, reminder, oneTimeAccess, userId
+        FROM notes
+        WHERE link = ?
+        LIMIT 1
+        FOR UPDATE
+      `,
+      [noteLink]
+    )
 
     if (noteRows.length !== 1) {
+      await connection.rollback()
       return res.status(404).send('Note not found')
     }
 
-    const { id, title: encryptedTitle, content: encryptedContent, updateDate, reminder, oneTimeAccess, userId } = noteRows[0]
+    const {
+      id,
+      title: encryptedTitle,
+      content: encryptedContent,
+      updateDate,
+      reminder,
+      oneTimeAccess,
+      userId
+    } = noteRows[0]
 
     const key = getKey(userId)
-    if (!key) return res.status(400).send('Internal server error')
+
+    if (!key) {
+      await connection.rollback()
+      return res.status(500).send('Internal server error')
+    }
 
     const note = {
       id,
@@ -755,12 +854,23 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
     }
 
     if (oneTimeAccess) {
-      await pool.execute('UPDATE notes SET link = NULL, oneTimeAccess = 0 WHERE id = ?', [id])
+      await connection.execute(
+        `
+          UPDATE notes
+          SET link = NULL, oneTimeAccess = 0
+          WHERE id = ?
+        `,
+        [id]
+      )
     }
 
+    await connection.commit()
     return res.status(200).json(note)
   } catch {
+    await connection.rollback()
     return res.status(500).json('Internal server error')
+  } finally {
+    connection.release()
   }
 })
 

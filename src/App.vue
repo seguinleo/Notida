@@ -275,11 +275,16 @@
                   <i class="fa-solid fa-chevron-left"></i>
                 </button>
               </div>
+              <div class="done">
+                <button type="button" class="btn-danger" @click="resetTheme()">
+                  Reset
+                </button>
+              </div>
             </div>
             <div class="row bold">
               Change theme
             </div>
-            <IroJs />
+            <IroJs ref="IroJs" />
           </div>
         </div>
       </div>
@@ -360,7 +365,7 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.8.1</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.8.2</a>
               </p>
             </div>
           </div>
@@ -595,50 +600,44 @@
           </div>
         </div>
         <div v-if="allUserNotes.length === 0" class="welcome">
-          <div class="note-container">
-            <h1 class="align-center">
-              <span>Welcome to Notida!</span>
-            </h1>
-            <div class="note-content">
-              <div>
-                <p class="align-center">
-                  <img alt="App icon" src="/pwa/apple-touch-icon.png" width="64" height="64">
-                </p>
-                <p class="align-center italic">
-                  A fast, private and secure web notebook.
-                </p>
-                <p class="align-center">
-                  <img alt="License GPL-3" height="20" src="./assets/img/license-GPL-3.svg">
-                  <img alt="Open source" height="20" src="./assets/img/project-open-source.svg">
-                </p>
-                <h2>📝Features</h2>
-                <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML
-                  and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your
-                  notes.
-                </p>
-                <p>You can sync your notes across all your devices after logging in (no email address is required, just
-                  a
-                  username and a strong password). Public notes can be shared with anyone via a random URL.</p>
-                <p>This website is a Progressive Web App (PWA) that can be installed as an application. You can fully
-                  customize the application's color theme.</p>
-                <p>This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and
-                  focusable elements.</p>
-                <h2>🔒Security</h2>
-                <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
-                    security recommendations</a>.
-                </p>
-                <p>All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using
-                  Argon2id. All notes are encrypted with AES-256-GCM.</p>
-                <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never
-                  sent
-                  to the server, verification is local and UI/UX only.</p>
-                <p>User accounts are deleted 1 year after the last login.</p>
-                <h2>🌐Community</h2>
-                <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
-                  to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
-              </div>
-            </div>
-          </div>
+          <p class="align-center">
+            <img alt="App icon" src="/pwa/apple-touch-icon.png" width="52" height="52">
+          </p>
+          <h1 class="align-center">
+            <span>Welcome to Notida!</span>
+          </h1>
+          <p class="align-center italic">
+            A fast, private and secure web notebook.
+          </p>
+          <p class="align-center">
+            <img alt="License GPL-3" height="20" src="./assets/img/license-GPL-3.svg">
+            <img alt="Open source" height="20" src="./assets/img/project-open-source.svg">
+          </p>
+          <h2>📝Features</h2>
+          <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML
+            and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your
+            notes.
+          </p>
+          <p>You can sync your notes across all your devices after logging in (no email address is required, just
+            a
+            username and a strong password). Public notes can be shared with anyone via a random URL.</p>
+          <p>This website is a Progressive Web App (PWA) that can be installed as an application. You can fully
+            customize the application's color theme.</p>
+          <p>This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and
+            focusable elements.</p>
+          <h2>🔒Security</h2>
+          <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
+              security recommendations</a>.
+          </p>
+          <p>All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using
+            Argon2id. All notes are encrypted with AES-256-GCM.</p>
+          <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never
+            sent
+            to the server, verification is local and UI/UX only.</p>
+          <p>User accounts are deleted 1 year after the last login.</p>
+          <h2>🌐Community</h2>
+          <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
+            to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
         </div>
       </template>
       <template v-if="noteLinkInUrl">
@@ -732,11 +731,11 @@ import { marked } from 'marked'
 import IroJs from './components/IroJs.vue'
 import markedKatex from 'marked-katex-extension'
 import 'katex/dist/katex.min.css'
-import { basicSetup } from "codemirror"
-import { EditorState, Compartment } from "@codemirror/state"
-import { EditorView, placeholder } from "@codemirror/view"
-import { markdown } from "@codemirror/lang-markdown"
-import { oneDark } from "@codemirror/theme-one-dark"
+import { basicSetup } from 'codemirror'
+import { EditorState, Compartment } from '@codemirror/state'
+import { EditorView, placeholder } from '@codemirror/view'
+import { markdown } from '@codemirror/lang-markdown'
+import { oneDark } from '@codemirror/theme-one-dark'
 import { gfmHeadingId } from 'marked-gfm-heading-id'
 import { diffWords } from 'diff'
 import Mark from 'mark.js'
@@ -940,13 +939,13 @@ export default {
       this.editor = new EditorView({
         parent: this.$refs.editor,
         state: EditorState.create({
-          doc: this.noteContent || "",
+          doc: this.noteContent || '',
           extensions: [
             basicSetup,
             markdown(),
             oneDark,
             EditorView.lineWrapping,
-            placeholder("Contenu (Markdown, KaTeX ou HTML)"),
+            placeholder('Markdown, KaTeX, HTML'),
             contentAttributesCompartment.of(
               EditorView.contentAttributes.of({
                 spellcheck: this.isSpellcheck ? 'true' : 'false',
@@ -2042,7 +2041,10 @@ export default {
       if (firstMark) {
         firstMark.scrollIntoView({ block: 'nearest' })
       }
-    }
+    },
+    resetTheme() {
+      this.$refs.IroJs.resetTheme()
+    },
   }
 }
 </script>

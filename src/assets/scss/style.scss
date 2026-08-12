@@ -33,12 +33,13 @@
 :root {
   --theme-color: #151e15;
   --bg: rgba(255, 255, 255, .1);
-  --glass-bg: rgba(0, 0, 0, .1);
+  --glass-bg: rgba(0, 0, 0, .2);
   --surface: #111;
   --text: #ddd;
   --hover: rgba(255, 255, 255, .15);
   --primary: #0b9636;
-  --primary-transparent: #0b963680;
+  --success: #076b27;
+  --danger: #760c0c;
 }
 
 html {
@@ -60,11 +61,13 @@ body {
   font-size: .9rem;
 
   &.light {
-    --bg: rgba(0, 0, 0, .05);
-    --glass-bg: rgba(255, 255, 255, .1);
+    --bg: rgba(0, 0, 0, .03);
+    --glass-bg: rgba(255, 255, 255, .2);
     --surface: #fff;
     --text: #222;
-    --hover: rgba(0, 0, 0, .07);
+    --hover: rgba(0, 0, 0, .06);
+    --success: #60d152;
+    --danger: #ff6363;
 
     .bg-red {
       background: #ff8787;
@@ -120,7 +123,7 @@ body {
 }
 
 \::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, .4);
+  background: rgba(150, 150, 150, .4);
 }
 
 \::-webkit-scrollbar {
@@ -405,6 +408,7 @@ li {
     width: 1rem;
     height: 1rem;
     border-radius: 4px;
+    border: 2px solid rgba(150, 150, 150, .4);
     display: inline-flex;
     justify-content: center;
     align-items: center;
@@ -421,7 +425,6 @@ li {
 
   input[type="checkbox"]:checked {
     background: var(--primary);
-    border-color: var(--primary);
   }
 
   input[type="checkbox"]:checked::before {
@@ -510,7 +513,6 @@ input {
     overflow-x: hidden;
     overflow-wrap: break-word;
     word-break: break-word;
-    margin-bottom: 10px;
     width: 100%;
   }
 
@@ -614,12 +616,12 @@ input {
 .done button,
 #btn-add-note,
 #success-notification {
-  background: var(--primary-transparent);
+  background: var(--success);
 }
 
 .btn-danger,
 #error-notification {
-  background: #ea424280 !important;
+  background: var(--danger) !important;
 }
 
 .hidden-note .note-content {
@@ -797,7 +799,7 @@ input {
   }
 
   input:checked+span {
-    background: rgba(0, 155, 0, .3);
+    background: var(--success);
   }
 
   input:focus+span {
@@ -846,7 +848,7 @@ input {
     border: 0;
 
     &:checked+.toggle-thumb {
-      background-color: var(--primary-transparent);
+      background-color: var(--success);
     }
 
     &:checked+.toggle-thumb:before {
@@ -878,7 +880,7 @@ input {
     justify-content: space-between;
     align-items: center;
     padding: 0 6px;
-    background-color: var(--hover);
+    background-color: rgba(150, 150, 150, .4);
     border-radius: 48px;
     cursor: pointer;
     transition: background-color .3s ease;
@@ -900,7 +902,7 @@ input {
 .switch-danger {
   input[type=checkbox] {
     &:checked+.toggle-thumb {
-      background-color: #ea424280 !important;
+      background-color: var(--danger) !important;
     }
   }
 }
@@ -919,7 +921,7 @@ input {
   text-align: center;
   padding: 4px 4px 1.5rem;
   border-radius: 10px 10px 0 0;
-  background: #ea4242
+  background: var(--danger)
 }
 
 #success-notification,
@@ -1094,7 +1096,8 @@ input {
 
 .welcome {
   display: flex;
-  padding: 10px;
+  flex-direction: column;
+  padding: 2rem 10px 0;
   line-height: 2;
 
   img {
