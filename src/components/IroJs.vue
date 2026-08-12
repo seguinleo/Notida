@@ -3,9 +3,6 @@
   <div class="row">
     <div id="color-picker"></div>
   </div>
-  <div class="row">
-    <button type="button" class="btn-danger w-100" @click="resetTheme()">Reset</button>
-  </div>
 </template>
 
 <script>

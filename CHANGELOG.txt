@@ -1,3 +1,6 @@
+#----v26.8.2----#
+-UI/Sessions/security fixes
+
 #----v26.8.1----# !! DATABASE CHANGED !!
 -Add spellcheck toggle
 -Add one-time access public notes

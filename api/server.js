@@ -1,11 +1,11 @@
 import express from 'express'
 import session from 'express-session'
 import cors from 'cors'
-import { RedisStore } from 'connect-redis'
 import routes from './routes.js'
 import { pool } from './config/config.js'
 import cron from 'node-cron'
 import { redisClient } from './config/redis.js'
+import { RedisStore } from 'connect-redis'
 import { deleteInactiveAccounts } from './cron/cronJobs.js'
 
 const app = express()
@@ -42,9 +42,9 @@ try {
   process.exit(1)
 }
 
-const redisStore = new RedisStore({
+const sessionStore = new RedisStore({
   client: redisClient,
-  prefix: 'notes:',
+  prefix: 'notida:',
   ttl: 604800,
   disableTouch: true
 })
@@ -55,7 +55,7 @@ if (!process.env.SESSION_SECRET) {
 
 app.use(
   session({
-    store: redisStore,
+    store: sessionStore,
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -81,6 +81,7 @@ cron.schedule('0 0 * * *', async () => {
 
 const server = app.listen(
   PORT,
+  // '127.0.0.1',
   () => {
     console.log(`Server is running on port ${PORT}`)
   })
@@ -96,5 +97,3 @@ async function shutdown() {
 
 process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)
-
-export { redisClient }
