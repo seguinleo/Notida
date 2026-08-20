@@ -1,11 +1,7 @@
 import express from 'express'
-import session from 'express-session'
 import cors from 'cors'
-import routes from './routes.js'
-import { pool } from './config/config.js'
 import cron from 'node-cron'
-import { redisClient } from './config/redis.js'
-import { RedisStore } from 'connect-redis'
+import routes from './routes.js'
 import { deleteInactiveAccounts } from './cron/cronJobs.js'
 
 const app = express()
@@ -34,40 +30,6 @@ app.use(express.json({ limit: '100kb' }))
 
 const PORT = process.env.PORT || 3000
 
-try {
-  await redisClient.connect()
-  console.log('Redis client connected')
-} catch (err) {
-  console.error(err)
-  process.exit(1)
-}
-
-const sessionStore = new RedisStore({
-  client: redisClient,
-  prefix: 'notida:',
-  ttl: 604800,
-  disableTouch: true
-})
-
-if (!process.env.SESSION_SECRET) {
-  throw new Error('SESSION_SECRET is required')
-}
-
-app.use(
-  session({
-    store: sessionStore,
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    },
-  })
-)
-
 app.use('/', routes)
 
 // Each day at 12:00 AM
@@ -79,21 +41,9 @@ cron.schedule('0 0 * * *', async () => {
   }
 })
 
-const server = app.listen(
+app.listen(
   PORT,
   // '127.0.0.1',
   () => {
     console.log(`Server is running on port ${PORT}`)
   })
-
-async function shutdown() {
-  server.close()
-
-  await redisClient.quit()
-  await pool.end()
-
-  process.exit(0)
-}
-
-process.on('SIGTERM', shutdown)
-process.on('SIGINT', shutdown)
