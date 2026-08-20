@@ -149,7 +149,7 @@
                   </button>
                 </div>
                 <div class="done">
-                  <button type="submit" id="submit-note-btn" aria-label="Save note" :disabled="isBtnDisabled">
+                  <button type="submit" id="submit-note-btn" aria-label="Save note" :disabled="isAddingCloudNote">
                     <i class="fa-solid fa-check"></i>
                     Done
                   </button>
@@ -552,7 +552,7 @@
                     aria-label="Password" required>
                 </div>
                 <div class="row">
-                  <button type="submit" class="w-100 bg-default" :disabled="isBtnDisabled">Log in</button>
+                  <button type="submit" class="w-100 bg-default" :disabled="isLoginLoading">Log in</button>
                 </div>
                 <div class="row align-center">
                   <button type="button" class="w-100 bg-default" @click="openCreateAccountModal()">Don't have an
@@ -783,6 +783,8 @@ export default {
       isSpellcheck: true,
       isCompactMode: false,
       isLocked: true,
+      isLoginLoading: false,
+      isAddingCloudNote: false,
       isAuthenticated: false,
       isAuthenticatedResponse: false,
       isNoteUpdate: false,
@@ -797,7 +799,6 @@ export default {
         'bg-default', 'bg-red', 'bg-orange', 'bg-yellow', 'bg-lime', 'bg-green',
         'bg-cyan', 'bg-light-blue', 'bg-blue', 'bg-purple', 'bg-pink'
       ],
-      isBtnDisabled: false,
       sortOption: '1',
       lastLoginDate: '',
       titleNote: '',
@@ -806,7 +807,7 @@ export default {
       selectedCategory: '',
       selectedColor: 'bg-default',
       hiddenNote: false,
-      reminderNote: '',
+      reminderNote: null,
       oneTimeAccessNote: false,
       searchValue: '',
       localDbName: 'notida-local',
@@ -1171,7 +1172,7 @@ export default {
       const psswdCreate = psswd
       try {
         const data = JSON.stringify({ nameCreate, psswdCreate })
-        const res = await fetch('api/create-account/', {
+        const res = await fetch('/api/create-account/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -1192,46 +1193,58 @@ export default {
       }
     },
     async loginUser() {
-      if (this.isLocked) return
+      if (this.isLoginLoading) return
+
       const nameLogin = document.querySelector('#name-login').value.trim()
       const psswdLogin = document.querySelector('#psswd-login').value
+
       if (
         nameLogin.length < 3 ||
         nameLogin.length > 30 ||
         psswdLogin.length < 10 ||
         psswdLogin.length > 64
-      ) return
+      ) {
+        return
+      }
+
       if (!/^[\p{L} -]+$/u.test(nameLogin.normalize('NFKC'))) {
         this.showError('Name can only contain letters, spaces and accents...')
         return
       }
+
+      this.isLoginLoading = true
+
       try {
-        const data = JSON.stringify({ nameLogin, psswdLogin })
-        const res = await fetch('api/login/', {
+        const res = await fetch('/api/login/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: data
+          credentials: 'include',
+          body: JSON.stringify({
+            nameLogin,
+            psswdLogin
+          })
         })
         if (!res.ok) {
-          this.isBtnDisabled = true
-          document.querySelector('#psswd-login').value = ''
           const errorMessage = await res.text()
+          document.querySelector('#psswd-login').value = ''
           this.showError(errorMessage)
           setTimeout(() => {
-            this.isBtnDisabled = false
+            this.isLoginLoading = false
           }, 7000)
           return
         }
         window.location.reload()
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
+      } finally {
+        this.isLoginLoading = false
       }
     },
     async fetchLogout() {
       try {
-        const res = await fetch('api/logout/', {
+        const res = await fetch('/api/logout/', {
           method: 'POST',
           headers: {
             'x-csrf-token': this.csrfToken
@@ -1248,7 +1261,7 @@ export default {
     },
     async fetchLogoutAll() {
       try {
-        const res = await fetch('api/logout-all/', {
+        const res = await fetch('/api/logout-all/', {
           method: 'POST',
           headers: {
             'x-csrf-token': this.csrfToken
@@ -1277,7 +1290,7 @@ export default {
       const psswdNew = e
       try {
         const data = JSON.stringify({ psswdOld, psswdNew })
-        const res = await fetch('api/update-password/', {
+        const res = await fetch('/api/update-password/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1304,7 +1317,7 @@ export default {
       if (!psswd || psswd.length < 10 || psswd.length > 64) return
       try {
         const data = JSON.stringify({ psswd })
-        const res = await fetch('api/delete-account/', {
+        const res = await fetch('/api/delete-account/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1325,7 +1338,7 @@ export default {
     },
     async isUserAuthenticated() {
       try {
-        const res = await fetch('api/whoami', {
+        const res = await fetch('/api/whoami/', {
           method: 'GET'
         })
         if (!res.ok) {
@@ -1550,7 +1563,7 @@ export default {
       this.sortOption = localStorage.getItem('sort-notes') || '1'
 
       try {
-        const res = await fetch('api/get-notes/', {
+        const res = await fetch('/api/get-notes/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1599,16 +1612,14 @@ export default {
     },
     async addCloudNote() {
       try {
-        if (this.allUserNotes.length > this.maxNotesPerUser) {
+        if (this.allUserNotes.length >= this.maxNotesPerUser) {
           this.showError('You have reached the maximum storage capacity...')
           return
         }
-        if (this.isLocked) return
-        this.isBtnDisabled = true
+        if (this.isAddingCloudNote) return
         const noteId = this.currentNoteId
         const title = this.titleNote.trim()
         const content = this.editor.state.doc.toString().trim()
-        const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
         const color = this.selectedColor || 'bg-default'
         const hidden = this.hiddenNote ? 1 : 0
         const category = this.selectedCategory || null
@@ -1622,7 +1633,9 @@ export default {
           return
         }
         if (!this.allColors.includes(color)) return
-        if (reminder && !new Date(reminder).getTime()) return
+        if (reminder && Number.isNaN(new Date(reminder).getTime())) return
+
+        this.isAddingCloudNote = true
 
         let data = {}
 
@@ -1631,7 +1644,6 @@ export default {
             noteId,
             title,
             content,
-            date,
             color,
             hidden,
             category,
@@ -1641,7 +1653,6 @@ export default {
           data = JSON.stringify({
             title,
             content,
-            date,
             color,
             hidden,
             category,
@@ -1649,7 +1660,7 @@ export default {
           })
         }
 
-        const url = this.isNoteUpdate ? 'api/update-note/' : 'api/add-note/'
+        const url = this.isNoteUpdate ? '/api/update-note/' : '/api/add-note/'
         const res = await fetch(url, {
           method: 'POST',
           headers: {
@@ -1667,14 +1678,14 @@ export default {
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
       } finally {
-        this.isBtnDisabled = false
+        this.isAddingCloudNote = false
       }
     },
     async pinCloudNote(noteId) {
       if (!noteId) return
       try {
         const data = JSON.stringify({ noteId })
-        const res = await fetch('api/pin-note/', {
+        const res = await fetch('/api/pin-note/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1702,7 +1713,7 @@ export default {
       if (!noteId) return
       try {
         const data = JSON.stringify({ noteId })
-        const res = await fetch('api/private-note/', {
+        const res = await fetch('/api/private-note/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1726,7 +1737,7 @@ export default {
       if (!noteId) return
       try {
         const data = JSON.stringify({ noteId, oneTimeAccess })
-        const res = await fetch('api/public-note/', {
+        const res = await fetch('/api/public-note/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1748,7 +1759,7 @@ export default {
       if (!noteId) return
       try {
         const data = JSON.stringify({ noteId })
-        const res = await fetch('api/delete-note/', {
+        const res = await fetch('/api/delete-note/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1776,7 +1787,7 @@ export default {
       }
 
       const data = JSON.stringify({ noteLink: this.noteLinkInUrl })
-      const res = await fetch('api/get-shared-note/', {
+      const res = await fetch('/api/get-shared-note/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -1887,7 +1898,7 @@ export default {
       }
 
       if (this.isAuthenticated) {
-        const noteLastUpdate = await fetch(`api/get-note-date/`, {
+        const noteLastUpdate = await fetch('/api/get-note-date/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

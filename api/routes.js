@@ -1,20 +1,57 @@
 import express from 'express'
+import session from 'express-session'
 import cookieParser from 'cookie-parser'
 import crypto from 'crypto'
 import argon2 from 'argon2'
 import { doubleCsrf } from 'csrf-csrf'
 import rateLimit from 'express-rate-limit'
+import { RedisStore } from 'connect-redis'
+import { z } from 'zod'
 import Encryption from './class/Encryption.js'
 import { pool } from './config/config.js'
 import passport from './config/passport.js'
 import { redisClient } from './config/redis.js'
-import { z } from 'zod'
 
 const router = express.Router()
 const encryption = new Encryption()
 
-const maxNoteContentLength = 60000
+const maxNoteContentLength = 50000
 const maxNotesPerUser = 100
+
+try {
+  await redisClient.connect()
+  console.log('Redis client connected')
+} catch (err) {
+  console.error('Redis connection failed:', err)
+  process.exit(1)
+}
+
+const sessionStore = new RedisStore({
+  client: redisClient,
+  prefix: 'notida:',
+  ttl: 604800,
+  disableTouch: true
+})
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET is required')
+}
+
+router.use(
+  session({
+    name: 'sessionId',
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    }
+  })
+)
 
 const {
   generateCsrfToken,
@@ -104,29 +141,26 @@ const getAllUserSessions = async (userId) => {
     const sessionsKey = `user:sessions:${userId}`
     const sessions = await redisClient.sMembers(sessionsKey)
 
-    let activeSessions = 0
+    if (sessions.length === 0) {
+      return 0
+    }
 
-    if (sessions.length === 0) return activeSessions
-
-    await Promise.all(
+    const results = await Promise.all(
       sessions.map(async (sid) => {
         const ttl = await redisClient.ttl(`notida:${sid}`)
 
         if (ttl > 0) {
-          activeSessions++
-          return
+          return true
         }
 
         await redisClient.sRem(sessionsKey, sid)
+        return false
       })
     )
 
-    if (activeSessions === 0) {
-      await redisClient.del(sessionsKey)
-    }
-
-    return activeSessions
-  } catch {
+    return results.filter(Boolean).length
+  } catch (err) {
+    console.error('Failed to get user sessions:', err)
     return 0
   }
 }
@@ -193,12 +227,11 @@ router.post('/create-account', loginLimiter, async (req, res) => {
 
   const userId = crypto.randomUUID()
   const psswdCreateHash = await argon2.hash(psswdCreate)
-  const currentDate = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
   try {
     await pool.execute(
-      'INSERT INTO users (id, name, psswd, creationDate) VALUES (?, ?, ?, ?)',
-      [userId, nameCreate, psswdCreateHash, currentDate]
+      'INSERT INTO users (id, name, psswd, creationDate) VALUES (?, ?, ?, UTC_TIMESTAMP())',
+      [userId, nameCreate, psswdCreateHash]
     )
     return res.status(200).send('Account created successfully')
   } catch {
@@ -218,45 +251,52 @@ router.post('/login', loginLimiter, async (req, res, next) => {
 
   try {
     const user = await new Promise((resolve, reject) => {
-      passport.authenticate('local', { session: false }, (err, user) => {
-        if (err) return reject(err)
-        resolve(user)
-      })(req, res, next)
+      passport.authenticate(
+        'local',
+        { session: false },
+        (err, user) => {
+          if (err) return reject(err)
+          resolve(user)
+        }
+      )(req, res, next)
     })
 
     if (!user) {
       return res.status(401).send('Wrong username or password.')
     }
 
-    req.session.regenerate((err) => {
-      if (err) return res.status(401).send('Wrong username or password.')
-
-      req.session.user = {
-        id: user.id,
-        name: user.name,
-      }
-
-      req.session.save(async (err) => {
-        if (err) return res.status(401).send('Wrong username or password.')
-
-        try {
-          if (redisClient) {
-            await redisClient.sAdd(
-              `user:sessions:${user.id}`,
-              req.sessionID
-            )
-          }
-
-          await pool.execute(
-            'UPDATE users SET lastLogin = NOW() WHERE id = ?',
-            [user.id]
-          )
-          return res.status(200).send('Logged in!')
-        } catch {
-          return res.status(500).json('Internal server error')
-        }
+    await new Promise((resolve, reject) => {
+      req.session.regenerate(err => {
+        if (err) return reject(err)
+        resolve()
       })
     })
+
+    req.session.user = {
+      id: user.id,
+      name: user.name
+    }
+
+    await new Promise((resolve, reject) => {
+      req.session.save(err => {
+        if (err) return reject(err)
+        resolve()
+      })
+    })
+
+    const sessionsKey = `user:sessions:${user.id}`
+
+    await redisClient.sAdd(
+      sessionsKey,
+      req.sessionID
+    )
+
+    await pool.execute(
+      'UPDATE users SET lastLogin = UTC_TIMESTAMP() WHERE id = ?',
+      [user.id]
+    )
+
+    return res.status(200).send('Logged in!')
   } catch {
     return res.status(500).json('Internal server error')
   }
@@ -273,8 +313,8 @@ router.post('/logout', verifySession, doubleCsrfProtection, async (req, res) => 
       await redisClient.sRem(`user:sessions:${userId}`, req.sessionID)
     }
     req.session.destroy((err) => {
-      if (err) return res.status(400).json('Internal server error')
-      res.clearCookie('connect.sid')
+      if (err) return res.status(500).json('Internal server error')
+      res.clearCookie('sessionId')
       res.clearCookie('csrfToken')
       return res.status(200).json('Logged out successfully')
     })
@@ -305,8 +345,8 @@ router.post('/logout-all', verifySession, doubleCsrfProtection, async (req, res)
     }
 
     req.session.destroy((err) => {
-      if (err) return res.status(400).json('Internal server error')
-      res.clearCookie('connect.sid')
+      if (err) return res.status(500).json('Internal server error')
+      res.clearCookie('sessionId')
       res.clearCookie('csrfToken')
       return res.status(200).json('All devices logged out successfully')
     })
@@ -360,8 +400,8 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
     }
 
     req.session.destroy((err) => {
-      if (err) return res.status(400).json('Internal server error')
-      res.clearCookie('connect.sid')
+      if (err) return res.status(500).json('Internal server error')
+      res.clearCookie('sessionId')
       res.clearCookie('csrfToken')
       return res.status(200).json('Password updated. All devices logged out. Please login again.')
     })
@@ -409,8 +449,8 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
     }
 
     req.session.destroy((err) => {
-      if (err) return res.status(400).json('Internal server error')
-      res.clearCookie('connect.sid')
+      if (err) return res.status(500).json('Internal server error')
+      res.clearCookie('sessionId')
       res.clearCookie('csrfToken')
       return res.status(200).json('Account deleted successfully. All notes deleted. All devices logged out.')
     })
@@ -419,10 +459,11 @@ router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, 
   }
 })
 
+const datetimeLocalRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
+
 const noteSchema = z.object({
   title: z.string().trim().min(1).max(30),
   content: z.string().trim().max(maxNoteContentLength),
-  date: z.string().max(63),
   color: z.enum([
     'bg-default',
     'bg-red',
@@ -438,7 +479,10 @@ const noteSchema = z.object({
   ]).default('bg-default'),
   hidden: z.number().int().min(0).max(1).default(0),
   category: z.string().max(63).nullable().optional(),
-  reminder: z.string().max(63).nullable().optional()
+  reminder: z
+    .string()
+    .regex(datetimeLocalRegex, 'Invalid reminder format')
+    .nullable()
 })
 
 const updateNoteSchema = noteSchema.extend({
@@ -448,32 +492,26 @@ const updateNoteSchema = noteSchema.extend({
 /**
  * @description Route to get all user notes
  */
-router.post(
-  '/get-notes',
-  verifySession,
-  doubleCsrfProtection,
-  async (req, res) => {
-    const userId = req.user.id
-    const name = req.user.name
+router.post('/get-notes', verifySession, doubleCsrfProtection, async (req, res) => {
+  const userId = req.user.id
+  const name = req.user.name
 
-    const key = getKey(userId)
+  const key = getKey(userId)
 
-    if (!key) {
-      return res.status(400).send('Notes retrieval failed')
-    }
+  if (!key) return res.status(400).send('Notes retrieval failed')
 
-    try {
-      const [
-        [userRows],
-        allUserSessions,
-        [noteRows]
-      ] = await Promise.all([
-        pool.execute(
-          'SELECT lastLogin FROM users WHERE id = ? LIMIT 1',
-          [userId]
-        ),
-        getAllUserSessions(userId),
-        pool.execute(`
+  try {
+    const [
+      [userRows],
+      allUserSessions,
+      [noteRows]
+    ] = await Promise.all([
+      pool.execute(
+        'SELECT lastLogin FROM users WHERE id = ? LIMIT 1',
+        [userId]
+      ),
+      getAllUserSessions(userId),
+      pool.execute(`
           SELECT
             id,
             title,
@@ -489,42 +527,41 @@ router.post(
           FROM notes
           WHERE userId = ?
         `, [userId])
-      ])
+    ])
 
-      const lastLogin =
-        userRows.length === 1
-          ? userRows[0].lastLogin
-          : 0
+    const lastLogin =
+      userRows.length === 1
+        ? userRows[0].lastLogin
+        : 0
 
-      const notes = noteRows.map(row => ({
-        id: row.id,
-        title: encryption.decryptData(row.title, key),
-        content: encryption.decryptData(row.content, key),
-        historic: row.historic
-          ? encryption.decryptData(row.historic, key)
-          : '',
-        color: row.color,
-        date: row.updateDate,
-        category: row.category,
-        link: row.link,
-        hidden: row.hiddenNote,
-        pinned: row.pinnedNote,
-        reminder: row.reminder
-      }))
+    const notes = noteRows.map(row => ({
+      id: row.id,
+      title: encryption.decryptData(row.title, key),
+      content: encryption.decryptData(row.content, key),
+      historic: row.historic
+        ? encryption.decryptData(row.historic, key)
+        : '',
+      color: row.color,
+      date: row.updateDate,
+      category: row.category,
+      link: row.link,
+      hidden: row.hiddenNote,
+      pinned: row.pinnedNote,
+      reminder: row.reminder
+    }))
 
-      return res.status(200).json({
-        notes,
-        name,
-        lastLogin,
-        allUserSessions,
-        maxNoteContentLength,
-        maxNotesPerUser
-      })
-    } catch {
-      return res.status(500).json('Internal server error')
-    }
+    return res.status(200).json({
+      notes,
+      name,
+      lastLogin,
+      allUserSessions,
+      maxNoteContentLength,
+      maxNotesPerUser
+    })
+  } catch {
+    return res.status(500).json('Internal server error')
   }
-)
+})
 
 router.post('/get-note-date', verifySession, doubleCsrfProtection, async (req, res) => {
   const { noteId } = req.body
@@ -565,7 +602,6 @@ router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) =
   const {
     title,
     content,
-    date,
     color,
     hidden,
     category,
@@ -639,14 +675,12 @@ router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) =
             reminder,
             userId
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP(), ?, ?, ?, ?, ?)
         `,
       [
         noteId,
         encryptedTitle,
         encryptedContent,
-        date,
-        date,
         color,
         hidden,
         category ?? null,
@@ -666,15 +700,14 @@ router.post('/add-note', verifySession, doubleCsrfProtection, async (req, res) =
   } finally {
     connection?.release()
   }
-}
-)
+})
 
 router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res) => {
   const parsed = updateNoteSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).send('Invalid input')
 
   const userId = req.user.id
-  const { noteId, title, content, date, color, hidden, category, reminder } = parsed.data
+  const { noteId, title, content, color, hidden, category, reminder } = parsed.data
   const key = getKey(userId)
 
   if (!uuidSchema.safeParse(noteId).success) {
@@ -698,7 +731,7 @@ router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res
         title = ?,
         content = ?,
         historic = ?,
-        updateDate = ?,
+        updateDate = UTC_TIMESTAMP(),
         color = ?,
         hiddenNote = ?,
         category = ?,
@@ -708,7 +741,6 @@ router.post('/update-note', verifySession, doubleCsrfProtection, async (req, res
       encryption.encryptData(title, key),
       encryption.encryptData(content, key),
       oldContent,
-      date,
       color,
       hidden,
       category,
@@ -776,7 +808,10 @@ router.post('/public-note', verifySession, doubleCsrfProtection, async (req, res
   const noteLink = crypto.randomBytes(16).toString('hex')
 
   try {
-    await pool.execute('UPDATE notes SET link = ?, oneTimeAccess = ? WHERE id = ? AND userId = ? AND link IS NULL', [noteLink, oneTimeAccess, noteId, userId])
+    const [result] = await pool.execute('UPDATE notes SET link = ?, oneTimeAccess = ? WHERE id = ? AND userId = ? AND link IS NULL', [noteLink, oneTimeAccess, noteId, userId])
+    if (result.affectedRows !== 1) {
+      return res.status(404).send('Note not found')
+    }
     return res.status(200).send('Note link added successfully')
   } catch {
     return res.status(500).json('Internal server error')
