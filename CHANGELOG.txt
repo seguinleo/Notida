@@ -1,3 +1,21 @@
+#----v26.9.1----#
+-Replace CodeMirror with CodeJar
+    -Pros:
+        -Improve security, no more unsafe-inline css
+        -Improve stability and theme support
+    -Cons:
+        -Spellcheck is approximate
+        -Editor seems slower
+    -Looking for a better lib, but each one has its flaws
+-Replace marked-katex-extension with @webc.site/math-marked
+    -Improve security, no more unsafe-inline css
+    -Improve performances
+-Security fixes
+    -Add rate-limit for sensitive routes
+    -Hardened CSP rules
+-Improve code structure
+-Bug fixes
+
 #----v26.8.2----#
 -UI/Sessions/security fixes
 

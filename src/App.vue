@@ -9,11 +9,11 @@
     </button>
     <div id="search-section" class="bg-default" role="search">
       <i class="fa-solid fa-magnifying-glass" role="none"></i>
-      <input v-model="searchValue" type="search" id="search-input" maxlength="30" aria-label="Search notes"
+      <input v-model="searchValue" type="search" id="search-input" ref="searchInput" maxlength="30" aria-label="Search notes"
         autocomplete="off">
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
-    <button type="button" id="btn-add-note" class="btn-small bg-default" aria-label="Add a note"
+    <button type="button" id="btn-add-note" ref="btnAddNote" class="btn-small bg-default" aria-label="Add a note"
       @click="openAddNoteModal()">
       <i class="fa-solid fa-plus"></i>
     </button>
@@ -86,7 +86,7 @@
       <div id="success-notification" aria-live="polite" class="d-none"></div>
       <div v-show="showSortNotesModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
-          <div class="content">
+          <div class="popup-content">
             <div class="popup-header">
               <div class="close">
                 <button type="button" aria-label="Close modal" class="bg-default" @click="showSortNotesModal = false">
@@ -118,7 +118,7 @@
       </div>
       <div v-show="showDeleteNoteModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
-          <div class="content">
+          <div class="popup-content">
             <div class="popup-header">
               <div class="close">
                 <button type="button" aria-label="Close modal" class="bg-default" @click="showDeleteNoteModal = false">
@@ -140,7 +140,7 @@
       </div>
       <div v-show="showAddNoteModal" id="add-note-modal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
-          <div class="content">
+          <div class="popup-content">
             <form @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
               <div class="popup-header">
                 <div class="close">
@@ -155,9 +155,9 @@
                   </button>
                 </div>
               </div>
-              <input type="text" v-model="titleNote" maxlength="30" aria-label="Title" id="note-title"
+              <input type="text" v-model="noteTitle" maxlength="30" aria-label="Title" id="note-title"
                 placeholder="Title" required>
-              <div ref="editor" class="editor"></div>
+              <div ref="editor" class="editor" contenteditable="true"></div>
               <div class="row d-flex justify-content-between">
                 <div class="add-note-modal-control">
                   <button type="button" class="btn-small bg-default" aria-label="Add a category"
@@ -208,7 +208,7 @@
       </div>
       <div v-show="showCategoryModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
-          <div class="content">
+          <div class="popup-content">
             <div class="popup-header">
               <div class="close">
                 <button type="button" aria-label="Close modal" class="bg-default" @click="showCategoryModal = false">
@@ -249,7 +249,7 @@
       </div>
       <div v-show="showReminderModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
-          <div class="content">
+          <div class="popup-content">
             <div class="popup-header">
               <div class="close">
                 <button type="button" aria-label="Close modal" class="bg-default" @click="showReminderModal = false">
@@ -268,7 +268,7 @@
       </div>
       <div v-show="showColorPickerModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
-          <div class="content">
+          <div class="popup-content">
             <div class="popup-header">
               <div class="close">
                 <button type="button" aria-label="Close modal" class="bg-default" @click="showColorPickerModal = false">
@@ -290,7 +290,7 @@
       </div>
       <div v-show="showSettingsModal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
-          <div class="content">
+          <div class="popup-content">
             <div class="popup-header">
               <div class="close">
                 <button type="button" aria-label="Close modal" class="bg-default" @click="showSettingsModal = false">
@@ -365,7 +365,7 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.8.2</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.9.1</a>
               </p>
             </div>
           </div>
@@ -374,7 +374,7 @@
       <template v-if="(isAuthenticated && isAuthenticatedResponse) && !isLocked">
         <div v-show="showManageAccountModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
-            <div class="content">
+            <div class="popup-content">
               <div class="popup-header">
                 <div class="close">
                   <button type="button" aria-label="Close modal" class="bg-default"
@@ -444,7 +444,7 @@
         </div>
         <div v-show="showPrivateNoteModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
-            <div class="content">
+            <div class="popup-content">
               <div class="popup-header">
                 <div class="close">
                   <button type="button" aria-label="Close modal" class="bg-default"
@@ -483,7 +483,7 @@
         </div>
         <div v-show="showPublicNoteModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
-            <div class="content">
+            <div class="popup-content">
               <div class="popup-header">
                 <div class="close">
                   <button type="button" aria-label="Close modal" class="bg-default"
@@ -512,7 +512,7 @@
         </div>
         <div v-show="showNoteHistoricModal" id="note-historic-modal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
-            <div class="content">
+            <div class="popup-content">
               <div class="popup-header">
                 <div class="close">
                   <button type="button" aria-label="Close modal" class="bg-default"
@@ -534,7 +534,7 @@
       <template v-else-if="isAuthenticatedResponse && !isLocked">
         <div v-show="showLoginModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
-            <div class="content">
+            <div class="popup-content">
               <div class="popup-header">
                 <div class="close">
                   <button type="button" aria-label="Close modal" class="bg-default" @click="showLoginModal = false">
@@ -564,7 +564,7 @@
         </div>
         <div v-show="showCreateAccountModal" class="modal" role="dialog" aria-modal="true">
           <div class="popup">
-            <div class="content">
+            <div class="popup-content">
               <div class="popup-header">
                 <div class="close">
                   <button type="button" aria-label="Close modal" class="bg-default"
@@ -599,7 +599,7 @@
             </div>
           </div>
         </div>
-        <div v-if="allUserNotes.length === 0" class="welcome">
+        <div v-show="allUserNotes.length === 0" class="welcome">
           <p class="align-center">
             <img alt="App icon" src="/pwa/apple-touch-icon.png" width="52" height="52">
           </p>
@@ -610,12 +610,12 @@
             A fast, private and secure web notebook.
           </p>
           <p class="align-center">
-            <img alt="License GPL-3" height="20" src="./assets/img/license-GPL-3.svg">
-            <img alt="Open source" height="20" src="./assets/img/project-open-source.svg">
+            <img alt="License GPL-3" width="102" height="20" src="./assets/img/license-GPL-3.svg">
+            <img alt="Open source" width="126" height="20" src="./assets/img/project-open-source.svg">
           </p>
           <h2>📝Features</h2>
           <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML
-            and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your
+            and Math. You can add images, audio or videos via URL and add custom categories to organize your
             notes.
           </p>
           <p>You can sync your notes across all your devices after logging in (no email address is required, just
@@ -729,16 +729,15 @@
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import IroJs from './components/IroJs.vue'
-import markedKatex from 'marked-katex-extension'
-import 'katex/dist/katex.min.css'
-import { basicSetup } from 'codemirror'
-import { EditorState, Compartment } from '@codemirror/state'
-import { EditorView, placeholder } from '@codemirror/view'
-import { markdown } from '@codemirror/lang-markdown'
-import { oneDark } from '@codemirror/theme-one-dark'
+import { CodeJar } from 'codejar'
+import hljs from 'highlight.js/lib/core'
+import markdown from 'highlight.js/lib/languages/markdown'
+import xml from 'highlight.js/lib/languages/xml'
+import 'highlight.js/styles/base16/dracula.css'
 import { gfmHeadingId } from 'marked-gfm-heading-id'
 import { diffWords } from 'diff'
 import Mark from 'mark.js'
+import mathMarked from '@webc.site/math-marked'
 import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
 import '@fortawesome/fontawesome-free/css/solid.min.css'
 
@@ -748,12 +747,9 @@ const MARKED_CONFIG = {
 
 const PURIFY_CONFIG = {
   SANITIZE_NAMED_PROPS: true,
-  FORBID_TAGS: ['button', 'dialog', 'footer', 'form', 'header', 'iframe', 'main', 'nav', 'script', 'style'],
-  FORBID_ATTR: ['style', 'onerror', 'onclick', 'class', 'data'],
-}
-
-const KATEX_CONFIG = {
-  throwOnError: false
+  FORBID_TAGS: ['button', 'dialog', 'div', 'footer', 'form', 'header', 'iframe', 'label', 'main', 'nav', 'script', 'style'],
+  FORBID_ATTR: ['data', 'onerror', 'onclick', 'style'],
+  ADD_TAGS: ['annotation', 'semantics']
 }
 
 const DATE_OPTIONS = {
@@ -765,9 +761,9 @@ const DATE_OPTIONS = {
   minute: '2-digit'
 }
 
-marked.use(MARKED_CONFIG, markedKatex(KATEX_CONFIG), gfmHeadingId())
-
-const contentAttributesCompartment = new Compartment()
+marked.use(MARKED_CONFIG, mathMarked(), gfmHeadingId())
+hljs.registerLanguage('markdown', markdown)
+hljs.registerLanguage('xml', xml)
 
 export default {
   data() {
@@ -801,7 +797,8 @@ export default {
       ],
       sortOption: '1',
       lastLoginDate: '',
-      titleNote: '',
+      noteTitle: '',
+      noteContent: '',
       currentNoteId: null,
       fullscreenNoteId: null,
       selectedCategory: '',
@@ -815,6 +812,7 @@ export default {
       localDbKey: null,
       csrfToken: null,
       urlParams: '',
+      editor: null,
       noteLink: '',
       noteLinkInUrl: '',
       sharedNote: null,
@@ -880,10 +878,10 @@ export default {
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key.toUpperCase() === 'K') {
         e.preventDefault()
-        document.querySelector('#search-input')?.focus()
+        this.$refs.searchInput?.focus()
       } else if (e.altKey && e.shiftKey && e.key.toUpperCase() === 'N') {
         e.preventDefault()
-        document.querySelector('#btn-add-note')?.click()
+        this.$refs.btnAddNote?.click()
       }
     })
 
@@ -931,34 +929,29 @@ export default {
   },
   methods: {
     initEditor() {
-      const updateListener = EditorView.updateListener.of((update) => {
-        if (!update.docChanged) return
-        this.noteContent = update.state.doc.toString()
-        this.noteContentLength = update.state.doc.length
+      const root = this.$refs.editor
+
+      if (!root) return
+
+      const highlight = (editor) => {
+        const code = editor.textContent || ''
+        editor.innerHTML = hljs.highlight(code, {
+          language: 'markdown'
+        }).value
+      }
+
+      this.editor = CodeJar(root, highlight, {
+        tab: '  ',
+        preserveIdent: true,
+        spellcheck: this.isSpellcheck
       })
 
-      this.editor = new EditorView({
-        parent: this.$refs.editor,
-        state: EditorState.create({
-          doc: this.noteContent || '',
-          extensions: [
-            basicSetup,
-            markdown(),
-            oneDark,
-            EditorView.lineWrapping,
-            placeholder('Markdown, KaTeX, HTML'),
-            contentAttributesCompartment.of(
-              EditorView.contentAttributes.of({
-                spellcheck: this.isSpellcheck ? 'true' : 'false',
-                autocorrect: 'on',
-                autocomplete: 'on',
-                autocapitalize: 'sentences'
-              })
-            ),
-            updateListener
-          ]
-        })
+      this.editor.onUpdate((code) => {
+        this.noteContent = code
+        this.noteContentLength = code.length
       })
+
+      this.editor.updateCode(this.noteContent || '')
     },
     async handleOnline() {
       if (this.urlParams?.get('link')) {
@@ -1403,9 +1396,18 @@ export default {
         deContent = await this.decryptLocalNotes(this.localDbKey, content)
       }
 
-      const contentHtml = !hidden && deContent
-        ? DOMPurify.sanitize(marked.parse(deContent), PURIFY_CONFIG)
-        : null
+      let contentHtml = null
+
+      if (!hidden && deContent) {
+        try {
+          contentHtml = !hidden && deContent
+            ? DOMPurify.sanitize(marked.parse(deContent), PURIFY_CONFIG)
+            : null
+        } catch {
+          this.showError(`Markdown/LaTeX error for note ${deTitle}`)
+          contentHtml = null
+        }
+      }
 
       return {
         id,
@@ -1466,8 +1468,8 @@ export default {
       try {
         if (this.isLocked) return
         const noteId = this.currentNoteId
-        const title = this.titleNote.trim()
-        const content = this.editor.state.doc.toString().trim()
+        const title = this.noteTitle.trim()
+        const content = this.noteContent.trim()
         const color = this.selectedColor || 'bg-default'
         const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
         const hidden = this.hiddenNote ? 1 : 0
@@ -1618,8 +1620,8 @@ export default {
         }
         if (this.isAddingCloudNote) return
         const noteId = this.currentNoteId
-        const title = this.titleNote.trim()
-        const content = this.editor.state.doc.toString().trim()
+        const title = this.noteTitle.trim()
+        const content = this.noteContent.trim()
         const color = this.selectedColor || 'bg-default'
         const hidden = this.hiddenNote ? 1 : 0
         const category = this.selectedCategory || null
@@ -1803,8 +1805,8 @@ export default {
       }
 
       const response = await res.json()
-      const { title, date, reminder, oneTimeAccess } = response
-      const contentHtml = DOMPurify.sanitize(marked.parse(response.content), PURIFY_CONFIG)
+      const { title, content, date, reminder, oneTimeAccess } = response
+      const contentHtml = DOMPurify.sanitize(marked.parse(content), PURIFY_CONFIG)
 
       this.sharedNote = {
         title,
@@ -1853,16 +1855,10 @@ export default {
     openAddNoteModal() {
       this.showAddNoteModal = true
       this.isNoteUpdate = false
-      this.editor.dispatch({
-        changes: {
-          from: 0,
-          to: this.editor.state.doc.length,
-          insert: ''
-        }
-      })
+      this.editor.updateCode('')
       this.isNoteUpdate = false
       this.currentNoteId = null
-      this.titleNote = ''
+      this.noteTitle = ''
       this.hiddenNote = false
       this.selectedColor = 'bg-default'
       this.selectedCategory = ''
@@ -1924,17 +1920,11 @@ export default {
 
       this.$nextTick(() => {
         if (!this.editor) return
-        this.editor.dispatch({
-          changes: {
-            from: 0,
-            to: this.editor.state.doc.length,
-            insert: content ?? ''
-          }
-        })
+        this.editor.updateCode(content || '')
       })
 
       this.currentNoteId = noteId
-      this.titleNote = title
+      this.noteTitle = title
       this.hiddenNote = Boolean(Number(hidden))
       this.selectedColor = color || 'bg-default'
       this.selectedCategory = category || ''
@@ -1946,13 +1936,7 @@ export default {
       this.newCategory = ''
     },
     clearNoteContent() {
-      this.editor.dispatch({
-        changes: {
-          from: 0,
-          to: this.editor.state.doc.length,
-          insert: ''
-        }
-      })
+      this.editor.updateCode('')
     },
     showSuccess(message) {
       if (this.timeoutNotification) clearTimeout(this.timeoutNotification)
@@ -2000,18 +1984,17 @@ export default {
       this.showSuccess('Content copied to clipboard')
     },
     toggleSpellcheck() {
-      if (this.isSpellcheck) localStorage.removeItem('spellcheck')
-      else localStorage.setItem('spellcheck', 'false')
-      this.editor.dispatch({
-        effects: contentAttributesCompartment.reconfigure(
-          EditorView.contentAttributes.of({
-            spellcheck: this.isSpellcheck ? 'true' : 'false',
-            autocorrect: 'on',
-            autocomplete: 'on',
-            autocapitalize: 'sentences'
-          })
+      if (this.isSpellcheck) {
+        localStorage.removeItem('spellcheck')
+      } else {
+        localStorage.setItem('spellcheck', 'false')
+      }
+      if (this.$refs.editor) {
+        this.$refs.editor.setAttribute(
+          'spellcheck',
+          this.isSpellcheck ? 'true' : 'false'
         )
-      })
+      }
     },
     toggleCompactMode() {
       document.body.classList.toggle('compact-mode')

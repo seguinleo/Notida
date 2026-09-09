@@ -81,7 +81,7 @@ const limiter = rateLimit({
   }
 })
 
-const loginLimiter = rateLimit({
+const userLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 5,
   handler: (req, res) => {
@@ -217,7 +217,7 @@ const deleteAccountSchema = z.object({
 /**
  * @description Route to create a new user account.
  */
-router.post('/create-account', loginLimiter, async (req, res) => {
+router.post('/create-account', userLimiter, async (req, res) => {
   const parsed = createAccountSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).send('Account creation failed')
@@ -242,7 +242,7 @@ router.post('/create-account', loginLimiter, async (req, res) => {
 /**
  * @description Route to log in a user.
  */
-router.post('/login', loginLimiter, async (req, res, next) => {
+router.post('/login', userLimiter, async (req, res, next) => {
   const parsed = loginSchema.safeParse(req.body)
 
   if (!parsed.success) {
@@ -358,7 +358,7 @@ router.post('/logout-all', verifySession, doubleCsrfProtection, async (req, res)
 /**
  * @description Route to update user password. Log out all devices.
  */
-router.post('/update-password', verifySession, doubleCsrfProtection, async (req, res) => {
+router.post('/update-password', userLimiter, verifySession, doubleCsrfProtection, async (req, res) => {
   const userId = req.user.id
   const parsed = updatePasswordSchema.safeParse(req.body)
 
@@ -414,7 +414,7 @@ router.post('/update-password', verifySession, doubleCsrfProtection, async (req,
  * @description Route to delete an account and all notes ON DELETE CASCADE.
  * Log out all devices.
  */
-router.post('/delete-account', verifySession, doubleCsrfProtection, async (req, res) => {
+router.post('/delete-account', userLimiter, verifySession, doubleCsrfProtection, async (req, res) => {
   const userId = req.user.id
   const parsed = deleteAccountSchema.safeParse(req.body)
   if (!parsed.success) {
@@ -880,7 +880,6 @@ router.post('/get-shared-note', sharedNoteLimiter, async (req, res) => {
     }
 
     const note = {
-      id,
       title: encryption.decryptData(encryptedTitle, key),
       content: encryption.decryptData(encryptedContent, key),
       date: updateDate,
