@@ -943,6 +943,10 @@ export default {
       this.editor = CodeJar(root, highlight, {
         tab: '  ',
         preserveIdent: true,
+        autoclose: {
+          open: `([{*`,
+          close: `)]}*`
+        },
         spellcheck: this.isSpellcheck
       })
 
