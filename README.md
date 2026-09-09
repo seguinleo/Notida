@@ -9,7 +9,7 @@ A fast, private and secure web notebook.
 
 ## Features
 
-Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML and KaTeX. You can add images, audio or videos via URL and add custom categories to organize your notes.
+Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML and Math. You can add images, audio or videos via URL and add custom categories to organize your notes.
 
 You can sync your notes across all your devices after logging in (no email address is required, just a username and a strong password). Public notes can be shared with anyone via a random URL.
 
@@ -80,4 +80,6 @@ CSRF_SECRET=
 > [!IMPORTANT]
 > Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to [install a SSL certificate](https://github.com/seguinleo/WebSecurityCheatSheet) to use note encryption (Web Crypto API requires HTTPs).
 
-Special thanks to [CodeMirror](https://code.haverbeke.berlin/codemirror/dev/), [DOMPurify](https://github.com/cure53/DOMPurify), [marked](https://github.com/markedjs/marked) and [Iro](https://github.com/jaames/iro.js)
+Special thanks to [CodeJar](https://github.com/antonmedv/codejar), [DOMPurify](https://github.com/cure53/DOMPurify), [marked](https://github.com/markedjs/marked) and [Iro](https://github.com/jaames/iro.js)
+
+🇪🇺🇫🇷
