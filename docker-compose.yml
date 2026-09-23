@@ -1,17 +1,14 @@
 services:
   db:
-    container_name: db
+    container_name: notida-db
     image: mysql:latest
-    restart: always
+    restart: unless-stopped
 
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: notida
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-
-    ports:
-      - "3306:3306"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
 
     volumes:
       - mysql-data:/var/lib/mysql
@@ -22,22 +19,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 20s
 
     networks:
       - app-network
 
   redis:
-    container_name: redis
+    container_name: notida-redis
     image: redis:latest
-    restart: always
+    restart: unless-stopped
 
     command:
       - redis-server
       - --appendonly
       - "yes"
-
-    ports:
-      - "6379:6379"
 
     volumes:
       - redis-data:/data
@@ -47,6 +42,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
 
     networks:
       - app-network
@@ -59,14 +55,18 @@ services:
       dockerfile: Dockerfile
 
     image: seguinleo/notida:latest
-    restart: always
+    restart: unless-stopped
 
     env_file:
-      - /api/.env
+      - .env
 
     environment:
       DB_HOST: db
       DB_PORT: 3306
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+
       REDIS_HOST: redis
       REDIS_PORT: 6379
 

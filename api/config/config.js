@@ -1,9 +1,4 @@
 import mysql from 'mysql2/promise'
-import dotenvx from '@dotenvx/dotenvx'
-
-dotenvx.config({
-  path: '.env'
-})
 
 /**
  * !!!!!!!!!!!!!!!
