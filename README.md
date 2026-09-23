@@ -53,16 +53,18 @@ The main security features are enabled by default, but for production use, I rec
 * Edit nginx configuration to add SSL
 * Store the MASTER_KEY in a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp
 
-.env template
+.env template, at the root of the project
 
 ```ini
+# SET YOUR SECRETS HERE BEFORE DEPLOYING !
+
 #NODE_ENV=production
 NODE_ENV=development
 
-DB_HOST=localhost
+DB_HOST=db
 DB_DATABASE=notida
-DB_USER=user
-DB_PASSWORD=password
+DB_USER=notida
+DB_PASSWORD=a_strong_password
 DB_PORT=3306
 DB_CHARSET=utf8mb4
 
@@ -71,10 +73,14 @@ REDIS_URL=redis://redis:6379
 # ALLOWED URL FOR CORS PRODUCTION
 ORIGIN_URL=
 
-# SET YOUR SECRETS HERE BEFORE DEPLOYING
 MASTER_KEY=
 SESSION_SECRET=
 CSRF_SECRET=
+
+MYSQL_ROOT_PASSWORD=a_strong_password
+MYSQL_DATABASE=notida
+MYSQL_USER=notida
+MYSQL_PASSWORD=a_strong_password
 ```
 
 > [!IMPORTANT]
