@@ -149,12 +149,9 @@ main {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1rem 1rem 120px;
+  padding: 1rem 1rem 90px;
   flex-wrap: wrap;
   gap: 1rem;
-  height: 100dvh;
-  max-height: 100dvh;
-  width: 100vw;
   overflow-x: hidden;
   overflow-y: auto;
   scroll-behavior: smooth !important;
@@ -322,22 +319,27 @@ div#search-section {
 }
 
 h1 {
-  font-size: 1.7rem;
+  font-size: 1.6rem;
+  margin: 1rem 0
 }
 
 h2 {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
+  margin: 8px 0
 }
 
 h3 {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
+  margin: 8px 0
 }
 
 h4 {
   font-size: 1rem;
+  margin: 8px 0
 }
 
-h5, h6 {
+h5,
+h6 {
   font-size: .9rem;
 }
 
@@ -388,7 +390,6 @@ pre {
   padding: 4px 8px;
   margin: 10px auto;
   border-radius: 4px;
-  line-height: 1.5;
   overflow-x: auto;
   font-family: monospace;
   white-space: pre-wrap;
@@ -510,12 +511,17 @@ input {
   }
 }
 
+p {
+  line-height: 1.7;
+}
+
 div.note,
 div.shared-note {
   .note-container {
     overflow-x: hidden;
     overflow-wrap: break-word;
     word-break: break-word;
+    line-height: 1.7;
     width: 100%;
   }
 
@@ -561,7 +567,6 @@ div.note {
   flex-direction: column;
   align-items: center;
   border-radius: 1rem;
-  line-height: 2;
   padding: 10px 1rem;
 
   .note-container {
@@ -596,7 +601,6 @@ div.shared-note {
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
-  line-height: 2;
   padding: 10px 1rem;
 
   .title {
@@ -1039,7 +1043,7 @@ button#btn-unlock-float {
   main {
     align-items: flex-end;
     padding: 0 0 90px;
-    height: auto;
+    max-height: 100dvh;
     gap: 1px;
   }
 
@@ -1088,14 +1092,10 @@ button#btn-unlock-float {
     }
   }
 
-  div.fullscreen-note {
-    inset: 0;
-
-    .note-container {
-      overflow: auto;
-      width: 100%;
-      margin: 0;
-    }
+  div.fullscreen-note .note-container {
+    overflow: auto;
+    width: 100%;
+    margin: 0;
   }
 
   div#colors-section {
@@ -1107,7 +1107,7 @@ button#btn-unlock-float {
   display: flex;
   flex-direction: column;
   padding: 2rem 10px 0;
-  line-height: 2;
+  max-width: 700px;
 
   img {
     margin: 4px;
