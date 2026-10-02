@@ -1,10 +1,10 @@
 # Frontend
-FROM node:24 AS frontend-build
+FROM node:24-alpine AS frontend-build
 
 WORKDIR /notida
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 RUN npm run build
@@ -15,11 +15,9 @@ FROM node:24 AS api-build
 WORKDIR /notida/api
 
 COPY api/package*.json ./
-RUN npm install
+RUN npm ci --omit=dev
 
 COPY api/ .
-
-EXPOSE 3000
 
 # Prod
 FROM nginx:stable-alpine
@@ -33,12 +31,11 @@ COPY --from=frontend-build /notida/dist /usr/share/nginx/html
 COPY --from=api-build /notida/api /notida/api
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
-COPY docker-entrypoint.sh /docker-entrypoint.sh
 
-RUN chmod +x /docker-entrypoint.sh && \
-    mkdir -p /var/cache/nginx/client_temp && \
-    mkdir -p /var/log/nginx && \
-    mkdir -p /tmp/nginx && \
+RUN mkdir -p \
+        /var/cache/nginx/client_temp \
+        /var/log/nginx \
+        /tmp/nginx && \
     chown -R lowuser:lowgroup \
         /var/cache/nginx \
         /var/log/nginx \
@@ -48,6 +45,6 @@ RUN chmod +x /docker-entrypoint.sh && \
 
 USER lowuser
 
-EXPOSE 80 3000
+EXPOSE 80
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["sh", "-c", "node /notida/api/server.js & exec nginx -g 'daemon off;'"]

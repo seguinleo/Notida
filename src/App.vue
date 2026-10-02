@@ -9,8 +9,8 @@
     </button>
     <div id="search-section" class="bg-default" role="search">
       <i class="fa-solid fa-magnifying-glass" role="none"></i>
-      <input v-model="searchValue" type="search" id="search-input" ref="searchInput" maxlength="30" aria-label="Search notes"
-        autocomplete="off">
+      <input v-model="searchValue" type="search" id="search-input" ref="searchInput" maxlength="30"
+        aria-label="Search notes" autocomplete="off">
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
     <button type="button" id="btn-add-note" ref="btnAddNote" class="btn-small bg-default" aria-label="Add a note"

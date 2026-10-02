@@ -12,7 +12,7 @@ services:
 
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./mysql/dump.sql:/docker-entrypoint-initdb.d/dump.sql
+      - ./mysql/dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
 
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -54,7 +54,6 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    image: seguinleo/notida:latest
     restart: unless-stopped
 
     env_file:

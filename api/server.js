@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import 'dotenv/config'
 import cron from 'node-cron'
 import routes from './routes.js'
 import { deleteInactiveAccounts } from './cron/cronJobs.js'
