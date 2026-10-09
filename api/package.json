@@ -1,6 +1,6 @@
 {
   "name": "notida",
-  "version": "26.9.1",
+  "version": "26.10.1",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -9,9 +9,9 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csrf-csrf": "^4.0.3",
-    "dotenv": "^18.0.5",
+    "dotenv": "^18.0.6",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.7.0",
+    "express-rate-limit": "^8.7.1",
     "express-session": "^1.19.0",
     "mysql2": "^3.24.5",
     "node-cron": "^4.6.0",

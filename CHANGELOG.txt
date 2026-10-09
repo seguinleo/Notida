@@ -1,3 +1,9 @@
+#----v26.10.1----#
+-Improve navbar design
+-Replace CodeJar with simple-code-editor
+-UI/UX fixes
+-Minor bug fixes
+
 #----v26.9.1----#
 -Replace CodeMirror with CodeJar
     -Pros:

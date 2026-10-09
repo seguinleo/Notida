@@ -10,7 +10,7 @@
     <div id="search-section" class="bg-default" role="search">
       <i class="fa-solid fa-magnifying-glass" role="none"></i>
       <input v-model="searchValue" type="search" id="search-input" ref="searchInput" maxlength="30"
-        aria-label="Search notes" autocomplete="off">
+        aria-label="Search notes">
       <kbd>CTRL</kbd><kbd>K</kbd>
     </div>
     <button type="button" id="btn-add-note" ref="btnAddNote" class="btn-small bg-default" aria-label="Add a note"
@@ -20,14 +20,7 @@
   </div>
   <div id="layout">
     <nav v-if="!isLocked" ref="sidebar">
-      <div v-if="new Date().getMonth() === 11" class="row">
-        <img src="./assets/img/christmas.png" role="presentation" alt="" class="event-image" loading="lazy">
-      </div>
-      <div v-else-if="new Date().getMonth() === 9 && new Date().getDate() > 24 && new Date().getDate() <= 31"
-        class="row">
-        <img src="./assets/img/halloween.png" role="presentation" alt="" class="event-image" loading="lazy">
-      </div>
-      <div class="row nav-buttons">
+      <div class="nav-buttons">
         <button v-if="isAuthenticated && !isLocked" type="button" aria-label="Manage account"
           @click="showManageAccountModal = true">
           <i class="fa-solid fa-circle-user"></i>
@@ -48,10 +41,10 @@
         </button>
       </div>
       <div class="row d-flex justify-content-between align-items-center">
-        <p class="bold">
+        <h3>
           Notes
           ({{ filteredNotes.length }})
-        </p>
+        </h3>
         <button v-if="!isLocked" type="button" class="btn-small bg-default" aria-label="Sort notes"
           @click="showSortNotesModal = true">
           <i class="fa-solid fa-arrow-up-wide-short"></i>
@@ -62,23 +55,35 @@
         <span class="italic">Local notes are stored in the browser's localStorage and are therefore temporary!</span>
       </div>
       <div id="list-notes" ref="listNotes">
-        <button v-for="note in filteredNotes" :key="note.id" type="button" @click="toggleFullscreen(note.id, $event)">
-          <div class="d-flex flex-column align-items-start">
-            <span v-if="note.pinned" class="title">
-              <i class="fa-solid fa-thumbtack"></i>
-            </span>
-            <span v-if="note.link" class="title">
-              <i class="fa-solid fa-link"></i>
-            </span>
-            <span class="title">{{ note.title }}</span>
+        <template v-for="(notes, group) in groupedNotes" :key="group">
+          <div v-if="notes.length" class="row note-group">
+            <div class="row">
+              <p class="bold">
+                {{ group }}
+              </p>
+            </div>
+            <button v-for="note in notes" :key="note.id" type="button" class="bg-default"
+              @click="toggleFullscreen(note.id, $event)">
+              <div class="note-icons">
+                <i v-if="note.pinned" class="fa-solid fa-thumbtack"></i>
+                <i v-if="note.link" class="fa-solid fa-link"></i>
+              </div>
+              <div class="note-content">
+                <span class="title">
+                  {{ note.title }}
+                </span>
+                <div class="note-info">
+                  <span v-if="note.category" class="badge bg-default txt-small">
+                    #{{ note.category }}
+                  </span>
+                  <span class="sub-title txt-small">
+                    {{ formatDate(note.date) }}
+                  </span>
+                </div>
+              </div>
+            </button>
           </div>
-          <div class="d-flex flex-column align-items-start">
-            <span v-if="note.category" class="badge bg-default">
-              #{{ note.category }}
-            </span>
-            <span class="sub-title">{{ formatDate(note.date) }}</span>
-          </div>
-        </button>
+        </template>
       </div>
     </nav>
     <main :class="noteLinkInUrl ? 'shared-main' : ''">
@@ -157,7 +162,9 @@
               </div>
               <input type="text" v-model="noteTitle" maxlength="30" aria-label="Title" id="note-title"
                 placeholder="Title" required>
-              <div ref="editor" class="editor" contenteditable="true"></div>
+              <CodeEditor v-model="noteContent" :languages="[['markdown', 'Markdown']]" theme="agate" width="100%"
+                height="calc(100dvh - 280px)" padding="4px" font-size="16px" :wrap="true"
+                @textarea="onEditorTextarea" />
               <div class="row d-flex justify-content-between">
                 <div class="add-note-modal-control">
                   <button type="button" class="btn-small bg-default" aria-label="Add a category"
@@ -170,8 +177,8 @@
                   </button>
                 </div>
                 <div class="add-note-modal-control">
-                  <span id="note-content-length">
-                    {{ noteContentLength }}/{{ maxNoteContentLength }}
+                  <span class="txt-small">
+                    {{ noteContent.length || '0' }}/{{ maxNoteContentLength }}
                   </span>
                   <button type="button" @click="clearNoteContent()" aria-label="Clear all content"
                     class="btn-small bg-default">
@@ -330,23 +337,6 @@
             </div>
             <div class="row d-flex align-items-center justify-content-between">
               <span>
-                Compact mode
-              </span>
-              <label class="switch">
-                <input v-model="isCompactMode" type="checkbox" @change="toggleCompactMode()" role="switch"
-                  aria-label="Compact mode">
-                <span class="toggle-thumb" aria-hidden="true">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="off">
-                    <rect x="12" y="6" width="1" height="12" />
-                  </svg>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" class="on">
-                    <circle cx="12" cy="12" r="5" stroke-width="1" fill="none" />
-                  </svg>
-                </span>
-              </label>
-            </div>
-            <div class="row d-flex align-items-center justify-content-between">
-              <span>
                 Lock app
               </span>
               <label class="switch">
@@ -365,7 +355,7 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.9.1</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.10.1</a>
               </p>
             </div>
           </div>
@@ -544,8 +534,8 @@
               </div>
               <form autocomplete="off" @submit.prevent="loginUser()">
                 <div class="row">
-                  <input id="name-login" type="text" minlength="3" maxlength="30" spellcheck="false" placeholder="Name"
-                    autocapitalize="off" aria-label="Name" required>
+                  <input id="name-login" type="text" minlength="3" maxlength="30" placeholder="Name" spellcheck="false"
+                    autocorrect="off" autocapitalize="none" autocomplete="off" aria-label="Name" required>
                 </div>
                 <div class="row">
                   <input id="psswd-login" type="password" minlength="10" maxlength="64" placeholder="Password"
@@ -575,8 +565,8 @@
               </div>
               <form autocomplete="off" @submit.prevent="createAccount()">
                 <div class="row">
-                  <input id="name-create" type="text" minlength="3" maxlength="30" spellcheck="false"
-                    autocapitalize="off" placeholder="Name" aria-label="Name" required>
+                  <input id="name-create" type="text" minlength="3" maxlength="30" spellcheck="false" autocorrect="off"
+                    autocapitalize="none" autocomplete="off" placeholder="Name" aria-label="Name" required>
                 </div>
                 <div class="row">
                   <input id="psswd-create" type="password" minlength="10" maxlength="64" placeholder="Password"
@@ -646,11 +636,11 @@
             <div v-if="sharedNote.oneTimeAccess" class="row align-center italic">
               The note will be deleted after you read it!
             </div>
-            <h2 class="title">
+            <p class="title">
               {{ sharedNote.title }}
-            </h2>
+            </p>
             <div v-if="sharedNote.reminder" class="row align-center">
-              <span class="reminder-date bg-default">
+              <span class="reminder-date bg-default txt-small">
                 <i class="fa-solid fa-bell"></i>
                 {{ formatDate(sharedNote.reminder) }}
               </span>
@@ -659,7 +649,7 @@
               <div v-html="sharedNote.contentHtml"></div>
             </div>
           </div>
-          <div v-if="sharedNote.date" class="date">
+          <div v-if="sharedNote.date" class="align-center txt-small">
             {{ formatDate(sharedNote.date) }}
           </div>
         </div>
@@ -676,11 +666,11 @@
             { 'fullscreen-note': fullscreenNoteId === note.id }
           ]" @click="toggleFullscreen(note.id, $event)">
             <div class="note-container">
-              <h2 class="title">
+              <p class="title">
                 {{ note.title }}
-              </h2>
+              </p>
               <div v-if="note.reminder" class="row align-center">
-                <span class="reminder-date bg-default">
+                <span class="reminder-date bg-default txt-small">
                   <i class="fa-solid fa-bell"></i>
                   {{ formatDate(note.reminder) }}
                 </span>
@@ -729,11 +719,7 @@
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import IroJs from './components/IroJs.vue'
-import { CodeJar } from 'codejar'
-import hljs from 'highlight.js/lib/core'
-import markdown from 'highlight.js/lib/languages/markdown'
-import xml from 'highlight.js/lib/languages/xml'
-import 'highlight.js/styles/base16/dracula.css'
+import CodeEditor from 'simple-code-editor'
 import { gfmHeadingId } from 'marked-gfm-heading-id'
 import { diffWords } from 'diff'
 import Mark from 'mark.js'
@@ -762,8 +748,6 @@ const DATE_OPTIONS = {
 }
 
 marked.use(MARKED_CONFIG, mathMarked(), gfmHeadingId())
-hljs.registerLanguage('markdown', markdown)
-hljs.registerLanguage('xml', xml)
 
 export default {
   data() {
@@ -776,8 +760,8 @@ export default {
       timeoutNotification: null,
       fingerprintEnabled: true,
       onLine: true,
-      isSpellcheck: true,
-      isCompactMode: false,
+      editorTextarea: null,
+      isSpellcheck: localStorage.getItem('spellcheck') !== 'false',
       isLocked: true,
       isLoginLoading: false,
       isAddingCloudNote: false,
@@ -786,7 +770,6 @@ export default {
       isNoteUpdate: false,
       maxNotesPerUser: 0,
       maxNoteContentLength: 50000,
-      noteContentLength: 0,
       allUserNotes: [],
       allUserSessions: 0,
       allCategories: new Set(),
@@ -812,7 +795,6 @@ export default {
       localDbKey: null,
       csrfToken: null,
       urlParams: '',
-      editor: null,
       noteLink: '',
       noteLinkInUrl: '',
       sharedNote: null,
@@ -831,7 +813,7 @@ export default {
       showCreateAccountModal: false,
     }
   },
-  components: { IroJs },
+  components: { IroJs, CodeEditor },
   watch: {
     searchValue() {
       clearTimeout(this._searchTimer)
@@ -848,6 +830,57 @@ export default {
     },
   },
   computed: {
+    groupedNotes() {
+      const groups = {
+        Today: [],
+        Yesterday: [],
+        'This month': [],
+        'This year': [],
+        Old: []
+      }
+
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = now.getMonth()
+
+      const today = new Date(now)
+      today.setHours(0, 0, 0, 0)
+
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+
+      const todayTime = today.getTime()
+      const yesterdayTime = yesterday.getTime()
+
+      for (const note of this.filteredNotes) {
+        const date = new Date(note.date)
+        const year = date.getFullYear()
+        const month = date.getMonth()
+
+        if (year === currentYear && month === currentMonth) {
+          const dateTime = new Date(date)
+          dateTime.setHours(0, 0, 0, 0)
+
+          switch (dateTime.getTime()) {
+            case todayTime:
+              groups.Today.push(note)
+              break
+
+            case yesterdayTime:
+              groups.Yesterday.push(note)
+              break
+
+            default:
+              groups['This month'].push(note)
+          }
+        } else if (year === currentYear) {
+          groups['This year'].push(note)
+        } else {
+          groups.Old.push(note)
+        }
+      }
+      return groups
+    },
     filteredNotes() {
       const search = this.normalize(this.searchValue)
       if (!search) return this.allUserNotes
@@ -865,10 +898,6 @@ export default {
       await this.renderSharedNote()
       return
     }
-
-    if (localStorage.getItem('spellcheck') === 'false') this.isSpellcheck = false
-    this.isCompactMode = localStorage.getItem('compact-mode') === 'true'
-    if (this.isCompactMode) document.body.classList.add('compact-mode')
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
@@ -903,8 +932,6 @@ export default {
       }
     }, { passive: true })
 
-    this.initEditor()
-
     this.onLine = navigator.onLine
 
     this._onlineHandler = () => {
@@ -928,35 +955,6 @@ export default {
     window.removeEventListener('offline', this._offlineHandler)
   },
   methods: {
-    initEditor() {
-      const root = this.$refs.editor
-
-      if (!root) return
-
-      const highlight = (editor) => {
-        const code = editor.textContent || ''
-        editor.innerHTML = hljs.highlight(code, {
-          language: 'markdown'
-        }).value
-      }
-
-      this.editor = CodeJar(root, highlight, {
-        tab: '  ',
-        preserveIdent: true,
-        autoclose: {
-          open: `([{*`,
-          close: `)]}*`
-        },
-        spellcheck: this.isSpellcheck
-      })
-
-      this.editor.onUpdate((code) => {
-        this.noteContent = code
-        this.noteContentLength = code.length
-      })
-
-      this.editor.updateCode(this.noteContent || '')
-    },
     async handleOnline() {
       if (this.urlParams?.get('link')) {
         await this.renderSharedNote()
@@ -1154,15 +1152,15 @@ export default {
       const psswdV = document.querySelector('#psswd-create-valid').value
       if (!name || !psswd || !psswdV || name.length < 3 || name.length > 30 || psswd.length < 10 || psswd.length > 64) return
       if (!/^[\p{L} -]+$/u.test(name.normalize('NFKC'))) {
-        this.showError('Name can only contain letters, spaces and accents...')
+        this.showError('Name can only contain letters, spaces and accents')
         return
       }
       if (psswd !== psswdV) {
-        this.showError('Passwords do not match...')
+        this.showError('Passwords do not match')
         return
       }
       if (name === psswd) {
-        this.showError('Username and password cannot be the same...')
+        this.showError('Username and password cannot be the same')
         return
       }
       const nameCreate = name
@@ -1177,11 +1175,11 @@ export default {
           body: data
         })
         if (!res.ok) {
-          this.showError('Username already taken...')
+          this.showError('Username already taken')
           return
         }
         this.showCreateAccountModal = false
-        this.showSuccess('Account successfully created! You can now log in.')
+        this.showSuccess('Account successfully created! You can now log in')
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
       } finally {
@@ -1205,7 +1203,7 @@ export default {
       }
 
       if (!/^[\p{L} -]+$/u.test(nameLogin.normalize('NFKC'))) {
-        this.showError('Name can only contain letters, spaces and accents...')
+        this.showError('Name can only contain letters, spaces and accents')
         return
       }
 
@@ -1280,7 +1278,7 @@ export default {
       const t = document.querySelector('#new-psswd-valid').value
       if (!a || !e || !t || e.length < 10 || e.length > 64) return
       if (e !== t) {
-        this.showError('Passwords do not match...')
+        this.showError('Passwords do not match')
         return
       }
       const psswdOld = a
@@ -1338,23 +1336,24 @@ export default {
         const res = await fetch('/api/whoami/', {
           method: 'GET'
         })
-        if (!res.ok) {
-          this.showError('Internal server error')
-          return
-        }
+
         let data = null
 
-        const contentType = res.headers.get('content-type')
-        if (contentType?.includes('application/json')) {
+        try {
           data = await res.json()
-        } else {
-          this.showError('Internal server error')
+        } catch {
           return
         }
+
+        if (!res.ok) {
+          if (data.message) this.showError(data.message)
+          return
+        }
+
         this.isAuthenticated = data.isAuthenticated
         this.csrfToken = data.csrfToken
-      } catch (err) {
-        this.showError(`An error occurred - ${err}`)
+      } catch {
+        this.showError('Internal server error')
       } finally {
         this.isAuthenticatedResponse = true
       }
@@ -1619,7 +1618,7 @@ export default {
     async addCloudNote() {
       try {
         if (this.allUserNotes.length >= this.maxNotesPerUser) {
-          this.showError('You have reached the maximum storage capacity...')
+          this.showError('You have reached the maximum storage capacity')
           return
         }
         if (this.isAddingCloudNote) return
@@ -1787,7 +1786,7 @@ export default {
 
       if (!this.noteLinkInUrl || !/^[a-f0-9]{32}$/i.test(this.noteLinkInUrl)) {
         this.sharedNote = {
-          title: 'Wrong public link.'
+          title: 'Wrong public link'
         }
         return
       }
@@ -1803,7 +1802,7 @@ export default {
 
       if (!res.ok) {
         this.sharedNote = {
-          title: 'Note not found or expired.'
+          title: 'Note not found or expired'
         }
         return
       }
@@ -1859,7 +1858,7 @@ export default {
     openAddNoteModal() {
       this.showAddNoteModal = true
       this.isNoteUpdate = false
-      this.editor.updateCode('')
+      this.noteContent = ''
       this.isNoteUpdate = false
       this.currentNoteId = null
       this.noteTitle = ''
@@ -1922,10 +1921,7 @@ export default {
       this.isNoteUpdate = true
       this.showAddNoteModal = true
 
-      this.$nextTick(() => {
-        if (!this.editor) return
-        this.editor.updateCode(content || '')
-      })
+      this.noteContent = content
 
       this.currentNoteId = noteId
       this.noteTitle = title
@@ -1940,7 +1936,7 @@ export default {
       this.newCategory = ''
     },
     clearNoteContent() {
-      this.editor.updateCode('')
+      this.noteContent = ''
     },
     showSuccess(message) {
       if (this.timeoutNotification) clearTimeout(this.timeoutNotification)
@@ -1989,21 +1985,22 @@ export default {
     },
     toggleSpellcheck() {
       if (this.isSpellcheck) {
-        localStorage.removeItem('spellcheck')
+        localStorage.setItem('spellcheck', 'true')
       } else {
         localStorage.setItem('spellcheck', 'false')
       }
-      if (this.$refs.editor) {
-        this.$refs.editor.setAttribute(
-          'spellcheck',
-          this.isSpellcheck ? 'true' : 'false'
-        )
-      }
+
+      this.$nextTick(() => {
+        this.onEditorTextarea()
+      })
     },
-    toggleCompactMode() {
-      document.body.classList.toggle('compact-mode')
-      if (!this.isCompactMode) localStorage.removeItem('compact-mode')
-      else localStorage.setItem('compact-mode', 'true')
+    onEditorTextarea(textarea) {
+      if (textarea) {
+        this.editorTextarea = textarea
+      }
+      if (this.editorTextarea) {
+        this.editorTextarea.spellcheck = this.isSpellcheck
+      }
     },
     normalize(str) {
       return (str || '')
@@ -2042,7 +2039,7 @@ export default {
     },
     resetTheme() {
       this.$refs.IroJs.resetTheme()
-    },
+    }
   }
 }
 </script>

@@ -59,6 +59,7 @@ body {
   color: var(--text);
   background: var(--theme-color);
   font-size: .9rem;
+  line-height: 1.7;
 
   &.light {
     --bg: rgba(0, 0, 0, .03);
@@ -66,8 +67,8 @@ body {
     --surface: #fff;
     --text: #222;
     --hover: rgba(0, 0, 0, .06);
-    --success: #60d152;
-    --danger: #ff6363;
+    --success: #72e663;
+    --danger: #ff8181;
 
     .bg-red {
       background: #ff8787;
@@ -107,14 +108,6 @@ body {
 
     .bg-pink {
       background: #fdd0e7;
-    }
-  }
-
-  &.compact-mode div.note {
-    &:not(.fullscreen-note) {
-      .note-content {
-        display: none;
-      }
     }
   }
 }
@@ -178,16 +171,11 @@ nav {
   overscroll-behavior: contain;
   font-size: 1rem;
 
-  .event-image {
-    width: 100%;
-    max-width: 400px;
-  }
-
   .nav-buttons {
     button {
       width: 100%;
       font-weight: 700;
-      border: none;
+      border: 0;
       margin-bottom: 4px;
       display: flex;
       align-items: center;
@@ -203,54 +191,96 @@ nav {
   div#list-notes {
     display: flex;
     flex-direction: column;
+    scrollbar-gutter: stable;
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
 
-    button {
+    .note-group {
+      button {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        width: 100%;
+        height: 54px;
+        border-radius: 0;
+        border: 0;
+        font-size: .9rem;
+        text-align: left;
+        margin: 0;
+        padding: 0 14px 0 4px;
+
+        &:first-of-type {
+          border-radius: 24px 24px 0 0;
+        }
+
+        &:last-of-type {
+          border-radius: 0 0 24px 24px;
+        }
+
+        &:only-of-type {
+          border-radius: 48px;
+        }
+      }
+
+      button+button {
+        border-top: 1px solid var(--bg);
+      }
+    }
+
+    .note-icons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      width: 42px;
+    }
+
+    .note-icons i {
+      width: 16px;
+      text-align: center;
+    }
+
+    .note-content {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      align-items: flex-start;
-      cursor: pointer;
-      height: 52px;
-      text-align: left;
-      border: none;
-      border-radius: 4px;
-      font-size: .9rem;
-      margin: 4px 0;
-      padding: 0 2px;
-      gap: 4px;
-    }
-
-    .title,
-    .sub-title,
-    .badge {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      gap: 2px;
     }
 
     .title {
       font-weight: 700;
-      margin-right: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .sub-title {
-      opacity: .8;
-      font-size: .8rem;
+    .note-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
     }
 
     .badge {
+      min-width: 0;
+      max-width: 100%;
+      flex-shrink: 1;
       padding: 0 6px;
-      border-radius: 24px;
-      min-height: 20px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-right: 4px;
-      font-size: .8rem;
+      border-radius: 48px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub-title {
+      flex-shrink: 0;
+      opacity: .7;
+      white-space: nowrap;
     }
   }
 }
@@ -310,7 +340,7 @@ div#search-section {
     flex-grow: 1;
     padding: 0 4px;
     height: 45px;
-    border: none;
+    border: 0;
     border-radius: 0;
     outline: none;
     -webkit-appearance: none;
@@ -366,7 +396,7 @@ kbd {
 }
 
 hr {
-  border: none;
+  border: 0;
   border-top: 1px solid var(--bg);
   margin: 10px 0;
 }
@@ -387,22 +417,6 @@ progress {
 }
 
 pre {
-  padding: 4px 8px;
-  margin: 10px auto;
-  border-radius: 4px;
-  overflow-x: auto;
-  font-family: monospace;
-  white-space: pre-wrap;
-
-  code {
-    padding: 0;
-  }
-}
-
-code {
-  padding: 4px 8px;
-  border-radius: 4px;
-  overflow-x: auto;
   white-space: pre-wrap;
 }
 
@@ -411,7 +425,7 @@ li {
 
   &:has(input[type="checkbox"]) {
     list-style: none;
-    margin-left: -2rem;
+    margin-left: -2.2rem;
   }
 
   input[type="checkbox"] {
@@ -453,24 +467,15 @@ select,
 button,
 input {
   font-family: OpenSans, Helvetica Neue, Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  border-radius: 48px;
+  height: 36px;
   background: none;
-}
-
-input {
   border: 1px solid var(--bg);
-}
-
-select {
-  padding: 0;
-  border: none;
 }
 
 button {
   cursor: pointer;
-  font-size: 1rem;
-  height: 36px;
-  border-radius: 20px;
-  border: 1px solid var(--bg);
 
   &:not(.btn-color) {
     &:hover {
@@ -479,13 +484,12 @@ button {
   }
 
   &:disabled {
-    opacity: .8;
+    opacity: .7;
     cursor: not-allowed;
   }
 }
 
 input {
-  border-radius: 20px;
 
   &[type=text],
   &[type=password],
@@ -495,9 +499,7 @@ input {
   &[type=datetime-local] {
     -webkit-appearance: none;
     appearance: none;
-    height: 36px;
     width: 100%;
-    font-size: 1rem;
     padding: 0 1rem;
   }
 
@@ -511,30 +513,19 @@ input {
   }
 }
 
-p {
-  line-height: 1.7;
-}
-
 div.note,
 div.shared-note {
   .note-container {
     overflow-x: hidden;
     overflow-wrap: break-word;
     word-break: break-word;
-    line-height: 1.7;
     width: 100%;
   }
 
   .title {
-    display: flex;
-    justify-content: end;
-    align-items: center;
     font-weight: 700;
-  }
-
-  .date {
-    font-size: .8rem;
-    text-align: center;
+    font-size: 1.3rem;
+    text-align: end;
   }
 
   div.bottom-note-actions {
@@ -556,7 +547,7 @@ div.shared-note {
       font-size: 1.2rem;
       width: 40px;
       height: 40px;
-      border: none;
+      border: 0;
       border-radius: 48px;
     }
   }
@@ -580,10 +571,6 @@ div.note {
     transition: opacity .1s;
   }
 
-  &:not(.fullscreen-note) {
-    max-width: calc(50% - 1rem);
-  }
-
   &:hover,
   &:focus-within {
 
@@ -604,7 +591,7 @@ div.shared-note {
   padding: 10px 1rem;
 
   .title {
-    justify-content: center;
+    text-align: center;
   }
 }
 
@@ -657,7 +644,7 @@ div.fullscreen-note {
   }
 
   .title {
-    justify-content: center;
+    text-align: center;
   }
 
   div.bottom-note-actions {
@@ -734,36 +721,21 @@ div#add-note-modal {
 
   .popup-content {
     input {
-      font-size: 1rem;
       padding: 0;
-      border: none;
+      border: 0;
       border-radius: 0;
       outline: none;
     }
+  }
 
-    .editor {
-      height: calc(100dvh - 280px);
-      margin-bottom: 10px;
-      font-size: 1rem;
-      font-family: monospace;
-      background: #282936;
-      overflow-x: hidden;
-      max-width: 100%;
-      box-sizing: border-box;
-      white-space: pre-wrap;
-      overflow-wrap: break-word;
-      word-break: break-word;
-    }
+  .code-editor {
+    margin-bottom: 10px;
   }
 
   .add-note-modal-control {
     display: flex;
     align-items: center;
     gap: 4px;
-  }
-
-  #note-content-length {
-    font-size: .8rem;
   }
 }
 
@@ -778,6 +750,7 @@ div#note-historic-modal {
     word-break: break-word;
     max-height: calc(100dvh - 120px);
     overflow-y: auto;
+    line-height: initial;
   }
 }
 
@@ -806,6 +779,9 @@ label.custom-check {
     margin: 4px 0;
     padding: 4px 8px;
     border-radius: 24px;
+    text-overflow: ellipsis;
+    max-width: 200px;
+    overflow: hidden;
   }
 
   input:checked+span {
@@ -819,7 +795,6 @@ label.custom-check {
 }
 
 .reminder-date {
-  font-size: .8rem;
   padding: 4px 8px;
   border-radius: 24px;
 
@@ -867,7 +842,7 @@ label.switch {
 
     &:disabled+.toggle-thumb {
       cursor: not-allowed;
-      opacity: .8;
+      opacity: .7;
     }
 
     &:disabled+.toggle-thumb:before {
@@ -951,7 +926,7 @@ p#public-note-link {
   flex: 1;
   height: 36px;
   margin-right: 4px;
-  border-radius: 20px;
+  border-radius: 48px;
   text-align: center;
   font-weight: 700;
   overflow: hidden;
@@ -1023,6 +998,12 @@ button#btn-unlock-float {
   button#sidebar-indicator {
     display: none;
   }
+
+  div.note {
+    &:not(.fullscreen-note) {
+      max-width: calc(50% - 1rem);
+    }
+  }
 }
 
 @media (max-width: 950px) {
@@ -1041,10 +1022,11 @@ button#btn-unlock-float {
   }
 
   main {
+    justify-content: flex-start;
     align-items: flex-end;
-    padding: 0 0 90px;
+    padding: 0 4px 90px;
     max-height: 100dvh;
-    gap: 1px;
+    gap: 4px;
   }
 
   nav {
@@ -1052,6 +1034,7 @@ button#btn-unlock-float {
     left: -100%;
     width: 100vw;
     transition: .2s;
+    border: 0;
     z-index: 5;
 
     &.show {
@@ -1065,6 +1048,8 @@ button#btn-unlock-float {
   }
 
   div.note {
+    padding: 6px 12px;
+
     div.bottom-note-actions {
       visibility: visible;
       opacity: 1;
@@ -1076,14 +1061,16 @@ button#btn-unlock-float {
     }
 
     &:not(.fullscreen-note) {
-      min-width: 100vw;
-      max-width: 100vw;
-      border-radius: 0;
-      max-height: 120px;
+      flex: 0 0 calc(50% - 2px);
+      border-radius: 10px;
+      height: 120px;
 
       .note-content {
-        opacity: .8;
+        opacity: .7;
         pointer-events: none;
+        transform: scale(.7);
+        transform-origin: top left;
+        width: calc(100% / .7);
       }
 
       div.bottom-note-actions {
@@ -1226,5 +1213,5 @@ button#btn-unlock-float {
 }
 
 .txt-small {
-  font-size: .8rem !important;
+  font-size: .75rem !important;
 }
