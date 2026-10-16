@@ -143,7 +143,7 @@
           </div>
         </div>
       </div>
-      <div v-show="showAddNoteModal" id="add-note-modal" class="modal" role="dialog" aria-modal="true">
+      <div v-if="showAddNoteModal" id="add-note-modal" class="modal" role="dialog" aria-modal="true">
         <div class="popup">
           <div class="popup-content">
             <form @submit.prevent="isAuthenticated ? addCloudNote() : addLocalNote()">
