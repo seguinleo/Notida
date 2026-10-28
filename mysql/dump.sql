@@ -28,7 +28,7 @@ CREATE TABLE `notes` (
   `oneTimeAccess` tinyint NOT NULL DEFAULT '0',
   `reminder` varchar(63) DEFAULT NULL,
   `userId` CHAR(36) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_ci;
 
 -- --------------------------------------------------------
 
@@ -44,7 +44,7 @@ CREATE TABLE `users` (
   `lastLogin` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `mfa` tinyint NOT NULL DEFAULT '0',
   `mfaSecret` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_ci;
 
 --
 -- Indexes for dumped tables

@@ -33,8 +33,9 @@ const sessionStore = new RedisStore({
   disableTouch: true
 })
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error('SESSION_SECRET is required')
+for (const name of ['MASTER_KEY', 'SESSION_SECRET', 'CSRF_SECRET']) {
+  const param = process.env[name]
+  if (!param || param.length < 32) throw new Error(`${name} must be set in .env (>= 32 chars)`)
 }
 
 router.use(
@@ -523,24 +524,37 @@ router.post('/get-notes', verifySession, doubleCsrfProtection, async (req, res) 
         ? userRows[0].lastLogin
         : 0
 
-    const notes = noteRows.map(row => ({
-      id: row.id,
-      title: encryption.decryptData(row.title, key),
-      content: encryption.decryptData(row.content, key),
-      historic: row.historic
-        ? encryption.decryptData(row.historic, key)
-        : '',
-      color: row.color,
-      date: row.updateDate,
-      category: row.category,
-      link: row.link,
-      hidden: row.hiddenNote,
-      pinned: row.pinnedNote,
-      reminder: row.reminder
-    }))
+    const notes = []
+    const corruptedNotes = []
+
+    for (const row of noteRows) {
+      try {
+        notes.push({
+          id: row.id,
+          title: encryption.decryptData(row.title, key),
+          content: encryption.decryptData(row.content, key),
+          historic: row.historic
+            ? encryption.decryptData(row.historic, key)
+            : '',
+          color: row.color,
+          date: row.updateDate,
+          category: row.category,
+          link: row.link,
+          hidden: row.hiddenNote,
+          pinned: row.pinnedNote,
+          reminder: row.reminder
+        })
+      } catch {
+        corruptedNotes.push({
+          id: row.id,
+          date: row.updateDate
+        })
+      }
+    }
 
     return res.status(200).json({
       notes,
+      corruptedNotes,
       name,
       lastLogin,
       allUserSessions,

@@ -1,3 +1,10 @@
+#----v26.11.1----#
+-Security fixes
+    -Shared notes no longer appear instantly
+    -Fix local notes encryption bypass
+-Bug fixes
+    -Change database charset to distinguish between accented letters
+
 #----v26.10.1----#
 -Improve navbar design
 -Replace CodeJar with simple-code-editor

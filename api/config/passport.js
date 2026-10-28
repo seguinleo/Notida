@@ -2,9 +2,10 @@
 import passport from 'passport'
 import { Strategy as LocalStrategy } from 'passport-local'
 import argon2 from 'argon2'
+import crypto from 'crypto'
 import { pool } from './config.js'
 
-const fakeHash = '$argon2id$v=19$m=19456,t=2,p=1$+to4xlALTkt0j6xnwHsvnw$fHRVrgonDBSmjJUZsXkYItC85pEWhKZc2Cva+0eeqPo'
+const fakeHash = await argon2.hash(crypto.randomBytes(16).toString('hex'))
 
 passport.use(
   new LocalStrategy(

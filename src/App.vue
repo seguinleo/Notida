@@ -355,7 +355,7 @@
             <div class="row">
               <p class="version">
                 GPL-3.0 &copy;
-                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.10.1</a>
+                <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">v26.11.1</a>
               </p>
             </div>
           </div>
@@ -390,8 +390,8 @@
                 </button>
               </div>
               <div class="row">
-                <span class="txt-small">{{ allUserNotes.length }} / {{ maxNotesPerUser }} notes</span>
-                <progress :max="maxNotesPerUser" :value="allUserNotes.length"></progress>
+                <span class="txt-small">{{ allUserDecryptedNotes.length }} / {{ maxNotesPerUser }} notes</span>
+                <progress :max="maxNotesPerUser" :value="allUserDecryptedNotes.length"></progress>
               </div>
               <div class="row bold">
                 Update password
@@ -532,10 +532,10 @@
                   </button>
                 </div>
               </div>
-              <form autocomplete="off" @submit.prevent="loginUser()">
+              <form @submit.prevent="loginUser()">
                 <div class="row">
                   <input id="name-login" type="text" minlength="3" maxlength="30" placeholder="Name" spellcheck="false"
-                    autocorrect="off" autocapitalize="none" autocomplete="off" aria-label="Name" required>
+                    autocorrect="off" autocapitalize="none" aria-label="Name" required>
                 </div>
                 <div class="row">
                   <input id="psswd-login" type="password" minlength="10" maxlength="64" placeholder="Password"
@@ -589,7 +589,7 @@
             </div>
           </div>
         </div>
-        <div v-show="allUserNotes.length === 0" class="welcome">
+        <div v-show="allUserDecryptedNotes.length === 0" class="welcome">
           <p class="align-center">
             <img alt="App icon" src="/pwa/apple-touch-icon.png" width="52" height="52">
           </p>
@@ -604,34 +604,37 @@
             <img alt="Open source" width="126" height="20" src="./assets/img/project-open-source.svg">
           </p>
           <h2>📝Features</h2>
-          <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML
-            and Math. You can add images, audio or videos via URL and add custom categories to organize your
-            notes.
+          <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML and Math. You can add images, audio or videos via URL and add custom categories to organize your notes.
           </p>
-          <p>You can sync your notes across all your devices after logging in (no email address is required, just
-            a
-            username and a strong password). Public notes can be shared with anyone via a random URL.</p>
-          <p>This website is a Progressive Web App (PWA) that can be installed as an application. You can fully
-            customize the application's color theme.</p>
-          <p>This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and
-            focusable elements.</p>
+          <p>You can sync your notes across all your devices after logging in (no email address is required, just a username and a strong password). Public notes can be shared with anyone via a random URL.</p>
+          <p>This website is a Progressive Web App (PWA) that can be installed as an application. You can fully customize the application's color theme.</p>
+          <p>This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and focusable elements.</p>
           <h2>🔒Security</h2>
-          <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP
-              security recommendations</a>.
+          <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP security recommendations</a>.
           </p>
-          <p>All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using
-            Argon2id. All notes are encrypted with AES-256-GCM.</p>
-          <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never
-            sent
-            to the server, verification is local and UI/UX only.</p>
+          <p>All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using Argon2id. All notes are encrypted with AES-256-GCM.</p>
+          <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server, verification is local and UI/UX only.</p>
           <p>User accounts are deleted 1 year after the last login.</p>
           <h2>🌐Community</h2>
-          <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free
-            to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
+          <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
         </div>
       </template>
       <template v-if="noteLinkInUrl">
-        <div v-if="sharedNote !== null" class="shared-note">
+        <div v-if="!sharedNoteRevealed" class="shared-note">
+          <div class="note-container align-center">
+            <div class="row">
+              <button type="button" class="w-100 bg-default" :disabled="sharedNoteLoading"
+                @click="revealSharedNote($event)">
+                Show note
+              </button>
+            </div>
+            <div class="row txt-small">
+              <i class="fa-solid fa-circle-info" role="none"></i>
+              <span class="italic">If this is a one-time note, it will be deleted as soon as it is displayed.</span>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="sharedNote !== null" class="shared-note">
           <div class="note-container">
             <div v-if="sharedNote.oneTimeAccess" class="row align-center italic">
               The note will be deleted after you read it!
@@ -733,7 +736,8 @@ const MARKED_CONFIG = {
 
 const PURIFY_CONFIG = {
   SANITIZE_NAMED_PROPS: true,
-  FORBID_TAGS: ['button', 'dialog', 'div', 'footer', 'form', 'header', 'iframe', 'label', 'main', 'nav', 'script', 'style'],
+  USE_PROFILES: { html: true, mathMl: true },
+  FORBID_TAGS: ['button', 'dialog', 'div', 'footer', 'form', 'header', 'iframe', 'label', 'main', 'nav', 'option', 'select', 'script', 'style', 'textarea'],
   FORBID_ATTR: ['data', 'onerror', 'onclick', 'style'],
   ADD_TAGS: ['annotation', 'semantics']
 }
@@ -770,7 +774,8 @@ export default {
       isNoteUpdate: false,
       maxNotesPerUser: 0,
       maxNoteContentLength: 50000,
-      allUserNotes: [],
+      allUserRawLocalNotes: [],
+      allUserDecryptedNotes: [],
       allUserSessions: 0,
       allCategories: new Set(),
       newCategory: '',
@@ -798,6 +803,8 @@ export default {
       noteLink: '',
       noteLinkInUrl: '',
       sharedNote: null,
+      sharedNoteRevealed: false,
+      sharedNoteLoading: false,
       showAddNoteModal: false,
       showSortNotesModal: false,
       showDeleteNoteModal: false,
@@ -883,9 +890,9 @@ export default {
     },
     filteredNotes() {
       const search = this.normalize(this.searchValue)
-      if (!search) return this.allUserNotes
+      if (!search) return this.allUserDecryptedNotes
 
-      return this.allUserNotes.filter(note => {
+      return this.allUserDecryptedNotes.filter(note => {
         const title = this.normalize(note.title)
         const content = this.normalize(note.content)
         return title.includes(search) || content.includes(search)
@@ -894,8 +901,13 @@ export default {
   },
   async mounted() {
     this.urlParams = new URLSearchParams(window.location.search)
-    if (this.urlParams && this.urlParams.get('link')) {
-      await this.renderSharedNote()
+    const link = this.urlParams.get('link')
+    if (link) {
+      this.noteLinkInUrl = link
+      if (!/^[a-f0-9]{32}$/i.test(link)) {
+        this.sharedNote = { title: 'Wrong public link' }
+        this.sharedNoteRevealed = true
+      }
       return
     }
 
@@ -956,11 +968,6 @@ export default {
   },
   methods: {
     async handleOnline() {
-      if (this.urlParams?.get('link')) {
-        await this.renderSharedNote()
-        return
-      }
-
       await this.getLockApp()
       if (this.isLocked) return
 
@@ -1039,7 +1046,7 @@ export default {
       }
     },
     getNoteById(id) {
-      return this.allUserNotes.find(n => n.id === id)
+      return this.allUserDecryptedNotes.find(n => n.id === id)
     },
     formatDate(date) {
       return new Date(date).toLocaleString(undefined, DATE_OPTIONS)
@@ -1431,25 +1438,27 @@ export default {
       if (this.isLocked) return
 
       this.currentNoteId = null
+      this.allUserDecryptedNotes = []
+      this.allCategories = new Set()
       this.sortOption = localStorage.getItem('sort-notes') || '1'
 
-      const localNotes = JSON.parse(localStorage.getItem('local-notes')) || []
+      this.allUserRawLocalNotes = JSON.parse(localStorage.getItem('local-notes')) || []
 
-      if (localNotes.length === 0) return
+      if (this.allUserRawLocalNotes.length === 0) return
 
-      this.allCategories = new Set(localNotes.map(n => n.category).filter(Boolean))
+      this.allCategories = new Set(this.allUserRawLocalNotes.map(n => n.category).filter(Boolean))
 
       try {
         const db = await this.openIndexedDB(this.localDbName, this.localDbKeyName)
         this.localDbKey = await this.getKeyFromDB(db, this.localDbKeyName)
 
         const normalized = await Promise.all(
-          localNotes.map(n => this.normalizeNote(n))
+          this.allUserRawLocalNotes.map(n => this.normalizeNote(n))
         )
 
-        this.allUserNotes = normalized.filter(Boolean)
+        this.allUserDecryptedNotes = normalized.filter(Boolean)
 
-        this.allUserNotes.sort((a, b) => {
+        this.allUserDecryptedNotes.sort((a, b) => {
           if (a.pinned === 1 && b.pinned === 0) return -1
           if (a.pinned === 0 && b.pinned === 1) return 1
 
@@ -1519,23 +1528,17 @@ export default {
         }
 
         if (this.isNoteUpdate) {
-          const noteIdToUpdate = this.currentNoteId
-          const noteToUpdate = this.getNoteById(noteIdToUpdate)
-
-          if (!noteToUpdate) return
-          Object.assign(noteToUpdate, {
+          const raw = this.allUserRawLocalNotes.find(n => n.id === noteId)
+          if (!raw) return
+          Object.assign(raw, {
             title: note.title,
             content: note.content,
-            color: note.color,
-            date: note.date,
-            hidden: note.hidden,
-            category: note.category,
-            reminder: note.reminder,
-            pinned: note.pinned
+            color, date, hidden, category, reminder
           })
-        } else this.allUserNotes.push(note)
-
-        localStorage.setItem('local-notes', JSON.stringify(this.allUserNotes))
+        } else {
+          this.allUserRawLocalNotes.push(note)
+        }
+        localStorage.setItem('local-notes', JSON.stringify(this.allUserRawLocalNotes))
         this.showAddNoteModal = false
         await this.getLocalNotes()
       } catch (err) {
@@ -1543,21 +1546,17 @@ export default {
       }
     },
     async pinLocalNote(noteId) {
-      if (!noteId) return
-      const pinned = this.getNoteById(noteId).pinned
-      const noteIndex = this.allUserNotes.findIndex(note => note.id === noteId)
-      if (noteIndex === -1) return
-      this.allUserNotes[noteIndex].pinned = pinned ? 0 : 1
-      localStorage.setItem('local-notes', JSON.stringify(this.allUserNotes))
+      const raw = this.allUserRawLocalNotes.find(n => n.id === noteId)
+      if (!raw) return
+      raw.pinned = raw.pinned ? 0 : 1
+      localStorage.setItem('local-notes', JSON.stringify(this.allUserRawLocalNotes))
       await this.getLocalNotes()
     },
     async deleteLocalNote() {
-      const noteId = this.currentNoteId
-      if (!noteId) return
-      const noteIndex = this.allUserNotes.findIndex(note => note.id === noteId)
-      if (noteIndex === -1) return
-      this.allUserNotes.splice(noteIndex, 1)
-      localStorage.setItem('local-notes', JSON.stringify(this.allUserNotes))
+      const i = this.allUserRawLocalNotes.findIndex(n => n.id === this.currentNoteId)
+      if (i === -1) return
+      this.allUserRawLocalNotes.splice(i, 1)
+      localStorage.setItem('local-notes', JSON.stringify(this.allUserRawLocalNotes))
       await this.getLocalNotes()
       this.showDeleteNoteModal = false
     },
@@ -1584,20 +1583,20 @@ export default {
         this.maxNotesPerUser = response.maxNotesPerUser
         this.maxNoteContentLength = response.maxNoteContentLength
         this.allUserSessions = response.allUserSessions
-        this.allUserNotes = response.notes
+        this.allUserDecryptedNotes = response.notes
         this.lastLoginDate = this.formatDate(response.lastLogin)
 
-        if (this.allUserNotes.length === 0) return
+        if (this.allUserDecryptedNotes.length === 0) return
 
-        this.allCategories = new Set(this.allUserNotes.map(n => n.category).filter(Boolean))
+        this.allCategories = new Set(this.allUserDecryptedNotes.map(n => n.category).filter(Boolean))
 
         const normalized = await Promise.all(
-          this.allUserNotes.map(n => this.normalizeNote(n))
+          this.allUserDecryptedNotes.map(n => this.normalizeNote(n))
         )
 
-        this.allUserNotes = normalized.filter(Boolean)
+        this.allUserDecryptedNotes = normalized.filter(Boolean)
 
-        this.allUserNotes.sort((a, b) => {
+        this.allUserDecryptedNotes.sort((a, b) => {
           if (a.pinned === 1 && b.pinned === 0) return -1
           if (a.pinned === 0 && b.pinned === 1) return 1
 
@@ -1617,7 +1616,7 @@ export default {
     },
     async addCloudNote() {
       try {
-        if (this.allUserNotes.length >= this.maxNotesPerUser) {
+        if (this.allUserDecryptedNotes.length >= this.maxNotesPerUser) {
           this.showError('You have reached the maximum storage capacity')
           return
         }
@@ -1781,44 +1780,41 @@ export default {
         this.showError(`An error occurred - ${err}`)
       }
     },
-    async renderSharedNote() {
-      this.noteLinkInUrl = this.urlParams.get('link')
+    async revealSharedNote(event) {
+      if (event && !event.isTrusted) return
+      if (this.sharedNoteLoading || this.sharedNoteRevealed) return
 
-      if (!this.noteLinkInUrl || !/^[a-f0-9]{32}$/i.test(this.noteLinkInUrl)) {
-        this.sharedNote = {
-          title: 'Wrong public link'
+      this.sharedNoteLoading = true
+      try {
+        const res = await fetch('/api/get-shared-note/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ noteLink: this.noteLinkInUrl })
+        })
+
+        if (!res.ok) {
+          this.sharedNote = { title: 'Note not found or expired' }
+          this.sharedNoteRevealed = true
+          return
         }
-        return
-      }
 
-      const data = JSON.stringify({ noteLink: this.noteLinkInUrl })
-      const res = await fetch('/api/get-shared-note/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: data
-      })
-
-      if (!res.ok) {
-        this.sharedNote = {
-          title: 'Note not found or expired'
+        const { title, content, date, reminder, oneTimeAccess } = await res.json()
+        let contentHtml
+        try {
+          contentHtml = DOMPurify.sanitize(marked.parse(content), PURIFY_CONFIG)
+        } catch {
+          const escaped = content.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          contentHtml = `<pre>${escaped}</pre>`
         }
-        return
-      }
 
-      const response = await res.json()
-      const { title, content, date, reminder, oneTimeAccess } = response
-      const contentHtml = DOMPurify.sanitize(marked.parse(content), PURIFY_CONFIG)
-
-      this.sharedNote = {
-        title,
-        contentHtml,
-        date,
-        reminder,
-        oneTimeAccess
+        this.sharedNote = { title, contentHtml, date, reminder, oneTimeAccess }
+        document.title = title
+        this.sharedNoteRevealed = true
+      } catch {
+        this.showError('Network error, please try again')
+      } finally {
+        this.sharedNoteLoading = false
       }
-      document.title = this.sharedNote.title
     },
     shareNote(noteId, link) {
       if (!noteId) return
