@@ -1,90 +1,68 @@
 services:
   db:
-    container_name: notida-db
-    image: mysql:latest
+    image: mysql:8.4
     restart: unless-stopped
-
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql/dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
-
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
 
-    networks:
-      - app-network
-
   redis:
-    container_name: notida-redis
-    image: redis:latest
+    image: redis:8-alpine
     restart: unless-stopped
-
-    command:
-      - redis-server
-      - --appendonly
-      - "yes"
-
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
-
     healthcheck:
-      test: ["CMD", "redis-cli", "PING"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 5s
 
-    networks:
-      - app-network
-
-  notida:
-    container_name: notida
-
-    build:
-      context: .
-      dockerfile: Dockerfile
-
+  api:
+    build: ./api
     restart: unless-stopped
-
-    env_file:
-      - .env
-
+    env_file: .env
     environment:
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
       DB_NAME: ${MYSQL_DATABASE}
-
       REDIS_HOST: redis
       REDIS_PORT: 6379
-
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
-      - "8787:80"
-
-    networks:
-      - app-network
+      - "8787:8080"
 
 volumes:
   mysql-data:
   redis-data:
-
-networks:
-  app-network:
-    driver: bridge
