@@ -80,6 +80,6 @@ MYSQL_PASSWORD=a_strong_password
 ```
 
 > [!IMPORTANT]
-> Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to [install a SSL certificate](https://github.com/seguinleo/WebSecurityCheatSheet) to use note encryption (Web Crypto API requires HTTPs).
+> Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to install a SSL certificate to use note encryption (Web Crypto API requires HTTPs).
 
 Special thanks to [simple-code-editor](https://github.com/justcaliturner/simple-code-editor), [DOMPurify](https://github.com/cure53/DOMPurify), [marked](https://github.com/markedjs/marked) and [Iro](https://github.com/jaames/iro.js)
