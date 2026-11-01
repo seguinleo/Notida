@@ -223,7 +223,7 @@
                 </button>
               </div>
             </div>
-            <div class="row">
+            <div v-if="allCategories.size > 0" class="row">
               <fieldset>
                 <legend>Select a category</legend>
                 <label class="custom-check">
@@ -579,8 +579,7 @@
                 <div class="row">
                   <i class="fa-solid fa-circle-info" role="none"></i>
                   <span class="italic">Your password is stored securely and your notes are encrypted. You will not be
-                    able to recover
-                    your password if you forget it. Save your local notes before log in!</span>
+                    able to recover your password if you forget it. Save your local notes before log in!</span>
                 </div>
                 <div class="row">
                   <button type="submit" class="w-100 bg-default">Create my account</button>
@@ -589,7 +588,7 @@
             </div>
           </div>
         </div>
-        <div v-show="allUserDecryptedNotes.length === 0" class="welcome">
+        <div v-show="allUserDecryptedNotes.length === 0 && !getNotesLoading" class="welcome">
           <p class="align-center">
             <img alt="App icon" src="/pwa/apple-touch-icon.png" width="52" height="52">
           </p>
@@ -603,20 +602,30 @@
             <img alt="License GPL-3" width="102" height="20" src="./assets/img/license-GPL-3.svg">
             <img alt="Open source" width="126" height="20" src="./assets/img/project-open-source.svg">
           </p>
-          <h2>📝Features</h2>
-          <p>Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML and Math. You can add images, audio or videos via URL and add custom categories to organize your notes.
-          </p>
-          <p>You can sync your notes across all your devices after logging in (no email address is required, just a username and a strong password). Public notes can be shared with anyone via a random URL.</p>
-          <p>This website is a Progressive Web App (PWA) that can be installed as an application. You can fully customize the application's color theme.</p>
-          <p>This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and focusable elements.</p>
+          <h2>⭐Features</h2>
+          <p><strong>Rich note editor</strong>: Create notes using Markdown, HTML and mathematical expressions. Organize
+            your content with task lists, reminders, tables or code blocks.</p>
+          <p><strong>Multimedia support</strong>: Embed images, audio files and videos directly into your notes using
+            URLs.</p>
+          <p><strong>Custom categories</strong>: Create your own categories to organize and easily find your notes.</p>
+          <p><strong>Cross-device sync</strong>: Access your notes across all your devices by signing in with a username
+            and password. No email address required.</p>
+          <p><strong>Public sharing</strong>: Share individual notes with anyone through randomly generated URLs.</p>
+          <p><strong>Customization</strong>: Personalize the application's color theme to suit your preferences.</p>
+          <p><strong>Accessibility</strong>: Designed with accessibility in mind, including high-contrast colors, ARIA
+            attributes and keyboard-accessible interactive elements.</p>
           <h2>🔒Security</h2>
-          <p>The website follows <a href="https://cheatsheetseries.owasp.org/" rel="noopener noreferrer">OWASP security recommendations</a>.
-          </p>
-          <p>All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using Argon2id. All notes are encrypted with AES-256-GCM.</p>
-          <p>Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server, verification is local and UI/UX only.</p>
-          <p>User accounts are deleted 1 year after the last login.</p>
+          <p>Privacy and security are fundamental principles of Notida. The application incorporates multiple security
+            mechanisms and follows the recommendations of OWASP.</p>
+          <p><strong>Data encryption</strong>: Notes are encrypted in the database using AES-256-GCM.</p>
+          <p><strong>Biometric app locking</strong>: Lock the application using your device's biometric authentication
+            (fingerprint, face recognition, etc.). Biometric data never leaves your device. Authentication is handled
+            locally and is used as an additional application access-control mechanism.</p>
+          <p><strong>RGPD</strong>: Accounts are automatically deleted after one year of inactivity after the last
+            login.</p>
           <h2>🌐Community</h2>
-          <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free to discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
+          <p>If you find issues, vulnerabilities or if you have any suggestions to improve this project, feel free to
+            discuss on <a href="https://github.com/seguinleo/Notida/" rel="noopener noreferrer">GitHub</a>!</p>
         </div>
       </template>
       <template v-if="noteLinkInUrl">
@@ -694,7 +703,7 @@
               <button v-else type="button" @click.stop="noteActions(note, 'pin-note')" aria-label="Pin note">
                 <i class="fa-solid fa-thumbtack"></i>
               </button>
-              <button v-if="note.content" type="button" @click.stop="noteActions(note, 'copy-note')"
+              <button v-if="note.content && !note.hidden" type="button" @click.stop="noteActions(note, 'copy-note')"
                 aria-label="Copy note">
                 <i class="fa-solid fa-clipboard"></i>
               </button>
@@ -751,6 +760,16 @@ const DATE_OPTIONS = {
   minute: '2-digit'
 }
 
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A' && node.hasAttribute('href')) {
+    node.setAttribute('rel', 'noopener noreferrer nofollow')
+  }
+  if (node.tagName === 'IMG') {
+    node.setAttribute('referrerpolicy', 'no-referrer')
+    node.setAttribute('loading', 'lazy')
+  }
+})
+
 marked.use(MARKED_CONFIG, mathMarked(), gfmHeadingId())
 
 export default {
@@ -772,6 +791,7 @@ export default {
       isAuthenticated: false,
       isAuthenticatedResponse: false,
       isNoteUpdate: false,
+      getNotesLoading: true,
       maxNotesPerUser: 0,
       maxNoteContentLength: 50000,
       allUserRawLocalNotes: [],
@@ -783,7 +803,7 @@ export default {
         'bg-default', 'bg-red', 'bg-orange', 'bg-yellow', 'bg-lime', 'bg-green',
         'bg-cyan', 'bg-light-blue', 'bg-blue', 'bg-purple', 'bg-pink'
       ],
-      sortOption: '1',
+      sortOption: localStorage.getItem('sort-notes') || '1',
       lastLoginDate: '',
       noteTitle: '',
       noteContent: '',
@@ -893,9 +913,9 @@ export default {
       if (!search) return this.allUserDecryptedNotes
 
       return this.allUserDecryptedNotes.filter(note => {
-        const title = this.normalize(note.title)
-        const content = this.normalize(note.content)
-        return title.includes(search) || content.includes(search)
+        if (this.normalize(note.title).includes(search)) return true
+        if (note.hidden) return false
+        return this.normalize(note.content).includes(search)
       })
     }
   },
@@ -980,7 +1000,13 @@ export default {
       }
     },
     arrayBufferToBase64(buffer) {
-      return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+      const bytes = new Uint8Array(buffer)
+      const CHUNK = 0x8000
+      let binary = ''
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK))
+      }
+      return btoa(binary)
     },
     base64ToArrayBuffer(base64) {
       const binaryString = atob(base64)
@@ -1042,7 +1068,7 @@ export default {
         return JSON.parse(new TextDecoder().decode(decrypted))
       } catch (err) {
         this.showError(`An error occurred while decrypting the notes - ${err}`)
-        return null
+        return ''
       }
     },
     getNoteById(id) {
@@ -1200,14 +1226,8 @@ export default {
       const nameLogin = document.querySelector('#name-login').value.trim()
       const psswdLogin = document.querySelector('#psswd-login').value
 
-      if (
-        nameLogin.length < 3 ||
-        nameLogin.length > 30 ||
-        psswdLogin.length < 10 ||
-        psswdLogin.length > 64
-      ) {
-        return
-      }
+      if (nameLogin.length < 3 || nameLogin.length > 30 ||
+        psswdLogin.length < 10 || psswdLogin.length > 64) return
 
       if (!/^[\p{L} -]+$/u.test(nameLogin.normalize('NFKC'))) {
         this.showError('Name can only contain letters, spaces and accents')
@@ -1215,33 +1235,28 @@ export default {
       }
 
       this.isLoginLoading = true
+      let cooldown = false
 
       try {
         const res = await fetch('/api/login/', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            nameLogin,
-            psswdLogin
-          })
+          body: JSON.stringify({ nameLogin, psswdLogin })
         })
+
         if (!res.ok) {
-          const errorMessage = await res.text()
           document.querySelector('#psswd-login').value = ''
-          this.showError(errorMessage)
-          setTimeout(() => {
-            this.isLoginLoading = false
-          }, 7000)
+          this.showError(res.status === 429 ? 'Too many attempts' : 'Invalid credentials')
+          cooldown = true
+          setTimeout(() => { this.isLoginLoading = false }, 10000)
           return
         }
         window.location.reload()
-      } catch (err) {
-        this.showError(`An error occurred - ${err}`)
+      } catch {
+        this.showError('Network error, please try again')
       } finally {
-        this.isLoginLoading = false
+        if (!cooldown) this.isLoginLoading = false
       }
     },
     async fetchLogout() {
@@ -1437,18 +1452,18 @@ export default {
     async getLocalNotes() {
       if (this.isLocked) return
 
-      this.currentNoteId = null
-      this.allUserDecryptedNotes = []
-      this.allCategories = new Set()
-      this.sortOption = localStorage.getItem('sort-notes') || '1'
-
-      this.allUserRawLocalNotes = JSON.parse(localStorage.getItem('local-notes')) || []
-
-      if (this.allUserRawLocalNotes.length === 0) return
-
-      this.allCategories = new Set(this.allUserRawLocalNotes.map(n => n.category).filter(Boolean))
-
       try {
+        this.getNotesLoading = true
+        this.currentNoteId = null
+        this.allUserDecryptedNotes = []
+        this.allCategories = new Set()
+
+        this.allUserRawLocalNotes = JSON.parse(localStorage.getItem('local-notes')) || []
+
+        if (this.allUserRawLocalNotes.length === 0) return
+
+        this.allCategories = new Set(this.allUserRawLocalNotes.map(n => n.category).filter(Boolean))
+
         const db = await this.openIndexedDB(this.localDbName, this.localDbKeyName)
         this.localDbKey = await this.getKeyFromDB(db, this.localDbKeyName)
 
@@ -1474,6 +1489,8 @@ export default {
         })
       } catch (err) {
         this.showError(`An error occurred - ${err}`)
+      } finally {
+        this.getNotesLoading = false
       }
     },
     async addLocalNote() {
@@ -1485,14 +1502,14 @@ export default {
         const color = this.selectedColor || 'bg-default'
         const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
         const hidden = this.hiddenNote ? 1 : 0
-        const category = this.selectedCategory || null
+        const category = this.selectedCategory.trim() || null
         const reminder = this.reminderNote || null
 
         if (this.isNoteUpdate && !noteId) return
         else if (!this.isNoteUpdate && noteId) return
 
         if (!title || title.length > 30 || content.length > this.maxNoteContentLength) {
-          this.showError(`Content max length is ${this.maxNoteContentLength} characters.`)
+          this.showError(`Maximum content length is ${this.maxNoteContentLength} characters.`)
           return
         }
         if (!this.allColors.includes(color)) return
@@ -1564,7 +1581,6 @@ export default {
       if (this.isLocked) return
 
       this.currentNoteId = null
-      this.sortOption = localStorage.getItem('sort-notes') || '1'
 
       try {
         const res = await fetch('/api/get-notes/', {
@@ -1616,7 +1632,7 @@ export default {
     },
     async addCloudNote() {
       try {
-        if (this.allUserDecryptedNotes.length >= this.maxNotesPerUser) {
+        if (!this.isNoteUpdate && this.allUserDecryptedNotes.length >= this.maxNotesPerUser) {
           this.showError('You have reached the maximum storage capacity')
           return
         }
@@ -1626,7 +1642,7 @@ export default {
         const content = this.noteContent.trim()
         const color = this.selectedColor || 'bg-default'
         const hidden = this.hiddenNote ? 1 : 0
-        const category = this.selectedCategory || null
+        const category = this.selectedCategory.trim() || null
         const reminder = this.reminderNote || null
 
         if (this.isNoteUpdate && !noteId) return
@@ -1909,7 +1925,7 @@ export default {
 
         const data = await noteLastUpdate.json()
 
-        if (new Date(await data.date) > new Date(this.getNoteById(noteId)?.date)) {
+        if (new Date(data.date) > new Date(this.getNoteById(noteId)?.date)) {
           this.showError('This note has been updated from another session and is not up to date!')
         }
       }
@@ -1928,6 +1944,7 @@ export default {
     },
     createCategory() {
       const categoryName = this.newCategory.trim()
+      if (!categoryName) return
       this.allCategories.add(categoryName)
       this.newCategory = ''
     },
@@ -1958,7 +1975,7 @@ export default {
     toggleFullscreen(noteId, event) {
       if (
         !noteId ||
-        event.target.closest('a, note-container') ||
+        event.target.closest('a') ||
         window.getSelection().toString()
       ) return
 

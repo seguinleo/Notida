@@ -9,23 +9,21 @@ A fast, private and secure web notebook.
 
 ## Features
 
-Users can create task lists, reminders, tables, math expressions or code blocks using Markdown, HTML and Math. You can add images, audio or videos via URL and add custom categories to organize your notes.
-
-You can sync your notes across all your devices after logging in (no email address is required, just a username and a strong password). Public notes can be shared with anyone via a random URL.
-
-This website is a Progressive Web App (PWA) that can be installed as an application. You can fully customize the application's color theme.
-
-This website is accessible to users with disabilities through high-contrast colors, ARIA modules, and focusable elements.
+* **Rich note editor**: Create notes using Markdown, HTML and mathematical expressions. Organize your content with task lists, reminders, tables or code blocks.
+* **Multimedia support**: Embed images, audio files and videos directly into your notes using URLs.
+* **Custom categories**: Create your own categories to organize and easily find your notes.
+* **Cross-device sync**: Access your notes across all your devices by signing in with a username and password. No email address required.
+* **Public sharing**: Share individual notes with anyone through randomly generated URLs.
+* **Customization**: Personalize the application's color theme to suit your preferences.
+* **Accessibility**: Designed with accessibility in mind, including high-contrast colors, ARIA attributes and keyboard-accessible interactive elements.
 
 ## Security
 
-The website follows [OWASP security recommendations](https://cheatsheetseries.owasp.org/).
+Privacy and security are fundamental principles of Notida. The application incorporates multiple security mechanisms and follows the recommendations of OWASP.
 
-All notes are sanitized and validated through the DOMPurify library. Passwords are hashed using Argon2id. All notes are encrypted with AES-256-GCM.
-
-Users can lock the app using biometrics (fingerprints, face, etc.). These biometric data are never sent to the server, verification is local and UI/UX only.
-
-User accounts are deleted 1 year after the last login.
+* **Data encryption**: Notes are encrypted in the database using AES-256-GCM.
+* **Biometric app locking**: Lock the application using your device's biometric authentication (fingerprint, face recognition, etc.). Biometric data never leaves your device. Authentication is handled locally and is used as an additional application access-control mechanism.
+* **RGPD**: Accounts are automatically deleted after one year of inactivity after the last login.
 
 ## Todo
 
@@ -47,19 +45,17 @@ The project is configured to start with a single Docker command:
 
 The main security features are enabled by default, but for production use, I recommend to:
 
-* Change NODE_ENV to "production" in .env
+* Change NODE_ENV to "production" in ``.env``
 * Edit all users, passwords and secret keys
-* Edit **.env** and **docker-compose.yml** files
 * Edit nginx configuration to add SSL
 * Store the MASTER_KEY in a secure vault like AWS KMS, Azure Key Vault or a self-hosted solution like Hashicorp
 
-.env template, at the root of the project
+``.env`` template, at the root of the project
 
 ```ini
 # SET YOUR SECRETS HERE BEFORE DEPLOYING !
 
-#NODE_ENV=production
-NODE_ENV=development
+NODE_ENV=production
 
 DB_HOST=db
 DB_DATABASE=notida
@@ -87,5 +83,3 @@ MYSQL_PASSWORD=a_strong_password
 > Once built, the website is available at localhost:8787, but if you want to deploy it on a public server, you need to [install a SSL certificate](https://github.com/seguinleo/WebSecurityCheatSheet) to use note encryption (Web Crypto API requires HTTPs).
 
 Special thanks to [simple-code-editor](https://github.com/justcaliturner/simple-code-editor), [DOMPurify](https://github.com/cure53/DOMPurify), [marked](https://github.com/markedjs/marked) and [Iro](https://github.com/jaames/iro.js)
-
-🇪🇺🇫🇷
